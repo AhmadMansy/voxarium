@@ -1,0 +1,73 @@
+{
+  "name": "voxarium",
+  "productName": "Voxarium",
+  "version": "1.0.0",
+  "description": "A private, on-device text-to-speech studio powered by Phonon 31M.",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "author": "Voxarium",
+  "license": "MIT",
+  "scripts": {
+    "sync:phonon": "node scripts/sync-phonon.mjs",
+    "postinstall": "node scripts/sync-phonon.mjs",
+    "catalog": "node scripts/fetch-catalog.mjs",
+    "icon": "node scripts/make-icon.mjs",
+    "dev": "concurrently -k -n renderer,electron -c cyan,magenta \"vite\" \"wait-on http://127.0.0.1:5174 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5174 electron .\"",
+    "build": "tsc --noEmit && vite build",
+    "start": "npm run build && electron .",
+    "typecheck": "tsc --noEmit",
+    "pack": "npm run build && electron-builder --win --x64"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
+    "phonon-tts": "^0.5.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "40.9.3",
+    "electron-builder": "^26.18.0",
+    "playwright-core": "^1.64.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "wait-on": "^9.5.1"
+  },
+  "build": {
+    "appId": "com.voxarium.app",
+    "productName": "Voxarium",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Voxarium"
+    }
+  }
+}

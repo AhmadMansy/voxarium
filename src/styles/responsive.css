@@ -1,0 +1,408 @@
+/* ============================================================
+   Motion & responsive behaviour
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Keyframes
+   ------------------------------------------------------------ */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(13px) scale(0.994);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.972);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(22px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes player-in {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes live-bar {
+  from {
+    transform: scaleY(0.18);
+    opacity: 0.62;
+  }
+  to {
+    transform: scaleY(0.96);
+    opacity: 1;
+  }
+}
+
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes ping-bar {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes splash-bar {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleY(0.24);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes setup-bar {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scaleY(0.32);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.045);
+  }
+}
+
+/* Splash wave bars use the shared keyframe with per-bar delay. */
+.splash__wave span:nth-child(2n) {
+  animation-delay: 0.12s;
+}
+
+.splash__wave span:nth-child(3n) {
+  animation-delay: 0.24s;
+}
+
+.splash__wave span:nth-child(4n) {
+  animation-delay: 0.36s;
+}
+
+/* ------------------------------------------------------------
+   Width: settings rail folds under the main column
+   ------------------------------------------------------------ */
+
+@media (max-width: 1300px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-side {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .settings-side__card {
+    min-width: 0;
+  }
+}
+
+/* ------------------------------------------------------------
+   Width: two-column workspaces stack
+   ------------------------------------------------------------ */
+
+@media (max-width: 1260px) {
+  .studio-grid,
+  .batch-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studio-side {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .studio-side > .side-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .batch-queue {
+    height: auto;
+    max-height: 640px;
+  }
+}
+
+/* ------------------------------------------------------------
+   Width: history list and detail stack
+   ------------------------------------------------------------ */
+
+@media (max-width: 1160px) {
+  .history-layout {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .history-list {
+    max-height: 440px;
+  }
+
+  .history-detail {
+    min-height: 380px;
+  }
+}
+
+/* ------------------------------------------------------------
+   Width: tighten dense settings and page headers
+   ------------------------------------------------------------ */
+
+@media (max-width: 1180px) {
+  .page-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .page-header__actions {
+    justify-content: flex-start;
+    padding-top: 0;
+  }
+
+  .about-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .engine-readout {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .settings-field--split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-side__card:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ------------------------------------------------------------
+   Width: very narrow content (minimum window is 1120px)
+   ------------------------------------------------------------ */
+
+@media (max-width: 1120px) {
+  .page-scroll {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .sidebar {
+    --sidebar-width: 228px;
+  }
+
+  .sidebar__brand-text em {
+    display: none;
+  }
+
+  .theme-grid,
+  .condition-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .playerbar {
+    grid-template-columns: minmax(130px, 190px) minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+
+  .playerbar__volume {
+    display: none;
+  }
+
+  .settings-button-row .btn--danger-text {
+    margin-left: 0;
+  }
+}
+
+/* Below the supported window size, keep everything usable for browser preview. */
+@media (max-width: 900px) {
+  .sidebar {
+    display: none;
+  }
+
+  .wizard {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    max-height: calc(100vh - 40px);
+    min-height: 0;
+  }
+
+  .wizard__brand {
+    gap: 14px;
+    padding: 22px 24px;
+  }
+
+  .wizard__hero h1 {
+    font-size: 26px;
+  }
+
+  .wizard__features,
+  .wizard__privacy {
+    display: none;
+  }
+
+  .wizard__panel {
+    padding: 26px 24px;
+  }
+
+  .settings-side,
+  .studio-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-side__card:first-child,
+  .studio-side > .side-card:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .playerbar {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .playerbar__track {
+    display: none;
+  }
+
+  .playerbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+/* ------------------------------------------------------------
+   Height: compact wizard and denser chrome
+   ------------------------------------------------------------ */
+
+@media (max-height: 760px) {
+  .wizard__brand {
+    gap: 18px;
+    padding: 24px 26px 22px;
+  }
+
+  .wizard__hero h1 {
+    font-size: 28px;
+  }
+
+  .wizard__features {
+    gap: 9px;
+  }
+
+  .toasts {
+    top: 48px;
+  }
+}
+
+@media (max-height: 640px) {
+  .wizard {
+    height: calc(100vh - 24px);
+    min-height: 0;
+  }
+
+  .wizard__features {
+    display: none;
+  }
+
+  .wizard__panel {
+    padding-top: 24px;
+    padding-bottom: 24px;
+  }
+}
+
+/* ------------------------------------------------------------
+   Preferences
+   ------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

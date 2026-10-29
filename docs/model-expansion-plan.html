@@ -1,0 +1,2463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark light" />
+<title>Voxarium — Multi-Model Expansion Plan</title>
+<style>
+/* ------------------------------------------------------------------
+   Tokens
+   ------------------------------------------------------------------ */
+:root {
+  --bg: #05070f;
+  --bg-2: #080d1a;
+  --panel: rgba(15, 23, 42, 0.62);
+  --panel-2: rgba(19, 28, 48, 0.78);
+  --panel-solid: #0c1424;
+  --field: rgba(8, 13, 24, 0.75);
+  --line: rgba(148, 163, 184, 0.14);
+  --line-2: rgba(148, 163, 184, 0.28);
+  --text: #e9eefb;
+  --soft: #b7c3da;
+  --muted: #8390aa;
+  --violet: #8b5cf6;
+  --violet-2: #b39dff;
+  --cyan: #22d3ee;
+  --green: #34d399;
+  --amber: #fbbf24;
+  --rose: #fb7185;
+  --radius: 18px;
+  --radius-sm: 11px;
+  --mono: ui-monospace, SFMono-Regular, "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+  --sans: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.95);
+  --ease: cubic-bezier(.22, 1, .36, 1);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 92px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+::selection { background: rgba(139, 92, 246, .38); color: #fff; }
+a { color: inherit; text-decoration: none; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3, h4, p { margin: 0; }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 6px; }
+
+.shell { width: min(1200px, calc(100% - 44px)); margin: 0 auto; }
+.skip {
+  position: fixed; top: 10px; left: 10px; z-index: 100;
+  padding: 10px 14px; border-radius: 10px; background: var(--violet); color: #fff;
+  transform: translateY(-200%);
+}
+.skip:focus { transform: none; }
+
+/* ------------------------------------------------------------------
+   Animated backdrop
+   ------------------------------------------------------------------ */
+.backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--bg); }
+.orb {
+  position: absolute; border-radius: 50%; filter: blur(70px); opacity: .55;
+  animation: drift 26s var(--ease) infinite alternate;
+}
+.orb--a { width: 780px; height: 780px; top: -320px; left: 50%; margin-left: -390px; background: radial-gradient(circle, rgba(139,92,246,.55), transparent 66%); }
+.orb--b { width: 620px; height: 620px; top: 24%; right: -260px; background: radial-gradient(circle, rgba(34,211,238,.30), transparent 66%); animation-delay: -8s; animation-duration: 32s; }
+.orb--c { width: 640px; height: 640px; bottom: -280px; left: -240px; background: radial-gradient(circle, rgba(251,113,133,.22), transparent 66%); animation-delay: -15s; animation-duration: 38s; }
+@keyframes drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(40px, 30px, 0) scale(1.06); }
+  100% { transform: translate3d(-30px, -20px, 0) scale(.97); }
+}
+.grid-lines {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(148,163,184,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148,163,184,.055) 1px, transparent 1px);
+  background-size: 84px 84px;
+  mask-image: radial-gradient(ellipse 70% 55% at 50% 20%, #000 30%, transparent 78%);
+}
+.noise {
+  position: absolute; inset: 0; opacity: .35; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+}
+
+/* ------------------------------------------------------------------
+   Top bar
+   ------------------------------------------------------------------ */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  border-bottom: 1px solid transparent;
+  background: color-mix(in srgb, var(--bg) 74%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  transition: border-color .3s ease, background .3s ease;
+}
+.topbar.is-stuck { border-bottom-color: var(--line); background: color-mix(in srgb, var(--bg) 90%, transparent); }
+.topbar__inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; height: 70px; }
+.brand { display: inline-flex; align-items: center; gap: 11px; }
+.brand__mark {
+  display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px;
+  background: linear-gradient(145deg, rgba(139,92,246,.9), rgba(34,211,238,.55));
+  box-shadow: 0 8px 24px -10px rgba(139,92,246,.9), inset 0 1px 0 rgba(255,255,255,.28);
+  color: #fff;
+}
+.brand__text { display: flex; flex-direction: column; line-height: 1.15; }
+.brand__text strong { font-size: 13.5px; letter-spacing: .01em; }
+.brand__text em { color: var(--muted); font-size: 10.5px; font-style: normal; letter-spacing: .12em; text-transform: uppercase; }
+.nav { display: flex; align-items: center; gap: 2px; }
+.nav a {
+  padding: 7px 11px; border-radius: 9px; color: var(--muted);
+  font-size: 12.5px; font-weight: 560; transition: color .2s ease, background .2s ease;
+}
+.nav a:hover { color: var(--text); background: rgba(148,163,184,.08); }
+.nav__cta {
+  margin-left: 8px; color: #fff !important;
+  background: linear-gradient(135deg, rgba(139,92,246,.92), rgba(99,102,241,.75));
+  box-shadow: 0 8px 22px -12px rgba(139,92,246,.9);
+}
+.scroll-progress { height: 2px; background: transparent; }
+.scroll-progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--violet), var(--cyan)); transition: width .12s linear; }
+
+/* ------------------------------------------------------------------
+   Hero
+   ------------------------------------------------------------------ */
+.hero { position: relative; padding: 76px 0 44px; }
+.hero__grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); gap: 48px; align-items: center; }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px;
+  padding: 6px 12px 6px 7px; border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(148,163,184,.06); color: var(--soft); font-size: 11.5px; letter-spacing: .02em;
+}
+.eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(52,211,153,.15); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(52,211,153,.14); } 50% { box-shadow: 0 0 0 7px rgba(52,211,153,.05); } }
+.hero h1 {
+  font-size: clamp(38px, 5.2vw, 66px); line-height: 1.02; letter-spacing: -.035em; font-weight: 680;
+}
+.hero h1 .grad {
+  background: linear-gradient(100deg, #fff 8%, var(--violet-2) 42%, var(--cyan) 78%, #fff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: sheen 9s linear infinite;
+}
+@keyframes sheen { to { background-position: 220% 0; } }
+.hero__lede { margin-top: 20px; max-width: 54ch; color: var(--soft); font-size: 16px; }
+.hero__lede strong { color: var(--text); font-weight: 620; }
+.hero__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 17px; border: 1px solid var(--line-2); border-radius: 11px;
+  background: rgba(148,163,184,.07); color: var(--text);
+  font-size: 13px; font-weight: 580; letter-spacing: .01em;
+  transition: transform .18s var(--ease), border-color .2s, background .2s, box-shadow .2s;
+}
+.btn:hover { transform: translateY(-1px); border-color: rgba(148,163,184,.45); background: rgba(148,163,184,.12); }
+.btn:active { transform: translateY(0); }
+.btn--primary {
+  border-color: transparent; color: #fff;
+  background: linear-gradient(135deg, #8b5cf6, #6366f1 55%, #22d3ee 140%);
+  box-shadow: 0 16px 36px -18px rgba(139,92,246,.95), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.btn--primary:hover { box-shadow: 0 20px 44px -18px rgba(139,92,246,1); background: linear-gradient(135deg, #9668ff, #6d70f7 55%, #2cd8f0 140%); }
+.btn--sm { padding: 8px 12px; font-size: 12px; border-radius: 9px; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+
+/* Hero illustration */
+.hero__art { position: relative; display: grid; place-items: center; min-height: 380px; }
+.core { position: relative; width: min(380px, 86%); aspect-ratio: 1; }
+.core__ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1px dashed rgba(148,163,184,.2);
+  animation: spin 46s linear infinite;
+}
+.core__ring--2 { inset: 13%; border-style: solid; border-color: rgba(148,163,184,.1); animation-duration: 30s; animation-direction: reverse; }
+.core__ring--3 { inset: 27%; border-color: rgba(139,92,246,.22); animation-duration: 20s; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.core__glow {
+  position: absolute; inset: 26%; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(139,92,246,.95), rgba(76,29,149,.5) 48%, rgba(6,9,17,0) 72%);
+  filter: blur(6px); animation: breathe 7s ease-in-out infinite;
+}
+@keyframes breathe { 0%, 100% { transform: scale(.94); opacity: .82; } 50% { transform: scale(1.06); opacity: 1; } }
+.core__chip {
+  position: absolute; display: grid; place-items: center;
+  padding: 7px 11px; border: 1px solid var(--line-2); border-radius: 999px;
+  background: rgba(10,16,30,.92); color: var(--soft);
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em;
+  box-shadow: 0 10px 26px -16px #000;
+  animation: floaty 6s ease-in-out infinite;
+}
+.core__chip--1 { top: 4%; left: 50%; translate: -50% 0; animation-delay: -.4s; }
+.core__chip--2 { top: 27%; right: -4%; animation-delay: -1.6s; }
+.core__chip--3 { bottom: 24%; right: 2%; animation-delay: -2.8s; }
+.core__chip--4 { bottom: 2%; left: 50%; translate: -50% 0; animation-delay: -3.6s; }
+.core__chip--5 { bottom: 27%; left: -6%; animation-delay: -4.4s; }
+.core__chip--6 { top: 26%; left: -2%; animation-delay: -5.2s; }
+@keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+.core__center {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 2px;
+}
+.core__center strong { font-size: 30px; letter-spacing: -.03em; }
+.core__center span { color: var(--muted); font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+.hero__caption { margin-top: 4px; color: var(--muted); font-size: 11px; text-align: center; }
+
+/* ------------------------------------------------------------------
+   Stats
+   ------------------------------------------------------------------ */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 40px; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: var(--line); }
+.stat { padding: 18px 20px; background: var(--panel-solid); }
+.stat strong { display: block; font-size: 27px; letter-spacing: -.03em; line-height: 1.1; }
+.stat strong em { color: var(--violet-2); font-style: normal; }
+.stat span { color: var(--muted); font-size: 11.5px; }
+.hero .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hero .stat strong { font-size: 24px; }
+code {
+  padding: 1px 5px; border-radius: 5px;
+  background: rgba(139,92,246,.12); color: #d8ccff;
+  font-family: var(--mono); font-size: .92em;
+}
+
+/* ------------------------------------------------------------------
+   Sections
+   ------------------------------------------------------------------ */
+.section { padding: 70px 0; }
+.section__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; margin-bottom: 30px; }
+.section__head > div { max-width: 68ch; }
+.kicker {
+  display: inline-flex; align-items: center; gap: 7px; margin-bottom: 10px;
+  color: var(--violet-2); font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .16em; text-transform: uppercase;
+}
+.kicker::before { content: ""; width: 16px; height: 1px; background: currentColor; opacity: .7; }
+.section h2 { font-size: clamp(26px, 3.2vw, 38px); line-height: 1.1; letter-spacing: -.03em; font-weight: 650; }
+.section__head p { margin-top: 10px; color: var(--soft); font-size: 14.5px; }
+.section__aside { flex: none; color: var(--muted); font-size: 11.5px; text-align: right; max-width: 26ch; }
+
+.card {
+  position: relative; border: 1px solid var(--line); border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(22,31,53,.66), rgba(11,17,31,.72));
+  box-shadow: var(--shadow);
+}
+.card--pad { padding: 22px; }
+
+/* Badges & chips */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(148,163,184,.07); color: var(--soft);
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .04em; white-space: nowrap;
+}
+.badge--ok { border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.1); color: #86efac; }
+.badge--warn { border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.1); color: #fde68a; }
+.badge--bad { border-color: rgba(251,113,133,.38); background: rgba(251,113,133,.1); color: #fda4af; }
+.badge--violet { border-color: rgba(139,92,246,.4); background: rgba(139,92,246,.13); color: #c4b5fd; }
+.badge--cyan { border-color: rgba(34,211,238,.35); background: rgba(34,211,238,.1); color: #a5f3fc; }
+.badge--rating { border-color: rgba(251,191,36,.42); background: rgba(251,191,36,.12); color: #fde68a; font-weight: 700; }
+.badge--ar { border-color: rgba(34,211,238,.35); background: rgba(34,211,238,.1); color: #a5f3fc; }
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(148,163,184,.05); color: var(--muted);
+  font-size: 12px; font-weight: 550; transition: all .18s ease;
+}
+.chip:hover { color: var(--text); border-color: var(--line-2); }
+.chip.is-on { color: #fff; border-color: rgba(139,92,246,.6); background: rgba(139,92,246,.18); box-shadow: 0 0 0 3px rgba(139,92,246,.08); }
+
+/* Grids */
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+
+/* Principle cards */
+.principle { padding: 22px; }
+.principle__icon {
+  display: grid; place-items: center; width: 38px; height: 38px; margin-bottom: 14px;
+  border: 1px solid var(--line-2); border-radius: 11px;
+  background: rgba(139,92,246,.12); color: var(--violet-2);
+}
+.principle h3 { font-size: 15px; letter-spacing: -.01em; }
+.principle p { margin-top: 7px; color: var(--muted); font-size: 13px; }
+.principle:hover { border-color: rgba(139,92,246,.35); }
+.card { transition: border-color .25s ease, transform .25s var(--ease); }
+
+/* Footer */
+.footer { margin-top: 40px; border-top: 1px solid var(--line); padding: 34px 0 60px; }
+.footer__inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.footer strong { display: block; font-size: 13px; }
+.footer span { display: block; margin-top: 4px; max-width: 62ch; color: var(--muted); font-size: 11.5px; }
+.footer__links { display: flex; flex-wrap: wrap; gap: 16px; color: var(--muted); font-size: 12px; }
+.footer__links a:hover { color: var(--text); }
+.footer__sources { margin-top: 8px !important; font-size: 10.5px; }
+.footer__sources a { color: var(--soft); border-bottom: 1px dotted rgba(148,163,184,.4); }
+.footer__sources a:hover { color: var(--text); }
+
+.icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.icon--sm { width: 14px; height: 14px; }
+.icon--lg { width: 22px; height: 22px; }
+
+/* Reveal on scroll */
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+.reveal.is-in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  .reveal { opacity: 1; transform: none; }
+  html { scroll-behavior: auto; }
+}
+/* ------------------------------------------------------------------
+   Model gallery
+   ------------------------------------------------------------------ */
+.gallery-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  margin-bottom: 18px; padding: 14px 16px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--panel);
+}
+.gallery-bar__spacer { flex: 1; }
+.search {
+  display: flex; align-items: center; gap: 8px; min-width: 220px;
+  padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--field);
+  color: var(--muted);
+}
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); font-size: 12.5px; outline: none; }
+.search input::placeholder { color: var(--muted); }
+.count-note { color: var(--muted); font-size: 11.5px; font-family: var(--mono); }
+
+.model-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.model-card {
+  display: flex; flex-direction: column; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(22,31,53,.7), rgba(10,16,29,.8));
+  transition: transform .3s var(--ease), border-color .3s, box-shadow .3s;
+}
+.model-card:hover { transform: translateY(-4px); border-color: rgba(139,92,246,.4); box-shadow: 0 28px 60px -40px rgba(139,92,246,.9); }
+.model-card.is-selected { border-color: rgba(139,92,246,.7); box-shadow: 0 0 0 1px rgba(139,92,246,.4), 0 30px 70px -44px rgba(139,92,246,.9); }
+.model-card.is-muted { opacity: .42; }
+.model-card__top { position: relative; padding: 18px 18px 0; }
+.model-card__head { display: flex; align-items: flex-start; gap: 10px; }
+.model-card__glyph {
+  display: grid; place-items: center; width: 38px; height: 38px; flex: none;
+  border: 1px solid var(--line-2); border-radius: 11px; color: var(--violet-2);
+  background: radial-gradient(circle at 30% 25%, rgba(139,92,246,.28), rgba(139,92,246,.05));
+}
+.model-card h3 { font-size: 15px; line-height: 1.2; letter-spacing: -.015em; }
+.model-card__sub { margin-top: 3px; color: var(--muted); font-size: 11px; font-family: var(--mono); }
+.model-card__pick {
+  position: absolute; top: 14px; right: 14px; width: 24px; height: 24px;
+  display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 7px;
+  background: var(--field); color: transparent; font-size: 12px; transition: all .18s;
+}
+.model-card__pick:hover { border-color: var(--violet); }
+.model-card.is-selected .model-card__pick { background: var(--violet); border-color: var(--violet); color: #fff; }
+.model-card__badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+.model-card__specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 14px 18px 0; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--line); }
+.model-card__specs div { padding: 8px 10px; background: rgba(8,13,24,.6); }
+.model-card__specs span { display: block; color: var(--muted); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+.model-card__specs strong { font-size: 12px; font-weight: 600; }
+.model-card__caps { display: flex; flex-wrap: wrap; gap: 5px; padding: 12px 18px 0; }
+.cap-dot {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 6px; border: 1px solid var(--line);
+  color: var(--soft); font-size: 10px; background: rgba(148,163,184,.05);
+}
+.cap-dot.is-off { color: var(--muted); opacity: .55; text-decoration: line-through; }
+.cap-dot.is-hot { border-color: rgba(52,211,153,.3); color: #86efac; background: rgba(52,211,153,.08); }
+.model-card__note { flex: 1; padding: 12px 18px 0; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.model-card__foot { display: flex; align-items: center; gap: 8px; padding: 14px 18px 16px; margin-top: 12px; border-top: 1px solid var(--line); }
+.fit { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; }
+.fit i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }
+.fit--great { color: #6ee7b7; }
+.fit--runs { color: #fcd34d; }
+.fit--cpu { color: #fdba74; }
+.fit--no { color: #fda4af; }
+.fit--unknown { color: var(--muted); }
+.model-card__foot .badge { margin-left: auto; }
+
+/* ------------------------------------------------------------------
+   Hardware lab
+   ------------------------------------------------------------------ */
+.hw-layout { display: grid; grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr); gap: 18px; align-items: start; }
+.hw-panel { padding: 22px; }
+.panel-title { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 620; }
+.panel-title .icon { color: var(--violet-2); }
+.panel-sub { margin-top: 4px; color: var(--muted); font-size: 11.5px; }
+.preset-row { display: flex; flex-wrap: wrap; gap: 7px; margin: 16px 0 18px; }
+.field { margin-top: 16px; }
+.field__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
+.field__head strong { font-size: 12px; font-weight: 570; }
+.field__head output { color: var(--violet-2); font-family: var(--mono); font-size: 11.5px; }
+input[type="range"] {
+  width: 100%; height: 4px; margin: 8px 0; border-radius: 99px; appearance: none;
+  background: linear-gradient(90deg, var(--violet) 0%, var(--cyan) var(--fill, 40%), rgba(148,163,184,.18) var(--fill, 40%));
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  width: 16px; height: 16px; border-radius: 50%; appearance: none;
+  background: #fff; border: 3px solid var(--violet);
+  box-shadow: 0 0 0 4px rgba(139,92,246,.18); cursor: grab;
+}
+input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--violet); }
+.switch-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); }
+.switch-line strong { display: block; font-size: 12px; font-weight: 560; }
+.switch-line em { color: var(--muted); font-size: 10.5px; font-style: normal; }
+.switch { position: relative; width: 40px; height: 22px; flex: none; }
+.switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.switch span { position: absolute; inset: 0; border-radius: 99px; background: rgba(148,163,184,.22); transition: background .2s; }
+.switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .22s var(--ease); }
+.switch input:checked + span { background: var(--violet); }
+.switch input:checked + span::after { transform: translateX(18px); }
+.switch input:focus-visible + span { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+.hw-summary { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.hw-summary__line { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 11.5px; }
+.hw-summary__line span { color: var(--muted); }
+.hw-summary__line strong { font-family: var(--mono); font-size: 11px; font-weight: 500; }
+
+.hw-result { padding: 22px; }
+.verdict { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: radial-gradient(circle at 10% 0%, rgba(139,92,246,.16), transparent 60%), var(--field); }
+.verdict__ring { position: relative; display: grid; place-items: center; width: 62px; height: 62px; flex: none; }
+.verdict__ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.verdict__ring circle { fill: none; stroke-width: 5; }
+.verdict__ring .track { stroke: rgba(148,163,184,.16); }
+.verdict__ring .meter { stroke: url(#meterGrad); stroke-linecap: round; transition: stroke-dashoffset .7s var(--ease); }
+.verdict__ring strong { font-size: 16px; letter-spacing: -.02em; }
+.verdict h3 { font-size: 14px; }
+.verdict p { color: var(--muted); font-size: 11.5px; }
+
+.chart { display: grid; gap: 7px; margin-top: 18px; }
+.chart__row { display: grid; grid-template-columns: 132px 1fr 58px; align-items: center; gap: 10px; }
+.chart__row span { overflow: hidden; color: var(--soft); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.chart__track { position: relative; height: 9px; border-radius: 99px; background: rgba(148,163,184,.12); overflow: hidden; }
+.chart__fill { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--violet), var(--cyan)); transition: width .6s var(--ease); }
+.chart__fill.is-blocked { background: repeating-linear-gradient(90deg, rgba(251,113,133,.5) 0 5px, rgba(251,113,133,.15) 5px 10px); }
+.chart__row em { color: var(--muted); font-family: var(--mono); font-size: 10px; font-style: normal; text-align: right; }
+.chart__legend { display: flex; gap: 14px; margin-top: 12px; color: var(--muted); font-size: 10.5px; }
+.chart__legend i { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 2px; }
+
+/* ------------------------------------------------------------------
+   Capability console
+   ------------------------------------------------------------------ */
+.caps-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .92fr); gap: 18px; align-items: start; }
+.caps-panel { padding: 22px; }
+.caps-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.caps-toolbar select {
+  padding: 8px 12px; border: 1px solid var(--line-2); border-radius: 9px;
+  background: var(--field); font-size: 12px; min-width: 220px;
+}
+.caps-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cap-item {
+  display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--field);
+  transition: border-color .2s, background .2s;
+}
+.cap-item.is-on { border-color: rgba(52,211,153,.24); background: rgba(52,211,153,.055); }
+.cap-item.is-off { opacity: .55; }
+.cap-item__state {
+  display: grid; place-items: center; width: 20px; height: 20px; flex: none; margin-top: 1px;
+  border-radius: 6px; border: 1px solid var(--line-2); font-size: 11px; color: var(--muted);
+}
+.cap-item.is-on .cap-item__state { border-color: rgba(52,211,153,.4); background: rgba(52,211,153,.16); color: #6ee7b7; }
+.cap-item strong { display: block; font-size: 11.5px; font-weight: 580; }
+.cap-item em { display: block; margin-top: 2px; color: var(--muted); font-size: 10.5px; font-style: normal; line-height: 1.45; }
+
+.caps-meter {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
+  margin-top: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--line);
+}
+.caps-meter > div { padding: 9px 10px; background: var(--field); min-width: 0; }
+.caps-meter span { display: block; color: var(--muted); font-size: 8.5px; letter-spacing: .09em; text-transform: uppercase; }
+.caps-meter strong { display: block; margin-top: 2px; font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* App mock */
+.mock {
+  position: sticky; top: 92px; overflow: hidden; border: 1px solid var(--line-2); border-radius: 16px;
+  background: #080d18; box-shadow: 0 40px 90px -50px #000, inset 0 1px 0 rgba(255,255,255,.05);
+}
+.mock__bar { display: flex; align-items: center; gap: 7px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: rgba(148,163,184,.05); }
+.mock__bar i { width: 9px; height: 9px; border-radius: 50%; background: rgba(148,163,184,.35); }
+.mock__bar i:first-child { background: #fb7185; }
+.mock__bar i:nth-child(2) { background: #fbbf24; }
+.mock__bar i:nth-child(3) { background: #34d399; }
+.mock__bar span { margin-left: 6px; color: var(--muted); font-family: var(--mono); font-size: 10px; }
+.mock__body { padding: 16px; }
+.mock__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mock__model { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; }
+.mock__model .icon { color: var(--violet-2); }
+.mock__tabs { display: flex; gap: 2px; margin-top: 14px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); }
+.mock__tab { flex: 1; padding: 6px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-size: 10.5px; }
+.mock__tab.is-active { background: rgba(139,92,246,.2); color: #e9d5ff; }
+.mock__panel { margin-top: 12px; min-height: 152px; padding: 12px; border: 1px dashed var(--line); border-radius: 10px; background: rgba(148,163,184,.03); }
+.mock__label { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; }
+.mock__langs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.mock__lang { padding: 3px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--soft); font-size: 10px; }
+.mock__lang.is-on { border-color: rgba(34,211,238,.4); background: rgba(34,211,238,.1); color: #a5f3fc; }
+.mock__voices { display: grid; gap: 6px; margin-top: 9px; }
+.mock__voice { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: rgba(8,13,24,.6); }
+.mock__avatar { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, var(--violet), var(--cyan)); flex: none; }
+.mock__voice span { flex: 1; font-size: 10.5px; }
+.mock__voice em { color: var(--muted); font-size: 9px; font-style: normal; }
+.mock__prompt { margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
+.mock__actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.mock__generate { flex: 1; padding: 9px; border: 0; border-radius: 8px; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: #fff; font-size: 11px; font-weight: 600; }
+.mock__ghost { padding: 9px 11px; border: 1px solid var(--line-2); border-radius: 8px; background: transparent; color: var(--soft); font-size: 10.5px; }
+.mock__hidden { display: none; }
+.mock__note { margin-top: 10px; padding: 8px 10px; border-left: 2px solid var(--cyan); background: rgba(34,211,238,.06); color: var(--soft); font-size: 10px; line-height: 1.45; }
+.mock__note.is-warn { border-left-color: var(--amber); background: rgba(251,191,36,.06); }
+
+/* ------------------------------------------------------------------
+   Languages
+   ------------------------------------------------------------------ */
+.lang-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.lang-stat { padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.lang-stat strong { display: block; font-size: 20px; letter-spacing: -.02em; }
+.lang-stat span { color: var(--muted); font-size: 10.5px; }
+.lang-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.lang-card { padding: 16px 18px; }
+.lang-card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lang-card h3 { font-size: 13px; }
+.lang-card__meta { color: var(--muted); font-family: var(--mono); font-size: 10px; }
+.lang-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 11px; }
+.lang-chip { padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--soft); font-size: 10px; background: rgba(148,163,184,.04); }
+.lang-chip.is-core { border-color: rgba(139,92,246,.4); background: rgba(139,92,246,.1); color: #d8ccff; }
+.lang-note { margin-top: 10px; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
+
+/* ------------------------------------------------------------------
+   Roadmap
+   ------------------------------------------------------------------ */
+.timeline { position: relative; display: grid; gap: 10px; padding-left: 26px; }
+.timeline::before { content: ""; position: absolute; top: 6px; bottom: 6px; left: 8px; width: 1px; background: linear-gradient(180deg, rgba(139,92,246,.6), rgba(34,211,238,.4), transparent); }
+.phase {
+  position: relative; display: grid; grid-template-columns: 118px 1fr auto; gap: 16px; align-items: start;
+  padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px;
+  background: linear-gradient(180deg, rgba(22,31,53,.55), rgba(10,16,29,.6));
+  transition: border-color .2s, background .2s;
+}
+.phase.is-on { border-color: rgba(139,92,246,.42); background: linear-gradient(180deg, rgba(139,92,246,.1), rgba(10,16,29,.65)); }
+.phase::before {
+  content: ""; position: absolute; top: 22px; left: -23px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--bg); border: 2px solid rgba(148,163,184,.4);
+}
+.phase.is-on::before { border-color: var(--violet); background: var(--violet); box-shadow: 0 0 0 4px rgba(139,92,246,.16); }
+.phase__when { color: var(--violet-2); font-family: var(--mono); font-size: 10px; letter-spacing: .06em; }
+.phase h3 { font-size: 14px; }
+.phase p { margin-top: 4px; color: var(--muted); font-size: 11.5px; }
+.phase__deliverables { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.phase__deliverables span { padding: 2px 7px; border-radius: 5px; background: rgba(148,163,184,.08); color: var(--soft); font-size: 10px; }
+.phase__check { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 10.5px; cursor: pointer; }
+.phase__check input { accent-color: var(--violet); }
+
+/* ------------------------------------------------------------------
+   Names
+   ------------------------------------------------------------------ */
+.names-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.name-card {
+  padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  text-align: left; transition: all .2s var(--ease);
+}
+.name-card:hover { transform: translateY(-2px); border-color: var(--line-2); }
+.name-card.is-on { border-color: rgba(139,92,246,.65); background: rgba(139,92,246,.12); box-shadow: 0 0 0 3px rgba(139,92,246,.08); }
+.name-card strong { display: block; font-size: 13px; letter-spacing: -.01em; }
+.name-card span { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.name-card em { display: inline-block; margin-top: 8px; color: var(--violet-2); font-size: 9px; font-style: normal; letter-spacing: .08em; text-transform: uppercase; }
+.name-note { display: flex; gap: 10px; margin-top: 14px; padding: 13px 15px; border: 1px solid rgba(34,211,238,.22); border-radius: 11px; background: rgba(34,211,238,.055); color: var(--soft); font-size: 11.5px; }
+.name-note .icon { color: var(--cyan); margin-top: 2px; }
+
+/* ------------------------------------------------------------------
+   Prompt builder
+   ------------------------------------------------------------------ */
+.prompt-layout { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 18px; align-items: start; }
+.prompt-panel { padding: 22px; }
+.prompt-group { margin-top: 18px; }
+.prompt-group:first-of-type { margin-top: 0; }
+.prompt-group > label, .prompt-group__label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.seg { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); }
+.seg button { flex: 1; padding: 7px 6px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-size: 11px; transition: all .18s; }
+.seg button.is-on { background: rgba(139,92,246,.22); color: #e9d5ff; }
+.prompt-input {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px;
+  background: var(--field); color: var(--text); font-size: 12px; outline: none;
+  transition: border-color .2s;
+}
+.prompt-input:focus { border-color: rgba(139,92,246,.6); }
+.prompt-check { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; color: var(--soft); font-size: 11.5px; cursor: pointer; }
+.prompt-check input { margin-top: 2px; accent-color: var(--violet); }
+.prompt-check em { color: var(--muted); font-style: normal; }
+.mini-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.mini-tag {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px;
+  border: 1px solid var(--line-2); border-radius: 7px; background: var(--field);
+  color: var(--soft); font-size: 10.5px;
+}
+.mini-tag b { color: var(--muted); font-weight: 500; }
+.mini-tag.is-empty { border-style: dashed; color: var(--muted); }
+
+.prompt-out { position: sticky; top: 92px; overflow: hidden; border: 1px solid var(--line-2); border-radius: 16px; background: #070c16; box-shadow: var(--shadow); }
+.prompt-out__head { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-bottom: 1px solid var(--line); background: rgba(148,163,184,.05); }
+.prompt-out__head strong { font-size: 11.5px; }
+.prompt-out__head span { margin-left: auto; color: var(--muted); font-family: var(--mono); font-size: 9.5px; }
+.prompt-out pre {
+  margin: 0; padding: 16px; max-height: 520px; overflow: auto;
+  color: #c9d6ef; font-family: var(--mono); font-size: 11px; line-height: 1.65;
+  white-space: pre-wrap; word-break: break-word;
+}
+.prompt-out pre b { color: var(--violet-2); font-weight: 600; }
+.prompt-out pre i { color: var(--muted); font-style: normal; }
+.prompt-out__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line); background: rgba(148,163,184,.03); }
+.prompt-out__foot .count-note { margin-left: auto; }
+.copy-ok { color: #6ee7b7 !important; border-color: rgba(52,211,153,.5) !important; }
+
+/* ------------------------------------------------------------------
+   Responsive
+   ------------------------------------------------------------------ */
+@media (max-width: 1080px) {
+  .hero__grid { grid-template-columns: 1fr; gap: 26px; }
+  .hero__art { min-height: 330px; order: -1; }
+  .hero { padding-top: 48px; }
+  .model-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .names-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .nav a:not(.nav__cta) { display: none; }
+}
+@media (max-width: 900px) {
+  .hw-layout, .caps-layout, .prompt-layout { grid-template-columns: 1fr; }
+  .hw-result { order: -1; }
+  .mock, .prompt-out { position: static; }
+  .grid-3, .lang-grid { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .phase { grid-template-columns: 1fr; gap: 8px; }
+  .section { padding: 52px 0; }
+  .section__head { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .section__aside { text-align: left; }
+}
+@media (max-width: 640px) {
+  .shell { width: calc(100% - 28px); }
+  .model-grid, .grid-2, .caps-grid { grid-template-columns: 1fr; }
+  .names-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .topbar__inner { height: 62px; }
+  .brand__text em { display: none; }
+  .hero h1 { font-size: 38px; }
+  .hero__lede { font-size: 15px; }
+  .chart__row { grid-template-columns: 96px 1fr 48px; }
+  .gallery-bar { padding: 12px; }
+  .search { min-width: 100%; }
+  .footer__inner { flex-direction: column; }
+  .core__chip { padding: 5px 8px; font-size: 9px; }
+  .core__chip--2, .core__chip--3 { right: 0; }
+  .core__chip--5, .core__chip--6 { left: 0; }
+  .caps-meter { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body>
+<div class="backdrop" aria-hidden="true">
+  <span class="orb orb--a"></span>
+  <span class="orb orb--b"></span>
+  <span class="orb orb--c"></span>
+  <span class="grid-lines"></span>
+  <span class="noise"></span>
+</div>
+
+<a class="skip" href="#models">Skip to models</a>
+
+<header class="topbar">
+  <div class="shell topbar__inner">
+    <a class="brand" href="#top">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" class="icon icon--lg"><path d="M5 13v6M10 9v14M15 5v22M20 9v14M25 12v8"/></svg>
+      </span>
+      <span class="brand__text"><strong>Voxarium</strong><em>Expansion plan</em></span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#why">Why</a>
+      <a href="#models">Models</a>
+      <a href="#hardware">Hardware</a>
+      <a href="#capabilities">Capabilities</a>
+      <a href="#languages">Languages</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#names">Names</a>
+      <a href="#prompt" class="nav__cta">Prompt builder</a>
+    </nav>
+  </div>
+  <div class="scroll-progress" aria-hidden="true"><span id="progressBar"></span></div>
+</header>
+
+<main id="top">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="meterGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#22d3ee" />
+    </linearGradient>
+  </defs>
+</svg>
+
+<section class="hero">
+  <div class="shell hero__grid">
+    <div class="hero__copy">
+      <span class="eyebrow"><i class="dot"></i> Proposal · 29 October 2026 · v1.1</span>
+      <h1>One studio.<br /><span class="grad">Thirty-five engines.</span></h1>
+      <p class="hero__lede">
+        Voxarium already speaks English beautifully on-device. This plan turns it into a
+        <strong>model-aware local TTS workstation</strong>: 35 models, 1,100+ languages, 13 that speak
+        <strong>Arabic</strong>, and one honest <strong>1–10 score</strong> for every engine.
+      </p>
+      <div class="hero__actions">
+        <a class="btn btn--primary" href="#models">
+          <svg class="icon icon--sm" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          Browse the shortlist
+        </a>
+        <a class="btn" href="#prompt">
+          <svg class="icon icon--sm" viewBox="0 0 24 24"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>
+          Build the implementation prompt
+        </a>
+      </div>
+      <div class="stats">
+        <div class="stat"><strong data-count="35">0</strong><span>models evaluated</span></div>
+        <div class="stat"><strong><em>1,100+</em></strong><span>languages covered</span></div>
+        <div class="stat"><strong data-count="13">0</strong><span>models with Arabic</span></div>
+        <div class="stat"><strong><em>2</em> weeks</strong><span>to first shipping win</span></div>
+      </div>
+    </div>
+
+    <div class="hero__art">
+      <div class="core" aria-hidden="true">
+        <span class="core__ring"></span>
+        <span class="core__ring core__ring--2"></span>
+        <span class="core__ring core__ring--3"></span>
+        <span class="core__glow"></span>
+        <span class="core__chip core__chip--1">Breeze TTS 2 · 10/10</span>
+        <span class="core__chip core__chip--2">Qwen3-TTS · 9/10</span>
+        <span class="core__chip core__chip--3">VoxCPM2 · 30 languages</span>
+        <span class="core__chip core__chip--4">OmniVoice · 646</span>
+        <span class="core__chip core__chip--5">SILMA · العربية</span>
+        <span class="core__chip core__chip--6">Dia · dialogue</span>
+        <div class="core__center">
+          <strong>∞</strong>
+          <span>local voices</span>
+        </div>
+      </div>
+      <p class="hero__caption">One adapter layer · three runtimes · zero required network</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="why">
+  <div class="shell">
+    <div class="section__head reveal">
+      <div>
+        <span class="kicker">01 · Why now</span>
+        <h2>The hard part is not another model. It is the seams.</h2>
+        <p>
+          Today the app assumes Phonon 31M is the only engine. Every new model would otherwise mean a new settings
+          screen, a new voice picker and a new download path. The plan replaces those assumptions with data.
+        </p>
+      </div>
+      <p class="section__aside">Design principles from §3 of the full plan.</p>
+    </div>
+    <div class="grid-3">
+      <article class="card principle reveal">
+        <span class="principle__icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg></span>
+        <h3>Offline first</h3>
+        <p>Models download once; generation never needs the network. Cloud cloning stays optional, one-time and clearly labelled.</p>
+      </article>
+      <article class="card principle reveal">
+        <span class="principle__icon"><svg class="icon" viewBox="0 0 24 24"><path d="M4 7h9M4 12h6M4 17h12M17 5v14M20 9v6"/></svg></span>
+        <h3>The model is data</h3>
+        <p>A signed manifest describes files, languages, voices, capabilities and hardware. Adding a compatible model is registry work, not UI work.</p>
+      </article>
+      <article class="card principle reveal">
+        <span class="principle__icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3l2.4 6.1L21 11l-6.6 1.9L12 19l-2.4-6.1L3 11l6.6-1.9z"/></svg></span>
+        <h3>Capabilities, not brands</h3>
+        <p>The UI asks “does this model support cloning?” instead of “is this Kokoro?”. Gating stays honest as the catalog grows.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="shell">
+    <div class="card card--pad reveal" style="display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center">
+      <div>
+        <span class="badge">Today</span>
+        <h3 style="margin-top:9px;font-size:15px">One engine · one language · 102 voices</h3>
+        <p style="color:var(--muted);font-size:12px;margin-top:4px">phonon-tts 0.5.0 · Phonon 31M · English · Apache-2.0</p>
+      </div>
+      <svg class="icon icon--lg" style="color:var(--violet-2)" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <div>
+        <span class="badge badge--violet">After phase 4</span>
+        <h3 style="margin-top:9px;font-size:15px">35 models · 1,100+ languages · cloning, dialogue &amp; Arabic</h3>
+        <p style="color:var(--muted);font-size:12px;margin-top:4px">Phonon · ONNX Web · local sidecar · optional cloud clone</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section" id="models">
+  <div class="shell">
+    <div class="section__head reveal">
+      <div>
+        <span class="kicker">02 · Shortlist</span>
+        <h2>Thirty-five candidates, one honest score each.</h2>
+        <p>
+          Filter by quality, Arabic support, runtime, license or capability. Select any model to add it to the
+          implementation prompt. Fit badges react to the hardware profile below.
+        </p>
+      </div>
+      <p class="section__aside">Scores are editorial (1–10) and anchored on public benchmarks — re-verify at pin time.</p>
+    </div>
+
+    <div class="gallery-bar reveal">
+      <div class="chip-row" id="filterRow" role="group" aria-label="Filter models">
+        <button class="chip is-on" data-filter="all">All</button>
+        <button class="chip" data-filter="best">Best (9+)</button>
+        <button class="chip" data-filter="arabic">Arabic</button>
+        <button class="chip" data-filter="phonon">Phonon family</button>
+        <button class="chip" data-filter="onnx">Browser ONNX</button>
+        <button class="chip" data-filter="sidecar">Local sidecar</button>
+        <button class="chip" data-filter="clone">Local cloning</button>
+        <button class="chip" data-filter="commercial">Commercial OK</button>
+        <button class="chip" data-filter="multilingual">10+ languages</button>
+      </div>
+      <span class="gallery-bar__spacer"></span>
+      <label class="search">
+        <svg class="icon icon--sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="modelSearch" type="search" placeholder="Search model, language, runtime, score…" autocomplete="off" />
+      </label>
+      <span class="count-note" id="modelCount">35 models</span>
+    </div>
+
+    <div class="model-grid" id="modelGrid"></div>
+
+    <p style="margin-top:14px;color:var(--muted);font-size:11px">
+      Click a card to toggle it for the prompt. “Fit” is calculated from the hardware profile in the next section.
+      License and size figures must be re-verified against pinned manifests before shipping.
+    </p>
+    <p style="margin-top:6px;color:var(--muted);font-size:11px">
+      <strong style="color:var(--soft)">How the ★ score works:</strong> naturalness and prosody 40% · cloning and
+      expression 25% · language coverage and depth 20% · efficiency and deployability 15%. 10 = best open-weight
+      quality in its language pair; 9 = near state of the art; 8 = excellent default; 7 = good with trade-offs;
+      6 = competent but superseded; 5 = niche or experimental. Anchored on Artificial Analysis TTS Elo, vendor
+      WER/CER and speaker-similarity tables, and public demos — re-check at pin time.
+    </p>
+  </div>
+</section>
+<section class="section" id="hardware">
+  <div class="shell">
+    <div class="section__head reveal">
+      <div>
+        <span class="kicker">03 · Hardware fit</span>
+        <h2>Tell the truth before the download starts.</h2>
+        <p>
+          Each manifest declares minimum and recommended RAM/VRAM plus disk cost. The app checks the machine first,
+          then labels every model <strong style="color:#6ee7b7">Great</strong>,
+          <strong style="color:#fcd34d">Runs</strong> or <strong style="color:#fda4af">Too heavy</strong>.
+        </p>
+      </div>
+      <p class="section__aside">Move the sliders — the gallery, chart and prompt react immediately.</p>
+    </div>
+
+    <div class="hw-layout">
+      <div class="card hw-panel reveal">
+        <div class="panel-title">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>
+          This machine
+        </div>
+        <p class="panel-sub">A stand-in for the real probe: system memory, WebGPU limits, adapter list and free disk.</p>
+
+        <div class="preset-row" id="presetRow">
+          <button class="chip" data-preset="laptop">Office laptop</button>
+          <button class="chip" data-preset="creator">Creator desktop</button>
+          <button class="chip" data-preset="igpu">MacBook / iGPU</button>
+          <button class="chip" data-preset="workstation">Workstation</button>
+        </div>
+
+        <div class="field">
+          <div class="field__head"><strong>System RAM</strong><output id="ramValue">16 GB</output></div>
+          <input id="ramRange" type="range" min="4" max="64" step="4" value="16" aria-label="System RAM in gigabytes" />
+        </div>
+        <div class="field">
+          <div class="field__head"><strong>GPU memory (VRAM)</strong><output id="vramValue">6 GB</output></div>
+          <input id="vramRange" type="range" min="0" max="24" step="2" value="6" aria-label="GPU memory in gigabytes" />
+        </div>
+        <div class="field">
+          <div class="field__head"><strong>Free disk</strong><output id="diskValue">40 GB</output></div>
+          <input id="diskRange" type="range" min="2" max="200" step="2" value="40" aria-label="Free disk space in gigabytes" />
+        </div>
+
+        <label class="switch-line">
+          <span>
+            <strong>Discrete / hardware GPU present</strong>
+            <em>WebGPU can use it for Phonon and ONNX models.</em>
+          </span>
+          <span class="switch">
+            <input id="gpuToggle" type="checkbox" checked />
+            <span></span>
+          </span>
+        </label>
+
+        <div class="hw-summary" id="hwSummary"></div>
+      </div>
+
+      <div class="card hw-result reveal">
+        <div class="verdict">
+          <div class="verdict__ring">
+            <svg viewBox="0 0 64 64"><circle class="track" cx="32" cy="32" r="27"/><circle id="fitMeter" class="meter" cx="32" cy="32" r="27" stroke-dasharray="169.6" stroke-dashoffset="169.6"/></svg>
+            <strong id="fitScore">0</strong>
+          </div>
+          <div>
+            <h3 id="verdictTitle">Checking your profile…</h3>
+            <p id="verdictText">The shortlist will be sorted by what actually runs here.</p>
+          </div>
+        </div>
+
+        <div class="chart" id="hwChart" aria-label="Model footprint against available memory"></div>
+        <div class="chart__legend">
+          <span><i style="background:linear-gradient(90deg,#8b5cf6,#22d3ee)"></i>Fits this profile</span>
+          <span><i style="background:repeating-linear-gradient(90deg,rgba(251,113,133,.6) 0 4px,rgba(251,113,133,.2) 4px 8px)"></i>Over budget</span>
+        </div>
+        <p style="margin-top:14px;color:var(--muted);font-size:10.5px;line-height:1.5">
+          Bar length is the recommended download footprint on a log scale. The chart is a planning illustration;
+          the real gate uses the manifest’s exact bytes, hashes and free-space check.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section" id="capabilities">
+  <div class="shell">
+    <div class="section__head reveal">
+      <div>
+        <span class="kicker">04 · Capability gating</span>
+        <h2>The interface changes shape with the model.</h2>
+        <p>
+          Pick a model to see which controls the Studio would enable. Nothing is faked: a missing capability hides
+          its control instead of silently doing nothing.
+        </p>
+      </div>
+      <p class="section__aside">Live mock of the Studio and Voices screens, driven by the same manifest flags.</p>
+    </div>
+
+    <div class="caps-layout">
+      <div class="card caps-panel reveal">
+        <div class="caps-toolbar">
+          <select id="capsSelect" aria-label="Choose a model to inspect"></select>
+          <span class="badge" id="capsRuntime">runtime</span>
+          <span class="badge" id="capsLicense">license</span>
+        </div>
+        <div class="caps-grid" id="capsGrid"></div>
+        <div class="caps-meter" id="capsMeter"></div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:11px;line-height:1.55">
+          <strong style="color:var(--soft);font-size:11px">Gating rules</strong>
+          <ul style="margin:7px 0 0;padding-left:16px">
+            <li>Language list = the model’s declared languages only.</li>
+            <li>Voice picker groups by compatibility; incompatible voices are disabled with a reason.</li>
+            <li>The Clone tab appears only when <code>voiceClone</code> is true; Phonon keeps the “cloud once” disclosure.</li>
+            <li>Dialogue editor and non-verbal tags appear only for <code>multiSpeaker</code> / <code>nonVerbal</code>.</li>
+            <li>Batch validates every row against the active model before rendering.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mock reveal" aria-live="polite">
+        <div class="mock__bar"><i></i><i></i><i></i><span id="mockTitle">voxarium — Studio</span></div>
+        <div class="mock__body">
+          <div class="mock__head">
+            <div class="mock__model">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+              <span id="mockModelName">Phonon 40M Multilingual</span>
+            </div>
+            <span class="badge badge--cyan" id="mockFit">Great fit</span>
+          </div>
+          <div class="mock__tabs" id="mockTabs"></div>
+          <div class="mock__panel" id="mockPanel"></div>
+          <div class="mock__actions" id="mockActions"></div>
+          <div class="mock__note" id="mockNote"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section" id="languages">
+  <div class="shell">
+    <div class="section__head reveal">
+      <div>
+        <span class="kicker">05 · Language coverage</span>
+        <h2>Breadth without pretending every voice is equal.</h2>
+        <p>
+          Language chips come from each model’s declared coverage. Thin languages are shown with a quality note rather
+          than hidden — a single French voice is still useful, as long as the UI says so. <strong>13 of the 35 models
+          speak Arabic</strong>; the rest must never show an Arabic chip.
+        </p>
+      </div>
+      <p class="section__aside">Per-model language lists from §5 of the full plan.</p>
+    </div>
+
+    <div class="card card--pad reveal" style="padding:16px 18px;margin-bottom:16px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+      <span class="badge badge--ar" style="flex:none">Arabic · 13 models</span>
+      <p style="color:var(--soft);font-size:12px;margin:0;flex:1;min-width:260px">
+        <strong>SILMA TTS</strong> (ar/en, Arabic-first) · <strong>Magpie-TTS 357M</strong> (commercial-safe MSA) ·
+        <strong>OmniVoice</strong> (14 varieties) · <strong>VoxCPM2</strong> · <strong>MOSS-TTS v1.5</strong> ·
+        <strong>FireRedTTS3</strong> · <strong>Chatterbox</strong> · <strong>OpenAudio S1-mini</strong> ·
+        <strong>Supertonic 3</strong> · <strong>XTTS-v2</strong> · <strong>Piper</strong> (<code>ar_JO</code>) ·
+        <strong>MMS-TTS</strong> (<code>ara</code>) · <strong>Fasih-TTS</strong>.
+        Default to MSA and offer a variety sub-selector only where the model declares one.
+      </p>
+    </div>
+
+    <div class="lang-summary reveal">
+      <div class="lang-stat"><strong id="langTotal">—</strong><span>unique named languages across the cards</span></div>
+      <div class="lang-stat"><strong id="langBrowser">—</strong><span>browser-native named languages</span></div>
+      <div class="lang-stat"><strong id="langClone">—</strong><span>named languages with local cloning</span></div>
+      <div class="lang-stat"><strong id="langDisk">—</strong><span>MB for the recommended starter set</span></div>
+    </div>
+
+    <div class="lang-grid" id="langGrid"></div>
+    <p style="margin-top:14px;color:var(--muted);font-size:11px">
+      “Core” chips are the languages the model is strongest in. The counters above count named languages only; the
+      indexed models add far more — <strong>OmniVoice 646</strong> and <strong>MMS-TTS 1,100+</strong> — and must be
+      searchable by ISO code rather than shipped as a flat list.
+    </p>
+  </div>
+</section>
+<section class="section" id="roadmap">
+  <div class="shell">
+    <div class="section__head reveal">
+      <div>
+        <span class="kicker">06 · Roadmap</span>
+        <h2>Ship the cheap win first, then earn the heavy ones.</h2>
+        <p>
+          Phase 1 is usable in under two weeks because it reuses the existing runtime. The 30–646-language flagships
+          and the 8B+ heavyweights wait until the registry, licensing and hardware gates have proven themselves.
+        </p>
+      </div>
+      <p class="section__aside">Tick phases to include them in the generated prompt.</p>
+    </div>
+
+    <div class="grid-3 reveal" style="margin-bottom:18px">
+      <article class="card card--pad" style="padding:16px 18px">
+        <span class="badge badge--violet">Runtime 01</span>
+        <h3 style="font-size:13.5px;margin-top:8px">phonon-tts worker</h3>
+        <p style="color:var(--muted);font-size:11px;margin-top:4px">WASM + WebGPU. Phonon 31M and the 40M family. Already in the app; only the URLs and manifest become dynamic.</p>
+      </article>
+      <article class="card card--pad" style="padding:16px 18px">
+        <span class="badge badge--cyan">Runtime 02</span>
+        <h3 style="font-size:13.5px;margin-top:8px">ONNX Runtime Web</h3>
+        <p style="color:var(--muted);font-size:11px;margin-top:4px">WASM / WebGPU worker for Kokoro, Piper, MeloTTS, MMS, Supertonic 3, Kitten and Sopro. Small models, huge language reach, no installer growth.</p>
+      </article>
+      <article class="card card--pad" style="padding:16px 18px">
+        <span class="badge badge--ok">Runtime 03</span>
+        <h3 style="font-size:13.5px;margin-top:8px">Local sidecar</h3>
+        <p style="color:var(--muted);font-size:11px;margin-top:4px">Loopback-only process for Chatterbox, CosyVoice2, SILMA, Qwen3, VoxCPM2, MOSS, OmniVoice, FireRed, Breeze and the rest. Optional download, on-demand start, killed on quit.</p>
+      </article>
+    </div>
+
+    <div class="timeline" id="timeline">
+      <label class="phase reveal is-on" data-phase-card="0">
+        <div class="phase__when">Phase 0 · 1–2 weeks</div>
+        <div>
+          <h3>Foundation</h3>
+          <p>Make the engine selectable without changing what users see.</p>
+          <div class="phase__deliverables"><span>ModelManifest</span><span>Registry</span><span>Hardware probe</span><span>Adapter contract</span><span>Migration</span></div>
+        </div>
+        <span class="phase__check"><input type="checkbox" data-phase="0" checked /> include</span>
+      </label>
+      <label class="phase reveal is-on" data-phase-card="1">
+        <div class="phase__when">Phase 1 · 3–5 days</div>
+        <div>
+          <h3>Phonon family</h3>
+          <p>Five languages, six checkpoints, zero new inference dependencies.</p>
+          <div class="phase__deliverables"><span>40M English</span><span>40M Multilingual</span><span>fr / de / es / pt packs</span><span>License gate</span></div>
+        </div>
+        <span class="phase__check"><input type="checkbox" data-phase="1" checked /> include</span>
+      </label>
+      <label class="phase reveal" data-phase-card="2">
+        <div class="phase__when">Phase 2 · 2–3 weeks</div>
+        <div>
+          <h3>Browser-native breadth</h3>
+          <p>35+ languages on CPU, Kokoro quality on mid-range machines.</p>
+          <div class="phase__deliverables"><span>ONNX adapter</span><span>Kokoro-82M</span><span>Piper</span><span>MeloTTS</span><span>MMS index</span></div>
+        </div>
+        <span class="phase__check"><input type="checkbox" data-phase="2" /> include</span>
+      </label>
+      <label class="phase reveal" data-phase-card="3">
+        <div class="phase__when">Phase 3 · 3–4 weeks</div>
+        <div>
+          <h3>Local cloning sidecar</h3>
+          <p>Record → trim → consent → embed → save. The recording never leaves the machine.</p>
+          <div class="phase__deliverables"><span>Sidecar supervisor</span><span>Chatterbox</span><span>CosyVoice2</span><span>SILMA TTS</span><span>Pocket TTS</span><span>OpenAudio S1-mini</span></div>
+        </div>
+        <span class="phase__check"><input type="checkbox" data-phase="3" /> include</span>
+      </label>
+      <label class="phase reveal" data-phase-card="4">
+        <div class="phase__when">Phase 4 · 4–6 weeks</div>
+        <div>
+          <h3>Flagship multilingual</h3>
+          <p>Qwen3-TTS, VoxCPM2, MOSS, OmniVoice, FireRed, Breeze and the rest. 30–646 languages, Arabic included.</p>
+          <div class="phase__deliverables"><span>Qwen3-TTS</span><span>VoxCPM2</span><span>MOSS v1.5</span><span>OmniVoice</span><span>FireRedTTS3</span><span>Breeze TTS 2</span></div>
+        </div>
+        <span class="phase__check"><input type="checkbox" data-phase="4" /> include</span>
+      </label>
+      <label class="phase reveal" data-phase-card="5">
+        <div class="phase__when">Phase 5 · 3–4 weeks</div>
+        <div>
+          <h3>Dialogue &amp; long-tail expression</h3>
+          <p>Two- and four-speaker scripts, non-verbal tags, emotion controls and the optional research packs.</p>
+          <div class="phase__deliverables"><span>Dia-1.6B</span><span>VibeVoice</span><span>Higgs Audio v2</span><span>IndexTTS2</span><span>XTTS-v2</span><span>Fasih-TTS</span></div>
+        </div>
+        <span class="phase__check"><input type="checkbox" data-phase="5" /> include</span>
+      </label>
+      <label class="phase reveal" data-phase-card="6">
+        <div class="phase__when">Phase 6 · 2–3 weeks</div>
+        <div>
+          <h3>Polish &amp; hardening</h3>
+          <p>Benchmarks, pinned updates, score verification, storage dashboard and the full QA matrix.</p>
+          <div class="phase__deliverables"><span>Benchmarks</span><span>Pinned updates</span><span>Score QA</span><span>Storage</span><span>Accessibility</span></div>
+        </div>
+        <span class="phase__check"><input type="checkbox" data-phase="6" /> include</span>
+      </label>
+    </div>
+  </div>
+</section>
+<section class="section" id="names">
+  <div class="shell">
+    <div class="section__head reveal">
+      <div>
+        <span class="kicker">07 · Naming</span>
+        <h2>The rename is done. Voxarium is the product.</h2>
+        <p>
+          “Voxarium” is model-agnostic and no longer tied to one family. Phonon stays the flagship engine name.
+          Select a name to see it in the generated prompt; the others are kept as the evaluation record.
+        </p>
+      </div>
+      <p class="section__aside">Applied: product name, app id <code>com.voxarium.app</code>, installer, shortcuts and docs.</p>
+    </div>
+    <div class="names-grid reveal" id="nameGrid"></div>
+    <div class="name-note reveal">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+      <span>
+        A rename is a migration, not a rebrand: <code>userData</code>, installer id, shortcuts, docs and the model
+        registry all carry the name. Existing profiles are adopted from <code>%APPDATA%\Phonon Studio</code> on first launch.
+      </span>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="prompt">
+  <div class="shell">
+    <div class="section__head reveal">
+      <div>
+        <span class="kicker">08 · Prompt builder</span>
+        <h2>Turn these choices into work you can hand off.</h2>
+        <p>
+          The prompt rewrites itself from the models, phases, hardware profile, license policy and app name selected
+          above. Paste it into OpenCode as-is, or download it next to the plan.
+        </p>
+      </div>
+      <p class="section__aside">Output is deterministic: same choices, same prompt.</p>
+    </div>
+
+    <div class="prompt-layout">
+      <div class="card prompt-panel reveal">
+        <div class="panel-title">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3.4"/></svg>
+          Configuration
+        </div>
+
+        <div class="prompt-group">
+          <label for="promptName">App name</label>
+          <input class="prompt-input" id="promptName" type="text" value="Voxarium" spellcheck="false" />
+        </div>
+
+        <div class="prompt-group">
+          <span class="prompt-group__label">Scope</span>
+          <div class="seg" id="scopeSeg" role="group" aria-label="Implementation scope">
+            <button data-scope="foundation" class="is-on">Foundation + models</button>
+            <button data-scope="full">Full expansion</button>
+            <button data-scope="pack">One model pack</button>
+          </div>
+        </div>
+
+        <div class="prompt-group">
+          <span class="prompt-group__label">License policy</span>
+          <div class="seg" id="licenseSeg" role="group" aria-label="License policy">
+            <button data-license="gate" class="is-on">Gate non-commercial</button>
+            <button data-license="permissive">Permissive only</button>
+            <button data-license="any">Include everything</button>
+          </div>
+        </div>
+
+        <div class="prompt-group">
+          <span class="prompt-group__label">Hardware baseline</span>
+          <div class="mini-list" id="promptHw"></div>
+        </div>
+
+        <div class="prompt-group">
+          <span class="prompt-group__label">Selected models</span>
+          <div class="mini-list" id="promptModels"></div>
+        </div>
+
+        <div class="prompt-group">
+          <span class="prompt-group__label">Phases included</span>
+          <div class="mini-list" id="promptPhases"></div>
+        </div>
+
+        <div class="prompt-group">
+          <span class="prompt-group__label">Also require</span>
+          <label class="prompt-check"><input type="checkbox" id="optGpu" checked /> GPU adapter preference <em>(auto / high-performance / low-power)</em></label>
+          <label class="prompt-check"><input type="checkbox" id="optClone" checked /> Cloning consent + visible upload disclosure</label>
+          <label class="prompt-check"><input type="checkbox" id="optTests" checked /> Typecheck, build and Playwright coverage</label>
+          <label class="prompt-check"><input type="checkbox" id="optPack" /> Packaged-app smoke test <em>(electron-builder)</em></label>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="btn btn--sm" id="resetPrompt">
+            <svg class="icon icon--sm" viewBox="0 0 24 24"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M20 9a8 8 0 10-1.5 6.5"/></svg>
+            Reset
+          </button>
+          <a class="btn btn--sm" href="#models">Pick models</a>
+        </div>
+      </div>
+
+      <div class="prompt-out reveal">
+        <div class="prompt-out__head">
+          <svg class="icon icon--sm" viewBox="0 0 24 24"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13 5l-2 14"/></svg>
+          <strong>OpenCode prompt</strong>
+          <span id="promptWords">0 words</span>
+        </div>
+        <pre id="promptText" tabindex="0"></pre>
+        <div class="prompt-out__foot">
+          <button class="btn btn--sm btn--primary" id="copyPrompt">
+            <svg class="icon icon--sm" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h8"/></svg>
+            Copy prompt
+          </button>
+          <button class="btn btn--sm" id="downloadPrompt">
+            <svg class="icon icon--sm" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>
+            Download .md
+          </button>
+          <span class="count-note" id="promptState">ready</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <div class="shell footer__inner">
+    <div>
+      <strong>Voxarium — Multi-Model Expansion Plan</strong>
+      <span>Proposal · 29 October 2026 · every size, license, language and score is an estimate until pinned in a manifest.</span>
+      <span class="footer__sources">
+        Sources:
+        <a href="https://huggingface.co/BreezeBlue/Breeze-TTS-2" target="_blank" rel="noreferrer">Breeze TTS 2</a> ·
+        <a href="https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base" target="_blank" rel="noreferrer">Qwen3-TTS</a> ·
+        <a href="https://huggingface.co/openbmb/VoxCPM2" target="_blank" rel="noreferrer">VoxCPM2</a> ·
+        <a href="https://huggingface.co/OpenMOSS-Team/MOSS-TTS-v1.5" target="_blank" rel="noreferrer">MOSS-TTS</a> ·
+        <a href="https://huggingface.co/k2-fsa/OmniVoice" target="_blank" rel="noreferrer">OmniVoice</a> ·
+        <a href="https://huggingface.co/silma-ai/silma-tts" target="_blank" rel="noreferrer">SILMA TTS</a> ·
+        <a href="https://huggingface.co/hexgrad/Kokoro-82M" target="_blank" rel="noreferrer">Kokoro-82M</a> ·
+        <a href="https://huggingface.co/rhasspy/piper-voices" target="_blank" rel="noreferrer">Piper</a> ·
+        <a href="https://huggingface.co/gradium/phonon-40m-multilingual" target="_blank" rel="noreferrer">Phonon 40M</a>
+      </span>
+    </div>
+    <div class="footer__links">
+      <a href="#models">Models</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#prompt">Prompt</a>
+      <a href="model-expansion-plan.md">Read the full plan (.md)</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ------------------------------------------------------------------
+   Data — every figure is a planning estimate, not a shipped manifest.
+   ------------------------------------------------------------------ */
+const MODELS = [
+  {
+    id: 'phonon-31m-en', name: 'Phonon 31M English', family: 'Phonon', runtime: 'phonon',
+    params: '31M', sizeMb: 64.5, sizeLabel: '64.5 MB', sizeNote: 'Q8 · 102.8 MB F32',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 7, arabic: false,
+    languages: ['English'], langCount: 1, coreLangs: ['English'],
+    caps: { import: true, clone: 'cloud', dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: true, speed: true, watermark: false },
+    minRam: 4, recRam: 8, minVram: 0, recVram: 0, phase: 0, showLangs: false,
+    note: 'The current engine. Stays the default and the compatibility baseline; no new dependency.',
+    repo: 'gradium/phonon-31m-en', glyph: 'wave',
+  },
+  {
+    id: 'phonon-40m-multilingual', name: 'Phonon 40M Multilingual', family: 'Phonon', runtime: 'phonon',
+    params: '40M', sizeMb: 74.6, sizeLabel: '74.6 MB', sizeNote: 'Q8 · same layout',
+    license: 'CC-BY-NC-4.0', commercial: false, licenseNote: 'Non-commercial', rating: 7, arabic: false,
+    languages: ['English', 'French', 'German', 'Spanish', 'Portuguese'], langCount: 5,
+    coreLangs: ['English', 'French', 'German', 'Spanish', 'Portuguese'],
+    caps: { import: true, clone: 'cloud', dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: true, speed: true, watermark: false },
+    minRam: 4, recRam: 8, minVram: 0, recVram: 0, phase: 1, showLangs: true,
+    note: 'The cheapest five-language win: same runtime, same 102-voice catalog, one download. Single-language packs are also planned.',
+    repo: 'gradium/phonon-40m-multilingual', glyph: 'wave',
+  },
+  {
+    id: 'kokoro-82m', name: 'Kokoro-82M', family: 'Kokoro', runtime: 'onnx',
+    params: '82M', sizeMb: 86, sizeLabel: '~86 MB', sizeNote: 'Q8 ONNX · ~164 MB FP16',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 8, arabic: false,
+    languages: ['English', 'Japanese', 'Chinese', 'Spanish', 'French', 'Hindi', 'Italian', 'Portuguese'], langCount: 8,
+    coreLangs: ['English', 'Japanese', 'Chinese', 'Spanish', 'Hindi'],
+    caps: { import: false, clone: null, dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 4, recRam: 8, minVram: 0, recVram: 2, phase: 2, showLangs: true,
+    note: 'Best quality-per-byte in the browser. 54 voices across 8 languages; French is a single voice.',
+    repo: 'hexgrad/Kokoro-82M', glyph: 'spark',
+  },
+  {
+    id: 'piper', name: 'Piper', family: 'Piper', runtime: 'onnx',
+    params: '20–60M', sizeMb: 60, sizeLabel: '20–100 MB', sizeNote: 'per voice',
+    license: 'MIT', commercial: true, licenseNote: 'Permissive', rating: 6, arabic: true,
+    languages: ['Arabic', 'Catalan', 'Czech', 'Welsh', 'Danish', 'German', 'Greek', 'English', 'Spanish', 'Persian', 'Finnish', 'French', 'Hungarian', 'Icelandic', 'Italian', 'Georgian', 'Kazakh', 'Luxembourgish', 'Latvian', 'Nepali', 'Dutch', 'Norwegian', 'Polish', 'Portuguese', 'Romanian', 'Russian', 'Slovak', 'Slovenian', 'Serbian', 'Swedish', 'Swahili', 'Turkish', 'Ukrainian', 'Vietnamese', 'Chinese'], langCount: 35,
+    coreLangs: ['English', 'German', 'French', 'Spanish', 'Dutch', 'Polish', 'Arabic'],
+    caps: { import: false, clone: null, dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: true, speed: true, watermark: false },
+    minRam: 2, recRam: 4, minVram: 0, recVram: 0, phase: 2, showLangs: true,
+    note: '35 languages on a CPU, including Jordanian Arabic. Voice-per-download, so the UI needs language → locale → voice drill-down.',
+    repo: 'rhasspy/piper-voices', glyph: 'grid',
+  },
+  {
+    id: 'melotts', name: 'MeloTTS', family: 'MyShell', runtime: 'onnx',
+    params: '~50M', sizeMb: 120, sizeLabel: '50–200 MB', sizeNote: 'per language',
+    license: 'MIT', commercial: true, licenseNote: 'Permissive', rating: 6, arabic: false,
+    languages: ['English', 'Spanish', 'French', 'Chinese', 'Japanese', 'Korean'], langCount: 6,
+    coreLangs: ['English', 'Chinese', 'Japanese', 'Korean'],
+    caps: { import: false, clone: null, dialogue: false, emotion: false, nonVerbal: false, streaming: false, phonemes: false, speed: true, watermark: false },
+    minRam: 4, recRam: 8, minVram: 0, recVram: 2, phase: 2, showLangs: false,
+    note: 'Adds Korean and English accents. Requires an ONNX conversion step, so pin the exported files.',
+    repo: 'myshell-ai/MeloTTS-English', glyph: 'spark',
+  },
+  {
+    id: 'mms-tts', name: 'MMS-TTS', family: 'Meta', runtime: 'onnx',
+    params: '36M', sizeMb: 140, sizeLabel: '36–140 MB', sizeNote: 'per language',
+    license: 'CC-BY-NC-4.0', commercial: false, licenseNote: 'Non-commercial', rating: 5, arabic: true,
+    languages: ['1,100+ languages'], langCount: 1100, coreLangs: ['English', 'Hindi', 'Arabic', 'Swahili'],
+    caps: { import: false, clone: null, dialogue: false, emotion: false, nonVerbal: false, streaming: false, phonemes: false, speed: false, watermark: false },
+    minRam: 2, recRam: 4, minVram: 0, recVram: 0, phase: 2, showLangs: true,
+    note: 'The only realistic path to 1,000+ languages, including Arabic (ara). Non-commercial, and quality varies heavily by locale.',
+    repo: 'facebook/mms-tts-*', glyph: 'grid',
+  },
+  {
+    id: 'kitten-tts', name: 'Kitten TTS', family: 'KittenML', runtime: 'onnx',
+    params: '15M', sizeMb: 25, sizeLabel: '~25 MB', sizeNote: 'CPU-only',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 5, arabic: false,
+    languages: ['English'], langCount: 1, coreLangs: ['English'],
+    caps: { import: false, clone: null, dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 2, recRam: 4, minVram: 0, recVram: 0, phase: 2, showLangs: false,
+    note: '15M and under 25 MB. Runs literally everywhere; useful as a fast draft voice, not a production narrator.',
+    repo: 'KittenML/kitten-tts-nano-0.1', glyph: 'spark',
+  },
+  {
+    id: 'pocket-tts', name: 'Pocket TTS', family: 'Kyutai', runtime: 'sidecar',
+    params: '100M', sizeMb: 200, sizeLabel: '~200 MB', sizeNote: 'CPU-first',
+    license: 'MIT', commercial: true, licenseNote: 'Permissive', rating: 7, arabic: false,
+    languages: ['English', 'French', 'German', 'Portuguese', 'Italian', 'Spanish', 'Dutch'], langCount: 7,
+    coreLangs: ['English', 'French', 'German', 'Spanish'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 4, recRam: 8, minVram: 0, recVram: 0, phase: 3, showLangs: true,
+    note: '100M, CPU-first, ~200 ms to first audio and ~6× real time on a laptop. Voice cloning in 7 languages; no Arabic.',
+    repo: 'kyutai/pocket-tts', glyph: 'clone',
+  },
+  {
+    id: 'supertonic-3', name: 'Supertonic 3', family: 'Supertone', runtime: 'onnx',
+    params: '~66M', sizeMb: 400, sizeLabel: '~400 MB', sizeNote: 'ONNX CPU',
+    license: 'OpenRAIL', commercial: true, licenseNote: 'OpenRAIL terms', rating: 8, arabic: true,
+    languages: ['Arabic', 'Bulgarian', 'Czech', 'Danish', 'German', 'Greek', 'English', 'Spanish', 'Estonian', 'Finnish', 'French', 'Hindi', 'Croatian', 'Hungarian', 'Indonesian', 'Italian', 'Japanese', 'Korean', 'Lithuanian', 'Latvian', 'Dutch', 'Polish', 'Portuguese', 'Romanian', 'Russian', 'Slovak', 'Slovenian', 'Swedish', 'Turkish', 'Ukrainian', 'Vietnamese'], langCount: 31,
+    coreLangs: ['English', 'Korean', 'Japanese', 'Arabic', 'French', 'German'],
+    caps: { import: false, clone: null, dialogue: false, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 2, recRam: 4, minVram: 0, recVram: 0, phase: 2, showLangs: true,
+    note: '31 languages in ONNX on the CPU, Arabic included. Expression tags and preset voice styles; no zero-shot cloning.',
+    repo: 'Supertone/supertonic-3', glyph: 'grid',
+  },
+  {
+    id: 'sopro-v2-turbo', name: 'Sopro V2 Turbo', family: 'HaloNeuro', runtime: 'onnx',
+    params: '122M', sizeMb: 630, sizeLabel: '~630 MB', sizeNote: 'ONNX · streaming',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 7, arabic: false,
+    languages: ['English', 'Portuguese', 'French', 'German'], langCount: 4,
+    coreLangs: ['English', 'Portuguese', 'French', 'German'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 4, recRam: 8, minVram: 0, recVram: 2, phase: 2, showLangs: true,
+    note: '122M, streaming, on-device and Apache-2.0. Four languages only; cloning is the differentiator, not breadth.',
+    repo: 'samuel-vitorino/sopro-v2-turbo', glyph: 'spark',
+  },
+  {
+    id: 'omnivoice', name: 'OmniVoice', family: 'k2-fsa', runtime: 'sidecar',
+    params: '612M', sizeMb: 1200, sizeLabel: '~1.2 GB', sizeNote: 'BF16 · 646 languages',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 8, arabic: true,
+    languages: ['Arabic (MSA)', 'Arabic (Egyptian)', 'Arabic (Gulf)', 'Arabic (Moroccan)', 'Chinese', 'English', 'French', 'German', 'Hindi', 'Japanese', 'Korean', 'Portuguese', 'Russian', 'Spanish', 'Turkish', 'Vietnamese'], langCount: 646,
+    coreLangs: ['Arabic (MSA)', 'English', 'Chinese', 'Spanish'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: true, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 8, recRam: 16, minVram: 4, recVram: 8, phase: 4, showLangs: true,
+    note: 'The breadth record: 646 languages, including 14 Arabic varieties. Apache-2.0, cloning and voice design; quality varies by language.',
+    repo: 'k2-fsa/OmniVoice', glyph: 'grid',
+  },
+  {
+    id: 'qwen3-tts', name: 'Qwen3-TTS 1.7B', family: 'Qwen', runtime: 'sidecar',
+    params: '1.93B', sizeMb: 3500, sizeLabel: '~3.5 GB', sizeNote: 'BF16 · ~1.8 GB Q8',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 9, arabic: false,
+    languages: ['Chinese', 'English', 'Japanese', 'Korean', 'German', 'French', 'Russian', 'Portuguese', 'Spanish', 'Italian'], langCount: 10,
+    coreLangs: ['Chinese', 'English', 'Japanese', 'Korean'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 6, recVram: 8, phase: 4, showLangs: true,
+    note: 'Ten-language flagship with cloning, voice design and ~97 ms streaming latency. No Arabic.',
+    repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', glyph: 'spark',
+  },
+  {
+    id: 'moss-tts', name: 'MOSS-TTS v1.5', family: 'OpenMOSS', runtime: 'sidecar',
+    params: '8.49B', sizeMb: 17000, sizeLabel: '~17 GB', sizeNote: 'BF16 · ~5 GB Q4',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 9, arabic: true,
+    languages: ['Arabic', 'Cantonese', 'Chinese', 'Czech', 'Danish', 'Dutch', 'English', 'Finnish', 'French', 'German', 'Greek', 'Hebrew', 'Hindi', 'Hungarian', 'Italian', 'Japanese', 'Korean', 'Macedonian', 'Malay', 'Persian', 'Polish', 'Portuguese', 'Romanian', 'Russian', 'Spanish', 'Swahili', 'Swedish', 'Tagalog', 'Thai', 'Turkish', 'Vietnamese'], langCount: 31,
+    coreLangs: ['English', 'Chinese', 'Arabic', 'Japanese'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: true, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 32, recRam: 64, minVram: 16, recVram: 24, phase: 4, showLangs: true,
+    note: '8.5B, 31 languages including Arabic, cloning and pause markers. Excellent, but a 17 GB flagship download.',
+    repo: 'OpenMOSS-Team/MOSS-TTS-v1.5', glyph: 'spark',
+  },
+  {
+    id: 'voxcpm2', name: 'VoxCPM2', family: 'OpenBMB', runtime: 'sidecar',
+    params: '2.29B', sizeMb: 4600, sizeLabel: '~4.6 GB', sizeNote: 'BF16 · 48 kHz',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 9, arabic: true,
+    languages: ['Arabic', 'Burmese', 'Chinese', 'Danish', 'Dutch', 'English', 'Finnish', 'French', 'German', 'Greek', 'Hebrew', 'Hindi', 'Indonesian', 'Italian', 'Japanese', 'Khmer', 'Korean', 'Lao', 'Malay', 'Norwegian', 'Polish', 'Portuguese', 'Russian', 'Spanish', 'Swahili', 'Swedish', 'Tagalog', 'Thai', 'Turkish', 'Vietnamese'], langCount: 30,
+    coreLangs: ['Chinese', 'English', 'Arabic', 'Japanese'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 6, recVram: 10, phase: 4, showLangs: true,
+    note: '30 languages including Arabic, 48 kHz output, voice design and cloning, Apache-2.0. The best all-round multilingual flagship.',
+    repo: 'openbmb/VoxCPM2', glyph: 'spark',
+  },
+  {
+    id: 'firered-tts3', name: 'FireRedTTS3', family: 'FireRed', runtime: 'sidecar',
+    params: '~4.2B', sizeMb: 8500, sizeLabel: '~8.5 GB', sizeNote: 'BF16 + codec',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 8, arabic: true,
+    languages: ['Arabic', 'Cantonese', 'Chinese', 'Czech', 'Dutch', 'English', 'Finnish', 'French', 'German', 'Greek', 'Hindi', 'Indonesian', 'Italian', 'Japanese', 'Korean', 'Polish', 'Portuguese', 'Romanian', 'Russian', 'Spanish', 'Thai', 'Turkish', 'Ukrainian', 'Vietnamese'], langCount: 24,
+    coreLangs: ['Chinese', 'English', 'Arabic', 'Japanese'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 32, recRam: 64, minVram: 16, recVram: 24, phase: 4, showLangs: true,
+    note: '24 languages plus 21 Chinese dialects, with cloning, voice design and speech editing. Best-in-class cloning metrics.',
+    repo: 'FireRedTeam/FireRedTTS3', glyph: 'spark',
+  },
+  {
+    id: 'audio8-tts', name: 'Audio8 TTS', family: 'Audio8', runtime: 'sidecar',
+    params: '601M', sizeMb: 1200, sizeLabel: '~1.2 GB', sizeNote: '44.1 kHz codec',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 8, arabic: false,
+    languages: ['Cantonese', 'Chinese', 'Dutch', 'English', 'French', 'German', 'Italian', 'Japanese', 'Korean', 'Polish', 'Spanish'], langCount: 11,
+    coreLangs: ['Chinese', 'English', 'Japanese', 'Korean'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 8, recRam: 16, minVram: 4, recVram: 6, phase: 4, showLangs: true,
+    note: '601M, 11 languages and 44.1 kHz output. SOTA-class at compact scale, with an ONNX INT4 community export.',
+    repo: 'Edge0/Audio8-TTS-Preview-0.6b', glyph: 'spark',
+  },
+  {
+    id: 'breeze-tts2', name: 'Breeze TTS 2', family: 'BreezeBlue', runtime: 'sidecar',
+    params: '3.47B', sizeMb: 7000, sizeLabel: '~7 GB', sizeNote: 'BF16 · ~2 GB Q4',
+    license: 'BreezeBlue NC', commercial: false, licenseNote: 'Research/non-commercial', rating: 10, arabic: false,
+    languages: ['English', 'Chinese'], langCount: 2,
+    coreLangs: ['English', 'Chinese'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: true, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 8, recVram: 12, phase: 4, showLangs: true,
+    note: 'The quality ceiling: #1 open-weight on the Artificial Analysis TTS leaderboard at release. English + Chinese only, non-commercial weights, ~7.7 GiB VRAM.',
+    repo: 'BreezeBlue/Breeze-TTS-2', glyph: 'spark',
+  },
+  {
+    id: 'magpie-tts', name: 'Magpie-TTS 357M', family: 'NVIDIA', runtime: 'sidecar',
+    params: '364M', sizeMb: 700, sizeLabel: '~0.7 GB', sizeNote: 'NeMo checkpoint',
+    license: 'NVIDIA Open Model', commercial: true, licenseNote: 'Commercial allowed', rating: 8, arabic: true,
+    languages: ['Arabic', 'German', 'English', 'Spanish', 'French', 'Hindi', 'Italian', 'Japanese', 'Korean', 'Portuguese', 'Vietnamese', 'Chinese'], langCount: 12,
+    coreLangs: ['English', 'Arabic', 'German', 'Spanish'],
+    caps: { import: false, clone: null, dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: true, speed: true, watermark: false },
+    minRam: 8, recRam: 16, minVram: 4, recVram: 6, phase: 4, showLangs: true,
+    note: '364M, 12 languages including Arabic, commercial-friendly and IPA G2P. Zero-shot cloning was removed for security reasons.',
+    repo: 'nvidia/magpie_tts_multilingual_357m', glyph: 'grid',
+  },
+  {
+    id: 'chatterbox', name: 'Chatterbox Multilingual', family: 'Resemble AI', runtime: 'sidecar',
+    params: '0.5B', sizeMb: 3200, sizeLabel: '~3.2 GB', sizeNote: 'F16 · ~1 GB Q4',
+    license: 'MIT', commercial: true, licenseNote: 'Watermarked', rating: 8, arabic: true,
+    languages: ['Arabic', 'Danish', 'German', 'Greek', 'English', 'Spanish', 'Finnish', 'French', 'Hebrew', 'Hindi', 'Italian', 'Japanese', 'Korean', 'Malay', 'Dutch', 'Norwegian', 'Polish', 'Portuguese', 'Russian', 'Swedish', 'Swahili', 'Turkish', 'Chinese'], langCount: 23,
+    coreLangs: ['English', 'French', 'German', 'Spanish', 'Hindi', 'Japanese', 'Arabic'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: false, streaming: false, phonemes: false, speed: true, watermark: true },
+    minRam: 16, recRam: 32, minVram: 4, recVram: 6, phase: 3, showLangs: true,
+    note: 'Local zero-shot cloning in 23 languages, including Arabic. Outputs carry a Perth watermark that must be disclosed.',
+    repo: 'ResembleAI/chatterbox', glyph: 'clone',
+  },
+  {
+    id: 'cosyvoice2', name: 'CosyVoice2-0.5B', family: 'FunAudioLLM', runtime: 'sidecar',
+    params: '0.5B', sizeMb: 3000, sizeLabel: '~3 GB', sizeNote: 'LLM + flow + tokenizer',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 8, arabic: false,
+    languages: ['Chinese', 'English', 'Japanese', 'Korean', 'German', 'Spanish', 'French', 'Italian', 'Russian'], langCount: 9,
+    coreLangs: ['Chinese', 'English', 'Japanese', 'Korean'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: false, streaming: true, phonemes: true, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 4, recVram: 6, phase: 3, showLangs: true,
+    note: 'Instruct control (emotion, speed) plus 18 Chinese dialects. The best permissive local-cloning option; no Arabic.',
+    repo: 'FunAudioLLM/CosyVoice2-0.5B', glyph: 'clone',
+  },
+  {
+    id: 'f5-tts', name: 'F5-TTS', family: 'Community', runtime: 'sidecar',
+    params: '0.3B', sizeMb: 1350, sizeLabel: '~1.35 GB', sizeNote: 'Base checkpoint',
+    license: 'CC-BY-NC-4.0', commercial: false, licenseNote: 'Non-commercial', rating: 7, arabic: false,
+    languages: ['English', 'Chinese'], langCount: 2, coreLangs: ['English', 'Chinese'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: false, nonVerbal: false, streaming: false, phonemes: false, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 4, recVram: 6, phase: 3, showLangs: false,
+    note: 'Fast reference-style cloning, but non-commercial weights and only two languages. Optional.',
+    repo: 'SWivid/F5-TTS', glyph: 'clone',
+  },
+  {
+    id: 'xtts-v2', name: 'XTTS-v2', family: 'Coqui', runtime: 'sidecar',
+    params: '467M', sizeMb: 1900, sizeLabel: '~1.9 GB', sizeNote: 'F16/F32 checkpoint',
+    license: 'Coqui CPML', commercial: false, licenseNote: 'Non-commercial', rating: 6, arabic: true,
+    languages: ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Polish', 'Turkish', 'Russian', 'Dutch', 'Czech', 'Arabic', 'Chinese', 'Japanese', 'Hungarian', 'Korean', 'Hindi'], langCount: 17,
+    coreLangs: ['English', 'Spanish', 'French', 'German', 'Arabic'],
+    caps: { import: false, clone: 'local', dialogue: true, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 4, recVram: 6, phase: 5, showLangs: true,
+    note: '17 languages including Arabic, and strong style transfer, but the CPML license makes it evaluation-only.',
+    repo: 'coqui/XTTS-v2', glyph: 'clone',
+  },
+  {
+    id: 'indextts2', name: 'IndexTTS2', family: 'bilibili', runtime: 'sidecar',
+    params: '~1.5B', sizeMb: 6000, sizeLabel: '~6 GB', sizeNote: 'GPT + s2mel + emotion',
+    license: 'Bilibili custom', commercial: false, licenseNote: 'Review required', rating: 9, arabic: false,
+    languages: ['English', 'Chinese'], langCount: 2, coreLangs: ['English', 'Chinese'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 8, recVram: 10, phase: 5, showLangs: false,
+    note: 'Emotionally expressive zero-shot cloning with duration control. Excellent quality, but the custom license needs legal review.',
+    repo: 'IndexTeam/IndexTTS-2', glyph: 'spark',
+  },
+  {
+    id: 'megatts3', name: 'MegaTTS3', family: 'ByteDance', runtime: 'sidecar',
+    params: '0.45B', sizeMb: 1200, sizeLabel: '~1.2 GB', sizeNote: 'Transformer + latents',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 7, arabic: false,
+    languages: ['English', 'Chinese'], langCount: 2, coreLangs: ['English', 'Chinese'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: false, nonVerbal: false, streaming: false, phonemes: false, speed: true, watermark: false },
+    minRam: 8, recRam: 16, minVram: 4, recVram: 6, phase: 5, showLangs: false,
+    note: '0.45B Apache-2.0 cloning model with sparse alignment. Compact and fast; English and Chinese only.',
+    repo: 'bytedance/MegaTTS3', glyph: 'clone',
+  },
+  {
+    id: 'spark-tts', name: 'Spark-TTS', family: 'SparkAudio', runtime: 'sidecar',
+    params: '0.5B', sizeMb: 1000, sizeLabel: '~1 GB', sizeNote: 'Qwen2.5-based',
+    license: 'CC-BY-NC-SA-4.0', commercial: false, licenseNote: 'Non-commercial', rating: 6, arabic: false,
+    languages: ['English', 'Chinese'], langCount: 2, coreLangs: ['English', 'Chinese'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 8, recRam: 16, minVram: 4, recVram: 6, phase: 5, showLangs: false,
+    note: 'Simple Qwen2.5-based cloning model. Non-commercial and superseded by MegaTTS3 and IndexTTS2 on quality.',
+    repo: 'SparkAudio/Spark-TTS-0.5B', glyph: 'clone',
+  },
+  {
+    id: 'dia-1.6b', name: 'Dia-1.6B', family: 'Nari Labs', runtime: 'sidecar',
+    params: '1.6B', sizeMb: 3200, sizeLabel: '~3.2 GB', sizeNote: 'F16 · ~1.2 GB Q4',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 7, arabic: false,
+    languages: ['English'], langCount: 1, coreLangs: ['English'],
+    caps: { import: false, clone: 'local', dialogue: true, emotion: true, nonVerbal: true, streaming: false, phonemes: false, speed: true, watermark: false },
+    minRam: 24, recRam: 32, minVram: 8, recVram: 10, phase: 5, showLangs: true,
+    note: 'Native two-speaker dialogue and non-verbal tags, Apache-2.0. Heavy and English-only.',
+    repo: 'nari-labs/Dia-1.6B-0626', glyph: 'dialogue',
+  },
+  {
+    id: 'vibevoice', name: 'VibeVoice-1.5B', family: 'Microsoft', runtime: 'sidecar',
+    params: '1.5B (2.7B repo)', sizeMb: 5400, sizeLabel: '~5.4 GB', sizeNote: 'BF16 · long-form',
+    license: 'MIT', commercial: true, licenseNote: 'Permissive', rating: 7, arabic: false,
+    languages: ['English', 'Chinese'], langCount: 2, coreLangs: ['English', 'Chinese'],
+    caps: { import: false, clone: null, dialogue: true, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 8, recVram: 10, phase: 5, showLangs: true,
+    note: 'Long-form podcasts with up to 4 speakers and natural turn-taking. No documented reference-audio cloning.',
+    repo: 'microsoft/VibeVoice-1.5B', glyph: 'dialogue',
+  },
+  {
+    id: 'higgs-audio-v2', name: 'Higgs Audio v2 3B', family: 'Boson AI', runtime: 'sidecar',
+    params: '3B (5.8B repo)', sizeMb: 11500, sizeLabel: '~11.5 GB', sizeNote: 'BF16 + codec',
+    license: 'Boson AI custom', commercial: false, licenseNote: 'Review required', rating: 9, arabic: false,
+    languages: ['English', 'Chinese', 'German', 'Korean'], langCount: 4,
+    coreLangs: ['English', 'Chinese', 'German', 'Korean'],
+    caps: { import: false, clone: 'local', dialogue: true, emotion: true, nonVerbal: true, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 24, recRam: 48, minVram: 12, recVram: 16, phase: 5, showLangs: true,
+    note: 'Emotion, multi-speaker dialogue, background music and humming with a cloned voice. Four languages; verify the custom license.',
+    repo: 'bosonai/higgs-audio-v2-generation-3B-base', glyph: 'dialogue',
+  },
+  {
+    id: 'orpheus-3b', name: 'Orpheus-3B', family: 'Canopy Labs', runtime: 'sidecar',
+    params: '3B (3.8B repo)', sizeMb: 7600, sizeLabel: '~7.6 GB', sizeNote: 'BF16 · Llama-based',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 7, arabic: false,
+    languages: ['English'], langCount: 1, coreLangs: ['English'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 24, recRam: 32, minVram: 8, recVram: 12, phase: 5, showLangs: true,
+    note: 'Expressive English narration with cloning and emotion tags. Large and English-only; a niche pick.',
+    repo: 'canopylabs/orpheus-3b-0.1-ft', glyph: 'wave',
+  },
+  {
+    id: 'csm-1b', name: 'CSM-1B', family: 'Sesame', runtime: 'sidecar',
+    params: '1B (1.55B repo)', sizeMb: 3100, sizeLabel: '~3.1 GB', sizeNote: 'BF16',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 6, arabic: false,
+    languages: ['English'], langCount: 1, coreLangs: ['English'],
+    caps: { import: false, clone: 'local', dialogue: true, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 12, recRam: 24, minVram: 6, recVram: 8, phase: 5, showLangs: false,
+    note: 'Conversational speech model with two-speaker context. Interesting for dialogue, but English-only and superseded.',
+    repo: 'sesame/csm-1b', glyph: 'dialogue',
+  },
+  {
+    id: 'zonos-v01', name: 'Zonos-v0.1', family: 'Zyphra', runtime: 'sidecar',
+    params: '1.6B', sizeMb: 3200, sizeLabel: '~3.2 GB', sizeNote: '44.1 kHz',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 6, arabic: false,
+    languages: ['English'], langCount: 1, coreLangs: ['English'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 6, recVram: 8, phase: 5, showLangs: false,
+    note: '44.1 kHz output with emotion, pitch and speed control. English-only and no longer the frontier.',
+    repo: 'Zyphra/Zonos-v0.1-transformer', glyph: 'wave',
+  },
+  {
+    id: 'parler-tts', name: 'Parler-TTS large', family: 'Parler', runtime: 'sidecar',
+    params: '2.3B', sizeMb: 4700, sizeLabel: '~4.7 GB', sizeNote: 'BF16',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 6, arabic: false,
+    languages: ['English'], langCount: 1, coreLangs: ['English'],
+    caps: { import: false, clone: null, dialogue: false, emotion: true, nonVerbal: false, streaming: false, phonemes: false, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 6, recVram: 8, phase: 5, showLangs: false,
+    note: 'Voice controlled by a text description (gender, pace, noise). No cloning; useful for prompt-driven style experiments.',
+    repo: 'parler-tts/parler-tts-large-v1', glyph: 'wave',
+  },
+  {
+    id: 'silma-tts', name: 'SILMA TTS', family: 'SILMA AI', runtime: 'sidecar',
+    params: '150M', sizeMb: 600, sizeLabel: '~0.6 GB', sizeNote: 'FP32 · ~0.3 GB FP16',
+    license: 'Apache-2.0', commercial: true, licenseNote: 'Permissive', rating: 7, arabic: true,
+    languages: ['Arabic', 'English'], langCount: 2, coreLangs: ['Arabic', 'English'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 8, recRam: 16, minVram: 4, recVram: 6, phase: 3, showLangs: true,
+    note: 'The best small Arabic-first model: 150M, bilingual ar/en, <8 s cloning, Arabic diacritics, Apache-2.0, RTF ~0.12.',
+    repo: 'silma-ai/silma-tts', glyph: 'clone',
+  },
+  {
+    id: 'fasih-tts', name: 'Fasih-TTS', family: 'Community', runtime: 'sidecar',
+    params: '467M (XTTS base)', sizeMb: 1900, sizeLabel: '~1.9 GB', sizeNote: 'XTTS fine-tune',
+    license: 'Custom / review', commercial: false, licenseNote: 'Review required', rating: 6, arabic: true,
+    languages: ['Arabic'], langCount: 1, coreLangs: ['Arabic'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: false, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 16, recRam: 32, minVram: 4, recVram: 6, phase: 5, showLangs: true,
+    note: 'Arabic XTTS fine-tune for MSA/Fusha evaluation. Research-grade; check both the fine-tune and the XTTS CPML license.',
+    repo: 'NightPrince/Fasih-TTS-V1', glyph: 'clone',
+  },
+  {
+    id: 'openaudio-s1-mini', name: 'OpenAudio S1-mini', family: 'Fish Audio', runtime: 'sidecar',
+    params: '~0.5B', sizeMb: 1000, sizeLabel: '~1 GB', sizeNote: '13 languages',
+    license: 'CC-BY-NC-SA-4.0', commercial: false, licenseNote: 'Non-commercial', rating: 8, arabic: true,
+    languages: ['Arabic', 'Chinese', 'English', 'French', 'German', 'Italian', 'Japanese', 'Korean', 'Dutch', 'Polish', 'Portuguese', 'Russian', 'Spanish'], langCount: 13,
+    coreLangs: ['English', 'Chinese', 'Arabic', 'Japanese'],
+    caps: { import: false, clone: 'local', dialogue: false, emotion: true, nonVerbal: false, streaming: true, phonemes: false, speed: true, watermark: false },
+    minRam: 12, recRam: 24, minVram: 6, recVram: 8, phase: 3, showLangs: true,
+    note: '13 languages including Arabic, cloning and emotion markers. Non-commercial and share-alike.',
+    repo: 'fishaudio/openaudio-s1-mini', glyph: 'clone',
+  },
+];
+
+const PRESETS = {
+  laptop: { ram: 8, vram: 0, disk: 60, gpu: false },
+  creator: { ram: 16, vram: 6, disk: 80, gpu: true },
+  igpu: { ram: 16, vram: 0, disk: 120, gpu: false },
+  workstation: { ram: 64, vram: 24, disk: 300, gpu: true },
+};
+
+const NAMES = [
+  { id: 'Voxarium', tag: 'Applied · current', note: '“A place for voices.” Broad, memorable, model-agnostic. Phonon stays the flagship engine.' },
+  { id: 'Polyvox', tag: 'Alternative', note: '“Many voices.” Short, technical, clear multi-model signal.' },
+  { id: 'Sonora Studio', tag: 'Explored', note: 'Warm and audio-first; likely crowded in audio software.' },
+  { id: 'Timbral', tag: 'Explored', note: 'Sophisticated and specific; may need explanation.' },
+  { id: 'Utter Studio', tag: 'Explored', note: 'Friendly creator-tool tone; less premium.' },
+  { id: 'Phonon Studio', tag: 'Former name', note: 'Installed and familiar, but tied to one model family. Replaced by Voxarium.' },
+];
+
+const PHASE_INFO = [
+  { id: 0, name: 'Foundation', when: '1–2 weeks', detail: 'manifest, registry, hardware probe, adapter contract, migration' },
+  { id: 1, name: 'Phonon family', when: '3–5 days', detail: '40M English, multilingual and fr/de/es/pt packs plus license gating' },
+  { id: 2, name: 'Browser-native breadth', when: '2–3 weeks', detail: 'ONNX adapter, Kokoro-82M, Piper, Supertonic 3, MeloTTS, the MMS index, Kitten and Sopro' },
+  { id: 3, name: 'Local cloning sidecar', when: '3–4 weeks', detail: 'sidecar supervisor, Chatterbox, CosyVoice2, SILMA TTS, Pocket TTS, F5 and OpenAudio behind gates' },
+  { id: 4, name: 'Flagship multilingual', when: '4–6 weeks', detail: 'Qwen3-TTS, VoxCPM2, MOSS-TTS v1.5, OmniVoice, FireRedTTS3, Breeze TTS 2, Audio8 and Magpie' },
+  { id: 5, name: 'Dialogue & long-tail expression', when: '3–4 weeks', detail: 'Dia-1.6B, VibeVoice, Higgs Audio v2, CSM, IndexTTS2, Orpheus, Zonos, Parler, XTTS-v2, Fasih' },
+  { id: 6, name: 'Polish & hardening', when: '2–3 weeks', detail: 'benchmarks, pinned updates, score verification, storage dashboard and QA matrix' },
+];
+
+const GLYPHS = {
+  wave: '<path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/>',
+  spark: '<path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/>',
+  grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
+  clone: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.6-3.4 2.7-5.2 5.5-5.2s4.9 1.8 5.5 5.2"/><path d="M17 5v8M14 8.5h6"/>',
+  dialogue: '<path d="M4 6h10v7H9l-3.5 3v-3H4z"/><path d="M14 12h6v6h-2v2.5L15.5 18H14z"/>',
+};
+
+const state = {
+  filter: 'all',
+  query: '',
+  selected: new Set(['phonon-40m-multilingual', 'kokoro-82m', 'supertonic-3', 'silma-tts']),
+  hw: { ...PRESETS.creator },
+  preset: 'creator',
+  capsModel: 'phonon-40m-multilingual',
+  appName: 'Voxarium',
+  scope: 'foundation',
+  licensePolicy: 'gate',
+  phases: new Set([0, 1, 2, 3]),
+  options: { gpu: true, clone: true, tests: true, pack: false },
+};
+
+const byId = (id) => MODELS.find((model) => model.id === id);
+const langLabel = (model) => (model.langCount >= 1000 ? '1,100+' : String(model.langCount));
+const isIndexed = (model) => model.langCount > 100;
+const fmt = (value) => `${value} GB`;
+const PROFILE_LABEL = { laptop: 'Office laptop', creator: 'Creator desktop', igpu: 'MacBook / iGPU', workstation: 'Workstation', custom: 'Custom values' };
+
+function fitOf(model) {
+  const { ram, vram, gpu, disk } = state.hw;
+  if (model.sizeMb / 1024 > disk) return { key: 'no', label: 'No disk space', why: 'Needs more free disk than this profile has.' };
+  if (ram < model.minRam) return { key: 'no', label: 'Too heavy', why: `Needs at least ${model.minRam} GB RAM.` };
+  const needsGpu = model.recVram > 0;
+  if (needsGpu && (!gpu || vram < model.minVram)) {
+    if (!gpu) return { key: 'cpu', label: 'CPU fallback', why: 'Runs, but expect 5–20× slower generation.' };
+    if (vram < model.minVram) return { key: 'no', label: 'VRAM short', why: `Needs ${model.minVram} GB VRAM minimum.` };
+  }
+  if (needsGpu) {
+    if (vram >= model.recVram && ram >= model.recRam) return { key: 'great', label: 'Great fit', why: 'Meets recommended RAM and VRAM.' };
+    return { key: 'runs', label: 'Runs', why: 'Meets minimums; may be slower on long scripts.' };
+  }
+  if (ram >= model.recRam) return { key: 'great', label: 'Great fit', why: 'Small model; comfortable on this machine.' };
+  return { key: 'runs', label: 'Runs', why: 'Meets the minimum; close other apps for long renders.' };
+}
+
+function totalLangs() {
+  const set = new Set();
+  for (const model of MODELS) {
+    if (model.langCount > 100) continue;
+    for (const lang of model.languages) set.add(lang);
+  }
+  return set.size;
+}
+
+function esc(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}
+/* ------------------------------------------------------------------
+   Rendering — model gallery
+   ------------------------------------------------------------------ */
+const grid = document.getElementById('modelGrid');
+const countNote = document.getElementById('modelCount');
+
+const FILTERS = {
+  all: () => true,
+  best: (m) => m.rating >= 9,
+  arabic: (m) => m.arabic,
+  multilingual: (m) => m.langCount >= 10,
+  phonon: (m) => m.runtime === 'phonon',
+  onnx: (m) => m.runtime === 'onnx',
+  sidecar: (m) => m.runtime === 'sidecar',
+  clone: (m) => m.caps.clone === 'local',
+  commercial: (m) => m.commercial,
+};
+
+function capDots(model) {
+  const caps = model.caps;
+  const dots = [
+    { label: caps.clone === 'local' ? 'Clone locally' : caps.clone === 'cloud' ? 'Cloud clone' : 'No cloning', on: Boolean(caps.clone), hot: caps.clone === 'local' },
+    { label: 'Dialogue', on: caps.dialogue },
+    { label: 'Emotion', on: caps.emotion },
+    { label: 'Streaming', on: caps.streaming },
+  ];
+  return dots.map((dot) => `<span class="cap-dot ${dot.on ? '' : 'is-off'} ${dot.hot ? 'is-hot' : ''}">${dot.on ? '✓' : '—'} ${esc(dot.label)}</span>`).join('');
+}
+
+function modelCard(model) {
+  const fit = fitOf(model);
+  const selected = state.selected.has(model.id);
+  const runtimeLabel = { phonon: 'phonon-tts · WASM/WebGPU', onnx: 'ONNX Runtime Web', sidecar: 'Local sidecar' }[model.runtime];
+  return `
+  <article class="model-card ${selected ? 'is-selected' : ''}" data-model="${model.id}" tabindex="0" role="button" aria-pressed="${selected}" aria-label="${esc(model.name)}, ${esc(model.params)}, ${esc(fit.label)}">
+    <div class="model-card__top">
+      <div class="model-card__head">
+        <span class="model-card__glyph"><svg class="icon" viewBox="0 0 24 24">${GLYPHS[model.glyph] || GLYPHS.wave}</svg></span>
+        <div>
+          <h3>${esc(model.name)}</h3>
+          <div class="model-card__sub">${esc(model.family)} · ${esc(model.params)}</div>
+        </div>
+      </div>
+      <button class="model-card__pick" type="button" aria-label="${selected ? 'Remove' : 'Add'} ${esc(model.name)} ${selected ? 'from' : 'to'} the prompt">✓</button>
+      <div class="model-card__badges">
+        <span class="badge ${model.commercial ? 'badge--ok' : 'badge--warn'}">${esc(model.license)}</span>
+        <span class="badge badge--rating">★ ${model.rating}/10</span>
+        ${model.arabic ? '<span class="badge badge--ar">Arabic</span>' : ''}
+        <span class="badge">Phase ${model.phase}</span>
+        ${model.caps.watermark ? '<span class="badge badge--bad">Watermarked</span>' : ''}
+      </div>
+    </div>
+    <div class="model-card__specs">
+      <div><span>Download</span><strong>${esc(model.sizeLabel)}</strong></div>
+      <div><span>Languages</span><strong>${langLabel(model)}</strong></div>
+      <div><span>Score</span><strong>${model.rating}/10</strong></div>
+    </div>
+    <div class="model-card__caps">${capDots(model)}</div>
+    <p class="model-card__note">${esc(model.note)}</p>
+    <div class="model-card__foot">
+      <span class="fit fit--${fit.key}" title="${esc(fit.why)}"><i></i>${fit.label}</span>
+      <span class="badge">${esc(runtimeLabel)}</span>
+    </div>
+  </article>`;
+}
+
+function renderModels() {
+  const query = state.query.trim().toLowerCase();
+  const visible = MODELS.filter((model) => {
+    if (!FILTERS[state.filter](model)) return false;
+    if (!query) return true;
+    const haystack = [model.name, model.family, model.license, model.runtime, model.params, model.rating, model.arabic ? 'arabic العربية' : '', ...model.languages].join(' ').toLowerCase();
+    return haystack.includes(query);
+  });
+  grid.innerHTML = visible.length
+    ? visible.map(modelCard).join('')
+    : `<div class="card card--pad" style="grid-column:1/-1;text-align:center;color:var(--muted);padding:44px">
+         <strong style="color:var(--text);display:block;margin-bottom:4px">No model matches “${esc(state.query)}”</strong>
+         Try a language, a license or “sidecar”.
+       </div>`;
+  countNote.textContent = `${visible.length} shown · ${state.selected.size} selected`;
+}
+
+grid.addEventListener('click', (event) => {
+  const card = event.target.closest('.model-card');
+  if (!card) return;
+  const id = card.dataset.model;
+  if (state.selected.has(id)) state.selected.delete(id);
+  else state.selected.add(id);
+  renderModels();
+  renderPrompt();
+});
+
+grid.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  const card = event.target.closest('.model-card');
+  if (!card) return;
+  event.preventDefault();
+  card.click();
+});
+
+document.getElementById('filterRow').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-filter]');
+  if (!button) return;
+  state.filter = button.dataset.filter;
+  document.querySelectorAll('#filterRow .chip').forEach((chip) => chip.classList.toggle('is-on', chip === button));
+  renderModels();
+});
+
+document.getElementById('modelSearch').addEventListener('input', (event) => {
+  state.query = event.target.value;
+  renderModels();
+});
+
+/* ------------------------------------------------------------------
+   Hardware lab
+   ------------------------------------------------------------------ */
+const ramRange = document.getElementById('ramRange');
+const vramRange = document.getElementById('vramRange');
+const diskRange = document.getElementById('diskRange');
+const gpuToggle = document.getElementById('gpuToggle');
+
+function paintRange(input) {
+  const min = Number(input.min);
+  const max = Number(input.max);
+  const pct = ((Number(input.value) - min) / (max - min)) * 100;
+  input.style.setProperty('--fill', `${pct}%`);
+}
+
+function renderHardware() {
+  const { ram, vram, gpu, disk } = state.hw;
+  document.getElementById('ramValue').textContent = fmt(ram);
+  document.getElementById('vramValue').textContent = gpu ? fmt(vram) : 'none';
+  document.getElementById('diskValue').textContent = fmt(disk);
+  [ramRange, vramRange, diskRange].forEach(paintRange);
+  vramRange.disabled = !gpu;
+  vramRange.style.opacity = gpu ? '1' : '.4';
+  gpuToggle.checked = gpu;
+
+  const fits = MODELS.map((model) => ({ model, fit: fitOf(model) }));
+  const great = fits.filter((entry) => entry.fit.key === 'great').length;
+  const runs = fits.filter((entry) => entry.fit.key === 'runs' || entry.fit.key === 'cpu').length;
+  const blocked = fits.filter((entry) => entry.fit.key === 'no').length;
+  const score = Math.round(((great + runs) / MODELS.length) * 100);
+
+  const meter = document.getElementById('fitMeter');
+  meter.style.strokeDashoffset = String(169.6 * (1 - score / 100));
+  document.getElementById('fitScore').textContent = `${score}%`;
+  const title = blocked === 0
+    ? `All ${MODELS.length} models run here`
+    : `${great + runs} of ${MODELS.length} models run here`;
+  document.getElementById('verdictTitle').textContent = title;
+  document.getElementById('verdictText').textContent = blocked === 0
+    ? 'No hard blockers. Prefer the “Great fit” cards for long scripts and batch renders.'
+    : `${blocked} model${blocked === 1 ? '' : 's'} need${blocked === 1 ? 's' : ''} more memory or disk. They stay visible with a reason instead of disappearing.`;
+
+  document.getElementById('hwSummary').innerHTML = `
+    <div class="hw-summary__line"><span>Profile</span><strong>${esc(PROFILE_LABEL[state.preset] || 'Custom values')}</strong></div>
+    <div class="hw-summary__line"><span>Great fit</span><strong style="color:#6ee7b7">${great} models</strong></div>
+    <div class="hw-summary__line"><span>Runs with limits</span><strong style="color:#fcd34d">${runs} models</strong></div>
+    <div class="hw-summary__line"><span>Blocked</span><strong style="color:${blocked ? '#fda4af' : 'var(--muted)'}">${blocked} models</strong></div>
+    <div class="hw-summary__line"><span>Starter set</span><strong>${state.selected.size ? `${[...state.selected].reduce((sum, id) => sum + (byId(id)?.sizeMb || 0), 0).toFixed(0)} MB` : 'none selected'}</strong></div>`;
+
+  const chart = document.getElementById('hwChart');
+  const ordered = [...MODELS].sort((a, b) => a.sizeMb - b.sizeMb).slice(0, 9);
+  const max = Math.log10(2600);
+  chart.innerHTML = ordered.map((model) => {
+    const fit = fitOf(model);
+    const width = Math.max(4, (Math.log10(model.sizeMb + 10) / max) * 100);
+    return `<div class="chart__row">
+      <span title="${esc(model.name)}">${esc(model.name)}</span>
+      <div class="chart__track"><div class="chart__fill ${fit.key === 'no' ? 'is-blocked' : ''}" style="width:${width.toFixed(1)}%"></div></div>
+      <em>${esc(model.sizeLabel)}</em>
+    </div>`;
+  }).join('');
+}
+
+function setHardware(patch, preset) {
+  state.hw = { ...state.hw, ...patch };
+  state.preset = preset || 'custom';
+  ramRange.value = state.hw.ram;
+  vramRange.value = state.hw.vram;
+  diskRange.value = state.hw.disk;
+  document.querySelectorAll('#presetRow .chip').forEach((chip) => chip.classList.toggle('is-on', chip.dataset.preset === state.preset));
+  renderHardware();
+  renderModels();
+  renderPrompt();
+}
+
+document.getElementById('presetRow').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-preset]');
+  if (!button) return;
+  setHardware(PRESETS[button.dataset.preset], button.dataset.preset);
+});
+
+ramRange.addEventListener('input', () => setHardware({ ram: Number(ramRange.value) }));
+vramRange.addEventListener('input', () => setHardware({ vram: Number(vramRange.value) }, state.preset));
+diskRange.addEventListener('input', () => setHardware({ disk: Number(diskRange.value) }, state.preset));
+gpuToggle.addEventListener('change', () => setHardware({ gpu: gpuToggle.checked, vram: gpuToggle.checked ? Math.max(2, state.hw.vram) : 0 }, state.preset));
+
+/* ------------------------------------------------------------------
+   Capability console
+   ------------------------------------------------------------------ */
+const VOICE_SAMPLES = {
+  'phonon-31m-en': ['Ava — English (US)', 'Élodie — French', 'Klaus — German'],
+  'phonon-40m-multilingual': ['Ava — English (US)', 'Élodie — French', 'Klaus — German'],
+  'kokoro-82m': ['af_heart — English (US)', 'jf_alpha — Japanese', 'ef_dora — Spanish'],
+  piper: ['en_US-amy-medium', 'de_DE-thorsten', 'ar_JO-kareem'],
+  melotts: ['EN-US', 'ZH — mixed', 'KR'],
+  'mms-tts': ['eng', 'ara', 'swh'],
+  'kitten-tts': ['expr-voice-2-m', 'expr-voice-3-f'],
+  'pocket-tts': ['Built-in — English', 'Built-in — French'],
+  'supertonic-3': ['M1 — English', 'F1 — Arabic', 'M2 — Korean'],
+  'sopro-v2-turbo': ['Reference clip — 10 s', 'Built-in — English'],
+  omnivoice: ['Reference clip — 9 s', 'Arabic (MSA) — design', 'Arabic (Egyptian) — design'],
+  'qwen3-tts': ['Reference clip — 8 s', 'Design: warm narrator'],
+  'moss-tts': ['Reference clip — 10 s', 'Design: calm male'],
+  voxcpm2: ['Reference clip — 12 s', 'Design: young female', 'Arabic — design'],
+  'firered-tts3': ['Reference clip — 10 s', 'Design: newsreader', 'Arabic — clone'],
+  'audio8-tts': ['Reference clip — 8 s', 'Built-in — Mandarin'],
+  'breeze-tts2': ['Reference clip — 9 s', 'Direction: whisper', 'Design: bright female'],
+  'magpie-tts': ['Built-in — English (US)', 'Built-in — Arabic', 'Built-in — German'],
+  chatterbox: ['Reference clip — 12 s', 'Exaggeration 0.5', 'Arabic — clone'],
+  cosyvoice2: ['Reference clip — 10 s', 'Instruct: warm', 'Cantonese — clone'],
+  'f5-tts': ['Reference clip — 9 s', 'Reference style: calm'],
+  'xtts-v2': ['Reference clip — 14 s', 'Arabic — clone', 'Multi-reference blend'],
+  indextts2: ['Reference clip — 11 s', 'Emotion: happy', 'Duration: 12 s'],
+  megatts3: ['Reference clip — 10 s', 'Latent — female'],
+  'spark-tts': ['Reference clip — 9 s', 'Built-in — English'],
+  'dia-1.6b': ['[S1] Speaker one', '[S2] Speaker two'],
+  vibevoice: ['Speaker 1 — host', 'Speaker 2 — guest', 'Speaker 3', 'Speaker 4'],
+  'higgs-audio-v2': ['Reference clip — 10 s', 'Multi-speaker — 2'],
+  'orpheus-3b': ['tara — English', 'leo — English'],
+  'csm-1b': ['Speaker 0 — context', 'Speaker 1 — context'],
+  'zonos-v01': ['Reference clip — 8 s', 'Embedding — warm'],
+  'parler-tts': ['Description: female, calm', 'Description: male, news'],
+  'silma-tts': ['Arabic — MSA', 'Reference clip — 6 s', 'English — clone'],
+  'fasih-tts': ['Arabic — Fusha', 'Reference clip — 8 s'],
+  'openaudio-s1-mini': ['Reference clip — 10 s', 'Emotion: excited', 'Arabic — clone'],
+};
+
+const CAP_ITEMS = (model) => [
+  { on: true, label: 'Languages', desc: isIndexed(model) ? `${langLabel(model)} indexed packs` : `${model.langCount} declared language${model.langCount === 1 ? '' : 's'}` },
+  { on: model.arabic, label: 'Arabic', desc: model.arabic ? 'Declared and tested — MSA first' : 'Not supported; never show an Arabic chip' },
+  { on: true, label: 'Quality score', desc: `${model.rating}/10 editorial score (rubric §4.1)` },
+  { on: Boolean(model.caps.import), label: 'Import voice file', desc: model.caps.import ? 'Speaker tensor validated locally' : 'Different voice format' },
+  { on: Boolean(model.caps.clone), label: 'Clone a voice', desc: model.caps.clone === 'local' ? 'On-device, never uploaded' : model.caps.clone === 'cloud' ? 'Cloud once, then local file' : 'Not supported by this model' },
+  { on: model.caps.dialogue, label: 'Multi-speaker', desc: model.caps.dialogue ? '[S1] / [S2] script editor' : 'Single speaker only' },
+  { on: model.caps.emotion, label: 'Emotion / style', desc: model.caps.emotion ? 'Mapped to the model’s own control' : 'No style control' },
+  { on: model.caps.nonVerbal, label: 'Non-verbal tags', desc: model.caps.nonVerbal ? 'Laughs, sighs, coughs' : 'Speech only' },
+  { on: model.caps.streaming, label: 'Streaming', desc: model.caps.streaming ? 'Play while generating' : 'Buffer, then play' },
+  { on: model.caps.phonemes, label: 'Pronunciation', desc: model.caps.phonemes ? 'Phonemes / dictionary' : 'Text normalization only' },
+  { on: model.caps.speed, label: 'Speed control', desc: model.caps.speed ? 'Per-render duration' : 'Fixed pace' },
+  { on: model.caps.watermark, label: 'Watermark', desc: model.caps.watermark ? 'Disclosed on export' : 'No embedded watermark' },
+  { on: model.commercial, label: 'Commercial use', desc: model.commercial ? `${model.license} allows it` : `${model.license} — non-commercial only` },
+  { on: true, label: 'Backend', desc: { phonon: 'phonon-tts · WASM/WebGPU', onnx: 'ONNX Runtime Web', sidecar: 'Loopback sidecar' }[model.runtime] },
+];
+
+function renderCaps() {
+  const model = byId(state.capsModel) || MODELS[0];
+  const select = document.getElementById('capsSelect');
+  if (select.options.length !== MODELS.length) {
+    select.innerHTML = MODELS.map((item) => `<option value="${item.id}">${esc(item.name)}</option>`).join('');
+  }
+  select.value = model.id;
+
+  const runtime = document.getElementById('capsRuntime');
+  runtime.textContent = model.runtime === 'phonon' ? 'WASM / WebGPU' : model.runtime === 'onnx' ? 'ONNX Web' : 'Local sidecar';
+  runtime.className = `badge ${model.runtime === 'phonon' ? 'badge--violet' : model.runtime === 'onnx' ? 'badge--cyan' : 'badge--ok'}`;
+  const license = document.getElementById('capsLicense');
+  license.textContent = model.license;
+  license.className = `badge ${model.commercial ? 'badge--ok' : 'badge--warn'}`;
+
+  document.getElementById('capsGrid').innerHTML = CAP_ITEMS(model).map((item) => `
+    <div class="cap-item ${item.on ? 'is-on' : 'is-off'}">
+      <span class="cap-item__state">${item.on ? '✓' : '—'}</span>
+      <div><strong>${esc(item.label)}</strong><em>${esc(item.desc)}</em></div>
+    </div>`).join('');
+
+  const speed = model.runtime === 'phonon'
+    ? 'Real-time CPU/GPU'
+    : model.sizeMb < 200
+      ? 'Fast, CPU-capable'
+      : model.sizeMb < 900
+        ? 'Better with GPU'
+        : 'Heavy, GPU required';
+  document.getElementById('capsMeter').innerHTML = `
+    <div><span>Footprint</span><strong>${esc(model.sizeLabel)}</strong></div>
+    <div><span>RAM floor</span><strong>${model.minRam} / ${model.recRam} GB</strong></div>
+    <div><span>VRAM floor</span><strong>${model.recVram ? `${model.minVram} / ${model.recVram} GB` : 'none'}</strong></div>
+    <div><span>Throughput</span><strong>${esc(speed)}</strong></div>`;
+
+  renderMock(model);
+}
+
+function renderMock(model) {
+  const fit = fitOf(model);
+  document.getElementById('mockTitle').textContent = `voxarium — ${model.name}`;
+  document.getElementById('mockModelName').textContent = model.name;
+  const fitBadge = document.getElementById('mockFit');
+  fitBadge.textContent = fit.label;
+  fitBadge.className = `badge ${fit.key === 'great' ? 'badge--ok' : fit.key === 'no' ? 'badge--bad' : 'badge--warn'}`;
+
+  const tabs = ['Studio', 'Voices'];
+  if (model.caps.clone) tabs.push('Clone');
+  if (model.caps.dialogue) tabs.push('Dialogue');
+  document.getElementById('mockTabs').innerHTML = tabs.map((tab, index) => `<button class="mock__tab ${index === 0 ? 'is-active' : ''}" type="button">${tab}</button>`).join('');
+
+  const langs = model.languages.slice(0, 7);
+  const more = model.langCount > langs.length ? `<span class="mock__lang">+${isIndexed(model) ? langLabel(model) : model.langCount - langs.length} more</span>` : '';
+  const voices = (VOICE_SAMPLES[model.id] || VOICE_SAMPLES[model.family] || VOICE_SAMPLES['phonon-31m-en']).slice(0, 3);
+
+  document.getElementById('mockPanel').innerHTML = `
+    <div class="mock__label"><span>Language</span><span>${isIndexed(model) ? `${langLabel(model)} indexed` : `${model.langCount} available`}</span></div>
+    <div class="mock__langs">
+      ${langs.map((lang, index) => `<span class="mock__lang ${index < 3 ? 'is-on' : ''}">${esc(lang)}</span>`).join('')}
+      ${more}
+    </div>
+    <div class="mock__label" style="margin-top:14px"><span>Voice${model.caps.clone ? ' · local + catalog' : ''}</span><span>${model.caps.import ? 'import ✓' : 'fixed list'}</span></div>
+    <div class="mock__voices">
+      ${voices.map((voice, index) => `<div class="mock__voice"><span class="mock__avatar"></span><span>${esc(voice)}</span>${index === 0 ? '<em>active</em>' : ''}</div>`).join('')}
+    </div>
+    ${model.caps.dialogue ? '<div class="mock__prompt">[S1] Let’s take the long way home. [S2] <em>(laughs)</em> You always say that.</div>' : '<div class="mock__prompt">The script stays the same. Only the controls the model can honour are shown.</div>'}`;
+
+  document.getElementById('mockActions').innerHTML = `
+    <button class="mock__generate" type="button">Generate speech</button>
+    ${model.caps.clone ? '<button class="mock__ghost" type="button">Add a voice</button>' : ''}`;
+
+  const note = document.getElementById('mockNote');
+  if (!model.caps.clone) {
+    note.className = 'mock__note is-warn';
+    note.innerHTML = `<strong>Clone tab hidden.</strong> ${esc(model.name)} does not accept a speaker recording or an imported tensor, so the app never offers one.`;
+  } else if (model.caps.clone === 'cloud') {
+    note.className = 'mock__note';
+    note.innerHTML = `<strong>Cloud, once.</strong> A 10–15 second clip goes to Gradium to compute the embedding; the resulting file is local and every render stays offline. Import stays available with cloud off.`;
+  } else {
+    note.className = 'mock__note';
+    note.innerHTML = `<strong>Fully local cloning.</strong> Record → trim → consent → embed on this machine. Nothing is uploaded, and the voice works offline afterwards.`;
+  }
+}
+
+document.getElementById('capsSelect').addEventListener('change', (event) => {
+  state.capsModel = event.target.value;
+  renderCaps();
+});
+/* ------------------------------------------------------------------
+   Languages, names and roadmap
+   ------------------------------------------------------------------ */
+function renderLanguages() {
+  const shown = MODELS
+    .filter((model) => model.showLangs && (model.arabic || model.langCount >= 8))
+    .sort((a, b) => b.langCount - a.langCount);
+  document.getElementById('langGrid').innerHTML = shown.map((model) => {
+    const chips = isIndexed(model)
+      ? [`${langLabel(model)} indexed by ISO code`, ...model.coreLangs.map((lang) => `${lang} (sample)`)]
+      : [...model.languages.slice(0, 11), ...(model.languages.length > 11 ? [`+${model.langCount - 11} more`] : [])];
+    return `<article class="card lang-card">
+      <header>
+        <h3>${esc(model.name)}</h3>
+        <span class="lang-card__meta">${langLabel(model)} · ★${model.rating} · ${esc(model.license)}</span>
+      </header>
+      ${model.arabic ? '<span class="badge badge--ar" style="align-self:flex-start">Arabic</span>' : ''}
+      <div class="lang-chips">
+        ${chips.map((lang) => `<span class="lang-chip ${model.coreLangs.includes(lang) ? 'is-core' : ''}">${esc(lang)}</span>`).join('')}
+      </div>
+      <p class="lang-note">${esc(model.note)}</p>
+    </article>`;
+  }).join('');
+
+  const browser = new Set();
+  MODELS.filter((model) => model.runtime === 'onnx' && model.langCount < 100).forEach((model) => model.languages.forEach((lang) => browser.add(lang)));
+  const clone = new Set();
+  MODELS.filter((model) => model.caps.clone === 'local').forEach((model) => model.languages.forEach((lang) => clone.add(lang)));
+  const starter = ['phonon-40m-multilingual', 'kokoro-82m', 'piper'].reduce((sum, id) => sum + (byId(id)?.sizeMb || 0), 0);
+
+  document.getElementById('langTotal').textContent = String(totalLangs());
+  document.getElementById('langBrowser').textContent = String(browser.size);
+  document.getElementById('langClone').textContent = String(clone.size);
+  document.getElementById('langDisk').textContent = `${starter.toFixed(0)} MB`;
+}
+
+function renderNames() {
+  document.getElementById('nameGrid').innerHTML = NAMES.map((name) => `
+    <button type="button" class="name-card ${state.appName === name.id ? 'is-on' : ''}" data-name="${esc(name.id)}">
+      <strong>${esc(name.id)}</strong>
+      <span>${esc(name.note)}</span>
+      <em>${esc(name.tag)}</em>
+    </button>`).join('');
+}
+
+document.getElementById('nameGrid').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-name]');
+  if (!button) return;
+  state.appName = button.dataset.name;
+  document.getElementById('promptName').value = state.appName;
+  renderNames();
+  renderPrompt();
+});
+
+document.querySelectorAll('[data-phase]').forEach((input) => {
+  input.addEventListener('change', () => {
+    const phase = Number(input.dataset.phase);
+    if (input.checked) state.phases.add(phase);
+    else state.phases.delete(phase);
+    const card = input.closest('.phase');
+    if (card) card.classList.toggle('is-on', input.checked);
+    renderPrompt();
+  });
+});
+
+/* ------------------------------------------------------------------
+   Prompt builder
+   ------------------------------------------------------------------ */
+const promptText = document.getElementById('promptText');
+const promptWords = document.getElementById('promptWords');
+const promptState = document.getElementById('promptState');
+
+const SCOPE_TEXT = {
+  foundation: 'Do Phase 0 (foundation) first, then wire every selected model end to end. Keep unselected models in the registry but do not build their runtimes yet. If a selected model needs the sidecar, build only the supervisor surface it requires.',
+  full: 'Implement the phases in order. Finish and verify each phase before starting the next; the app must stay usable with the last working model at every step.',
+  pack: 'Deliver the smallest coherent slice: one selected model running through the real registry and adapter path, with the UI gated by its manifest. Do the minimum foundation work needed for that slice, and leave the rest of the registry staged but inert.',
+};
+
+const LICENSE_TEXT = {
+  gate: 'Include non-commercial models, but never activate one without an explicit, persisted acknowledgment. Show a permanent license badge on the model card, the Studio header and every exported file’s metadata. Keep an Apache-2.0 model as the default.',
+  permissive: 'Only implement models whose weights allow commercial use. Exclude CC-BY-NC, Coqui CPML and any unclear license from the registry, and add a short note in the plan explaining what was excluded and why.',
+  any: 'Include every selected model, but keep restricted licenses behind the acknowledgment gate and a visible badge. “Include” never means “silently activate”.',
+};
+
+function promptModelLines() {
+  const models = [...state.selected].map(byId).filter(Boolean).sort((a, b) => a.phase - b.phase);
+  if (!models.length) return '_No models selected. Pick at least one card in section 02._';
+  return models.map((model) => {
+    const langs = isIndexed(model) ? `${langLabel(model)} indexed languages` : `${model.langCount} language${model.langCount === 1 ? '' : 's'}: ${model.languages.slice(0, 8).join(', ')}${model.languages.length > 8 ? ', …' : ''}`;
+    const clone = model.caps.clone === 'local' ? 'local cloning' : model.caps.clone === 'cloud' ? 'cloud-once cloning' : 'no cloning';
+    return `- **${model.name}** (\`${model.id}\`) — ${model.runtime} runtime, ~${model.sizeMb} MB, ${model.license}, score ${model.rating}/10. ${langs}${model.arabic ? ' **Arabic supported.**' : ' No Arabic.'} Capabilities: ${clone}${model.caps.dialogue ? ', multi-speaker dialogue' : ''}${model.caps.emotion ? ', emotion control' : ''}${model.caps.nonVerbal ? ', non-verbal tags' : ''}${model.caps.watermark ? ', watermarked output' : ''}. Phase ${model.phase}.`;
+  }).join('\n');
+}
+
+function promptPhaseLines() {
+  const phases = [...state.phases].sort((a, b) => a - b);
+  if (!phases.length) return '_No phases selected. Tick at least one phase in section 06._';
+  return phases.map((id) => {
+    const phase = PHASE_INFO[id];
+    return `- **Phase ${phase.id} — ${phase.name}** (${phase.when}): ${phase.detail}.`;
+  }).join('\n');
+}
+
+function buildPrompt() {
+  const hw = state.hw;
+  const name = (state.appName || 'Voxarium').trim() || 'Voxarium';
+  const selected = [...state.selected].map(byId).filter(Boolean);
+  const needsSidecar = selected.some((model) => model.runtime === 'sidecar');
+  const needsOnnx = selected.some((model) => model.runtime === 'onnx');
+  const needsPhonon = selected.some((model) => model.runtime === 'phonon');
+  const restricted = selected.filter((model) => !model.commercial);
+
+  const lines = [];
+  lines.push(`# Task: ${name} — multi-model local TTS`);
+  lines.push('');
+  lines.push('You are working in the existing **Electron + React + TypeScript** app at `C:\\Users\\Ahmed\\Documents\\Projects\\Phonon Studio` (no git repo, Windows, Node 24, `npm.cmd`). Read `docs/model-expansion-plan.md` first, then inspect the current engine, settings, download and voice flows before changing anything.');
+  lines.push('');
+  lines.push('## Goal');
+  lines.push(`Make the TTS engine **model-aware** instead of hard-coded to Phonon 31M. A model manifest (files, hashes, languages, voices, capabilities, license, hardware floor) becomes the single source of truth, and adapters let the app run models in the existing \`phonon-tts\` WebGPU/WASM worker, in ONNX Runtime Web, or in an optional loopback sidecar. Generation stays fully offline after download; only optional voice cloning may use the cloud, once, with explicit disclosure.`);
+  lines.push('');
+  lines.push('## What already exists (do not regress)');
+  lines.push('- Phonon 31M English (Q8/F32) with 102 catalog voices, custom `.safetensors` import and Gradium cloud-once cloning.');
+  lines.push('- `allowCloudCloning` setting: when off, the app is import-only and nothing is uploaded.');
+  lines.push('- Custom voices in `userData/voices/custom/` + `userData/custom-voices.json`; `voices:clear` must keep `custom/`.');
+  lines.push('- GPU preference in Settings (`auto` / `high-performance` / `low-power`), the `force-high-performance-gpu` startup switch and the `public/phonon/worker-gpu.js` shim.');
+  lines.push('- History, batch rendering, downloads with hash checks and the existing dark/light themes.');
+  lines.push('');
+  lines.push('## Models to add');
+  lines.push(promptModelLines());
+  lines.push('');
+  lines.push('## Hardware baseline');
+  lines.push(`- Target: **${hw.ram} GB RAM**, **${hw.gpu ? `${hw.vram} GB VRAM on a hardware GPU` : 'no hardware GPU (CPU/iGPU only)'}**, **${hw.disk} GB free disk**.`);
+  lines.push('- Compute a fit level before download (`great` / `runs` / `cpu` / `too heavy`) from manifest minimums and recommendations. Show the reason; never hide a model silently.');
+  lines.push('- Sidecar models must be opt-in downloads with a VRAM/RAM gate, a disk check, and a clear uninstall path.');
+  lines.push('');
+  lines.push('## Scope');
+  lines.push(SCOPE_TEXT[state.scope]);
+  if (needsPhonon) lines.push('- **Phonon runtime:** parameterise the existing `loadEngine`/worker URLs by manifest. The 40M family shares the same file layout and voice format, so it must reuse the current adapter.');
+  if (needsOnnx) lines.push('- **ONNX runtime:** add a shared ONNX Runtime Web worker (WASM with optional WebGPU), model-specific pre/post-processing, cancellation and a memory guard.');
+  if (needsSidecar) lines.push('- **Sidecar runtime:** loopback-only process on a random port with a per-session token, health check, log viewer and guaranteed shutdown on quit or deselect. No outbound network.');
+  lines.push('');
+  lines.push('## Phases');
+  lines.push(promptPhaseLines());
+  lines.push('');
+  lines.push('## License policy');
+  lines.push(LICENSE_TEXT[state.licensePolicy]);
+  if (restricted.length) {
+    lines.push(`- Selected restricted model(s): ${restricted.map((model) => `${model.name} (${model.license})`).join(', ')}.`);
+  }
+  lines.push('');
+  lines.push('## Required behaviour');
+  lines.push('- **Capability gating:** languages, voice picker, Clone tab, dialogue editor, emotion controls and streaming toggle are driven by manifest capabilities. If a capability is false, hide or disable the control with a reason.');
+  lines.push('- **Downloads:** per-model state machine (`not-installed → downloading → verifying → installed → update`), resume/cancel, SHA-256 verification, atomic install into `userData/models/<id>/`, and an “installed / corrupt / partial” indicator.');
+  lines.push('- **Migration:** adopt the existing Phonon 31M files without re-downloading, map current settings to `phonon-31m-en`, and keep `custom-voices.json` working with safe defaults.');
+  lines.push('- **Language selector:** languages are driven by the selected model, with locales and quality notes from the manifest. Switching to a smaller model disables or hides unsupported languages with a reason.');
+  lines.push('- **Arabic:** show the Arabic chip only for the 13 models that declare it, default to MSA, and expose a variety sub-selector (for example OmniVoice’s 14 varieties) only where the model supports it.');
+  lines.push('- **Voice picker:** groups voices by model compatibility. A Kokoro voice is not shown for Phonon; a Phonon `.safetensors` is not shown for Piper. Imported tensors are validated against the selected model’s format and incompatible voices are disabled with a reason.');
+  lines.push('- **History:** store `modelId`, runtime, license and the capabilities used; “Reuse settings” restores model + voice + language.');
+  if (state.options.clone) {
+    lines.push('- **Cloning ethics:** require an explicit “I have permission to clone this voice” checkbox, store the consent timestamp, keep the cloud-once upload disclosure visible, and keep import fully offline.');
+  }
+  if (state.options.gpu) {
+    lines.push('- **GPU preference:** keep the existing three-way adapter setting. Pass `powerPreference` through the worker shim and keep the restart prompt for startup-dependent changes. Explain that Chromium owns the final adapter choice.');
+  }
+  if (state.options.tests) {
+    lines.push('- **Tests:** `npm.cmd run typecheck`, `npm.cmd run build`, unit tests for fit/manifest/license/voice compatibility, and Playwright (`_electron`) coverage for browse → download (stubbed) → activate → synthesize → switch → uninstall.');
+  }
+  if (state.options.pack) {
+    lines.push('- **Packaging:** `npm.cmd run pack`, then smoke-test the packaged app. Close the dev instance first (single-instance lock).');
+  }
+  lines.push('');
+  lines.push('## Acceptance criteria');
+  lines.push('- Every downloaded file is hash-verified; a corrupted file is re-downloaded, never used.');
+  lines.push('- A failed model load leaves the previous model selectable and the app usable.');
+  lines.push('- Switching models preserves text and per-model settings; switching back restores the previous voice.');
+  lines.push('- Batch validates every row against the active model and offers “switch all”.');
+  lines.push('- No renderer console errors; TypeScript strict passes; keyboard and reduced-motion behaviour is intact.');
+  lines.push('- Every model card shows its 1–10 score with the rubric and evidence link, and the Arabic chip appears only on the 13 supported models.');
+  lines.push('- The Phonon 31M path is byte-for-byte as reliable as before this change.');
+  lines.push('');
+  lines.push('## Deliverables');
+  lines.push('1. `ModelManifest` + `ModelCapabilities` + `TtsAdapter` types with no `any`.');
+  lines.push('2. Registry (bundled manifests) and `userData/models-state.json` for installs and license acknowledgments.');
+  lines.push('3. Hardware probe (RAM, VRAM/adapter list, WebGPU limits, free disk) with cached results.');
+  lines.push('4. Adapters for the selected runtimes, each behind a timeout and a clear error state.');
+  lines.push('5. Models page + model card/details/fit badge/license gate, and capability-driven changes in Studio, Voices, Batch, History and Settings.');
+  lines.push('6. A short implementation note listing every new dependency, its license and why it is needed.');
+  lines.push('');
+  lines.push('## Working style');
+  lines.push('- Inspect before editing; this app has user work in progress and no version control.');
+  lines.push('- Prefer extending the existing design system (`src/styles/*`, `tokens.css`) over new visual languages.');
+  lines.push('- Report file paths, commands run and test output. Stop and ask before adding a dependency that ships native binaries or a second runtime.');
+  lines.push('');
+  lines.push(`_Generated from docs/model-expansion-plan.html — scope: ${state.scope}, license policy: ${state.licensePolicy}, ${selected.length} model(s), ${state.phases.size} phase(s)._`);
+  return lines.join('\n');
+}
+
+function renderPrompt() {
+  const text = buildPrompt();
+  promptText.textContent = text;
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  promptWords.textContent = `${words.toLocaleString()} words`;
+  promptState.textContent = `${state.selected.size} model${state.selected.size === 1 ? '' : 's'} · ${state.phases.size} phase${state.phases.size === 1 ? '' : 's'}`;
+
+  const hw = state.hw;
+  document.getElementById('promptHw').innerHTML = [
+    `<span class="mini-tag"><b>RAM</b> ${hw.ram} GB</span>`,
+    `<span class="mini-tag"><b>VRAM</b> ${hw.gpu ? `${hw.vram} GB` : 'none'}</span>`,
+    `<span class="mini-tag"><b>Disk</b> ${hw.disk} GB</span>`,
+    `<span class="mini-tag"><b>GPU</b> ${hw.gpu ? 'yes' : 'CPU only'}</span>`,
+  ].join('');
+
+  const models = [...state.selected].map(byId).filter(Boolean);
+  document.getElementById('promptModels').innerHTML = models.length
+    ? models.map((model) => `<span class="mini-tag">${esc(model.name)}</span>`).join('')
+    : '<span class="mini-tag is-empty">none selected</span>';
+
+  const phases = [...state.phases].sort((a, b) => a - b);
+  document.getElementById('promptPhases').innerHTML = phases.length
+    ? phases.map((id) => `<span class="mini-tag">P${id} · ${esc(PHASE_INFO[id].name)}</span>`).join('')
+    : '<span class="mini-tag is-empty">none selected</span>';
+}
+
+/* Controls */
+document.getElementById('promptName').addEventListener('input', (event) => {
+  state.appName = event.target.value;
+  renderNames();
+  renderPrompt();
+});
+
+document.getElementById('scopeSeg').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-scope]');
+  if (!button) return;
+  state.scope = button.dataset.scope;
+  document.querySelectorAll('#scopeSeg button').forEach((item) => item.classList.toggle('is-on', item === button));
+  renderPrompt();
+});
+
+document.getElementById('licenseSeg').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-license]');
+  if (!button) return;
+  state.licensePolicy = button.dataset.license;
+  document.querySelectorAll('#licenseSeg button').forEach((item) => item.classList.toggle('is-on', item === button));
+  renderPrompt();
+});
+
+document.getElementById('optGpu').addEventListener('change', (event) => {
+  state.options.gpu = event.target.checked;
+  renderPrompt();
+});
+document.getElementById('optClone').addEventListener('change', (event) => {
+  state.options.clone = event.target.checked;
+  renderPrompt();
+});
+document.getElementById('optTests').addEventListener('change', (event) => {
+  state.options.tests = event.target.checked;
+  renderPrompt();
+});
+document.getElementById('optPack').addEventListener('change', (event) => {
+  state.options.pack = event.target.checked;
+  renderPrompt();
+});
+
+document.getElementById('resetPrompt').addEventListener('click', () => {
+  state.selected = new Set(['phonon-40m-multilingual', 'kokoro-82m', 'supertonic-3', 'silma-tts']);
+  state.scope = 'foundation';
+  state.licensePolicy = 'gate';
+  state.phases = new Set([0, 1, 2, 3]);
+  state.options = { gpu: true, clone: true, tests: true, pack: false };
+  state.appName = 'Voxarium';
+  document.getElementById('promptName').value = state.appName;
+  document.querySelectorAll('#scopeSeg button').forEach((item) => item.classList.toggle('is-on', item.dataset.scope === 'foundation'));
+  document.querySelectorAll('#licenseSeg button').forEach((item) => item.classList.toggle('is-on', item.dataset.license === 'gate'));
+  document.querySelectorAll('[data-phase]').forEach((input) => {
+    input.checked = state.phases.has(Number(input.dataset.phase));
+    const card = input.closest('.phase');
+    if (card) card.classList.toggle('is-on', input.checked);
+  });
+  ['optGpu', 'optClone', 'optTests'].forEach((id) => { document.getElementById(id).checked = true; });
+  document.getElementById('optPack').checked = false;
+  renderModels();
+  renderNames();
+  renderPrompt();
+  promptState.textContent = 'reset';
+});
+
+/* Copy + download */
+const copyButton = document.getElementById('copyPrompt');
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    area.remove();
+    return ok;
+  }
+}
+
+copyButton.addEventListener('click', async () => {
+  const ok = await copyText(buildPrompt());
+  copyButton.classList.toggle('copy-ok', ok);
+  copyButton.lastChild.textContent = ok ? ' Copied' : ' Copy failed';
+  promptState.textContent = ok ? 'copied to clipboard' : 'select and copy manually';
+  setTimeout(() => {
+    copyButton.classList.remove('copy-ok');
+    copyButton.lastChild.textContent = ' Copy prompt';
+  }, 1900);
+});
+
+document.getElementById('downloadPrompt').addEventListener('click', () => {
+  const name = (state.appName || 'voxarium').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const blob = new Blob([buildPrompt()], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${name}-expansion-prompt.md`;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 4000);
+  promptState.textContent = 'downloaded .md';
+});
+
+/* ------------------------------------------------------------------
+   Chrome: progress, sticky bar, reveal, counters
+   ------------------------------------------------------------------ */
+const progressBar = document.getElementById('progressBar');
+const topbar = document.querySelector('.topbar');
+function onScroll() {
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  progressBar.style.width = `${max > 0 ? (window.scrollY / max) * 100 : 0}%`;
+  topbar.classList.toggle('is-stuck', window.scrollY > 12);
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (!entry.isIntersecting) return;
+    entry.target.classList.add('is-in');
+    revealObserver.unobserve(entry.target);
+  });
+}, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach((element) => revealObserver.observe(element));
+
+document.querySelectorAll('[data-count]').forEach((element) => {
+  const target = Number(element.dataset.count);
+  let frame = 0;
+  const steps = 26;
+  const tick = () => {
+    frame += 1;
+    element.textContent = String(Math.round((target * frame) / steps));
+    if (frame < steps) requestAnimationFrame(tick);
+    else element.textContent = String(target);
+  };
+  requestAnimationFrame(tick);
+});
+
+/* ------------------------------------------------------------------
+   Init
+   ------------------------------------------------------------------ */
+renderModels();
+renderHardware();
+renderCaps();
+renderLanguages();
+renderNames();
+renderPrompt();
+onScroll();
+</script>
+</body>
+</html>

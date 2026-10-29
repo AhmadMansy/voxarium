@@ -1,0 +1,217 @@
+/* ============================================================
+   Voice library
+   ============================================================ */
+
+.page--voices .notice {
+  margin-bottom: 14px;
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 29px;
+  padding: 0 10px;
+  border-radius: 7px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 540;
+  white-space: nowrap;
+  transition:
+    background 0.16s var(--ease),
+    color 0.16s var(--ease);
+}
+
+.filter-chip:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.filter-chip > span {
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+.filter-chip.is-active {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), var(--inset-highlight);
+}
+
+.filter-chip.is-active > span {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.filter-chip--icon {
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.filter-chip--icon.is-active {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 30%, transparent);
+  background: var(--warn-soft);
+}
+
+.filter-fields {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.filter-fields .search {
+  width: 198px;
+}
+
+.voice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 13px;
+}
+
+.voice-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--card) 88%, transparent), var(--card));
+  box-shadow: var(--inset-highlight), 0 14px 34px -30px rgba(0, 0, 0, 0.8);
+  transition:
+    transform 0.2s var(--ease),
+    border-color 0.2s var(--ease),
+    box-shadow 0.2s var(--ease);
+}
+
+.voice-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--inset-highlight), var(--shadow-soft);
+}
+
+.voice-card.is-selected {
+  border-color: var(--accent-line);
+  box-shadow:
+    0 0 0 1px var(--accent-line),
+    var(--inset-highlight),
+    var(--shadow-soft);
+}
+
+.voice-card.is-selected::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: 15px 0 0 15px;
+  background: var(--accent);
+}
+
+.voice-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.voice-card__marks {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.voice-card__marks .tag {
+  height: 19px;
+  font-size: 9px;
+  padding: 0 6px;
+}
+
+.voice-card__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.voice-card__heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 14.5px;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.voice-card__heading .tag {
+  height: 18px;
+  padding: 0 6px;
+  font-size: 9px;
+}
+
+.voice-card__heading > span {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voice-card__desc {
+  display: -webkit-box;
+  min-height: 50px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.52;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.voice-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 3px;
+}
+
+.voice-card__actions .btn:first-child {
+  flex: 1;
+}
+
+.voice-card__actions .btn--icon {
+  flex: none;
+}
+
