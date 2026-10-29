@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { VOICES, localeFlags, localeLabel } from '../data/catalog';
 import { computePeaks } from '../lib/audio';
+import { voiceCompatibilityNote, voiceCompatibleWithModel } from '../models/compat';
 import { useFavoriteVoices } from '../lib/favorites';
 import { classNames, formatBytes } from '../lib/utils';
 import { usePlayer } from '../player';
@@ -29,6 +30,7 @@ export function VoicesPage() {
   const {
     settings,
     model,
+    models,
     engine,
     updateSettings,
     downloadVoice,
@@ -79,7 +81,7 @@ export function VoicesPage() {
 
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return voices.filter((voice) => {
+    const filtered = voices.filter((voice) => {
       if (filter === 'yours' && voice.source !== 'custom') return false;
       if (filter === 'favorites' && !favorites.includes(voice.id)) return false;
       if (filter === 'downloaded' && !isInstalled(voice)) return false;
@@ -91,8 +93,15 @@ export function VoicesPage() {
         .toLowerCase()
         .includes(needle);
     });
+    // Compatible voices lead; incompatible ones stay visible with a reason so the
+    // catalog never silently disappears when a model is switched.
+    return filtered.sort((a, b) => {
+      const aOk = voiceCompatibleWithModel(models.activeModel, a) ? 0 : 1;
+      const bOk = voiceCompatibleWithModel(models.activeModel, b) ? 0 : 1;
+      return aOk - bOk;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, filter, locale, gender, favorites, installed, voices]);
+  }, [query, filter, locale, gender, favorites, installed, voices, models.activeModel]);
 
   const missing = useMemo(() => VOICES.filter((voice) => !installed.has(voice.id)), [installed]);
   const missingBytes = missing.length * 256136;
@@ -193,8 +202,12 @@ export function VoicesPage() {
       <div className="notice">
         <Icon name="info" size={15} />
         <span>
-          Phonon 31M is an English checkpoint. Accented and character voices shape delivery and personality; the words are
-          always spoken in English. Your own voices are cloned or imported once, then run entirely on this device.
+          Showing compatibility with <strong>{models.activeModel.shortName}</strong>.{' '}
+          {models.activeModel.voices.format === 'phonon-safetensors'
+            ? 'Voices in the current language stay available; others are grouped below with the reason they cannot be used.'
+            : models.activeModel.voices.note ||
+              'This model brings its own voice pack, so the shared Phonon catalog cannot be used with it.'}{' '}
+          Your own voices are cloned or imported once, then run entirely on this device.
         </span>
         <em>{formatBytes(missingBytes)} missing</em>
       </div>
@@ -244,15 +257,24 @@ export function VoicesPage() {
 
       {results.length ? (
         <div className="voice-grid">
-          {results.map((voice) => {
+          {results.map((voice, index) => {
             const custom = voice.source === 'custom';
             const downloaded = isInstalled(voice);
             const selected = selectedId === voice.id;
             const isPreviewing = previewingId === voice.id;
             const activePreview = player.meta?.id === `voice-preview-${voice.id}`;
             const downloading = downloadingId === voice.id;
+            const compatible = voiceCompatibleWithModel(models.activeModel, voice);
+            const previous = index > 0 ? results[index - 1] : null;
+            const showDivider = !compatible && previous && voiceCompatibleWithModel(models.activeModel, previous);
             return (
-              <article key={voice.id} className={classNames('voice-card', selected && 'is-selected', custom && 'is-custom')}>
+              <Fragment key={voice.id}>
+                {showDivider && (
+                  <div className="voice-grid__divider">
+                    <span>Not compatible with {models.activeModel.shortName}</span>
+                  </div>
+                )}
+                <article className={classNames('voice-card', selected && 'is-selected', custom && 'is-custom', !compatible && 'is-incompatible')}>
                 <div className="voice-card__top">
                   <VoiceAvatar voiceId={voice.id} size="xl" />
                   <div className="voice-card__marks">
@@ -300,12 +322,18 @@ export function VoicesPage() {
                 </div>
 
                 <p className="voice-card__desc">{voice.description}</p>
+                {!compatible && (
+                  <p className="voice-card__compat">
+                    <Icon name="alert" size={13} /> {voiceCompatibilityNote(models.activeModel, voice)}
+                  </p>
+                )}
 
                 <div className="voice-card__actions">
                   <button
                     className="btn btn--subtle btn--sm"
                     onClick={() => void previewVoice(voice)}
-                    disabled={Boolean(previewingId && previewingId !== voice.id)}
+                    disabled={!compatible || Boolean(previewingId && previewingId !== voice.id)}
+                    title={!compatible ? voiceCompatibilityNote(models.activeModel, voice) || undefined : 'Preview voice'}
                   >
                     <Icon
                       name={isPreviewing ? 'loader' : activePreview && player.playing ? 'pause' : 'play'}
@@ -317,7 +345,8 @@ export function VoicesPage() {
                   <button
                     className={classNames('btn btn--sm', selected ? 'btn--ghost' : 'btn--primary')}
                     onClick={() => useVoice(voice)}
-                    disabled={selected}
+                    disabled={selected || !compatible}
+                    title={!compatible ? voiceCompatibilityNote(models.activeModel, voice) || undefined : undefined}
                   >
                     {selected ? (
                       <>
@@ -362,7 +391,8 @@ export function VoicesPage() {
                     )
                   )}
                 </div>
-              </article>
+                </article>
+              </Fragment>
             );
           })}
         </div>

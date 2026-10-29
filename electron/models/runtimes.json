@@ -1,0 +1,348 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-30T00:00:00.000Z",
+  "note": "Runtime packs are downloaded separately from the app and the model weights. A pack is only offered for download when its archive URL, size and SHA-256 are pinned here. Packs that have not been published can still be imported from a folder.",
+  "packs": [
+    {
+      "id": "python-3.12-win-x64",
+      "name": "Python 3.12 runtime",
+      "kind": "python",
+      "version": "3.12.16",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "An isolated CPython 3.12 interpreter from python-build-standalone. Sidecar models use it instead of whatever Python happens to be installed on the machine.",
+      "homepage": "https://github.com/astral-sh/python-build-standalone",
+      "license": {
+        "id": "PSF-2.0",
+        "name": "Python Software Foundation License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://docs.python.org/3/license.html"
+      },
+      "available": true,
+      "importable": true,
+      "archive": {
+        "name": "cpython-3.12.16+20261026-x86_64-pc-windows-msvc-install_only.tar.gz",
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-pc-windows-msvc-install_only.tar.gz",
+        "size": 47113364,
+        "sha256": "590dfcbe3a34c07301e6332e13e2188b98655cd072b08afa45a7998dc4c22bc5"
+      },
+      "entry": {
+        "python": "python/python.exe"
+      },
+      "requires": [],
+      "provides": [],
+      "sizeBytes": 47113364,
+      "installedBytes": 152506880
+    },
+    {
+      "id": "silma-tts-sidecar",
+      "name": "SILMA sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter that run SILMA TTS locally. Contains the SILMA package, PyTorch CPU wheels, soundfile and the loopback server.",
+      "homepage": "https://huggingface.co/silma-ai/silma-tts",
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The SILMA sidecar runtime pack has not been published yet. It is built separately because it bundles PyTorch and must be verified on Windows before it can be offered for download.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["silma-tts"],
+      "sizeBytes": 2300000000,
+      "installedBytes": 4300000000
+    },
+    {
+      "id": "chatterbox-sidecar",
+      "name": "Chatterbox sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter for Chatterbox Multilingual, including its watermarking dependency.",
+      "homepage": "https://huggingface.co/ResembleAI/chatterbox",
+      "license": {
+        "id": "MIT",
+        "name": "MIT License",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://opensource.org/licenses/MIT"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The Chatterbox sidecar runtime pack has not been published yet. It needs PyTorch and the Perth watermark package before it can be verified.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["chatterbox"],
+      "sizeBytes": 3000000000,
+      "installedBytes": 5200000000
+    },
+    {
+      "id": "openaudio-s1-mini-sidecar",
+      "name": "OpenAudio sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter for OpenAudio S1-mini.",
+      "homepage": "https://huggingface.co/fishaudio/openaudio-s1-mini",
+      "license": {
+        "id": "CC-BY-NC-SA-4.0",
+        "name": "CC BY-NC-SA 4.0",
+        "commercial": false,
+        "restricted": true,
+        "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The OpenAudio sidecar runtime pack has not been published yet. Its weights are non-commercial, so the pack needs the same license gate as the model.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["openaudio-s1-mini"],
+      "sizeBytes": 1200000000,
+      "installedBytes": 2400000000
+    },
+    {
+      "id": "qwen3-tts-sidecar",
+      "name": "Qwen3-TTS sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter for Qwen3-TTS 1.7B.",
+      "homepage": "https://huggingface.co/Qwen/Qwen3-TTS-1.7B",
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The Qwen3-TTS sidecar runtime pack has not been published yet. It needs a pinned transformers and PyTorch environment.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["qwen3-tts"],
+      "sizeBytes": 3600000000,
+      "installedBytes": 6200000000
+    },
+    {
+      "id": "omnivoice-sidecar",
+      "name": "OmniVoice sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter for OmniVoice, including the audio tokenizer.",
+      "homepage": "https://huggingface.co/k2-fsa/OmniVoice",
+      "license": {
+        "id": "CC-BY-NC-4.0",
+        "name": "Creative Commons BY-NC 4.0 (model weights)",
+        "commercial": false,
+        "restricted": true,
+        "url": "https://creativecommons.org/licenses/by-nc/4.0/"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The OmniVoice sidecar runtime pack has not been published yet. The model weights are CC-BY-NC even though the inference code is Apache-2.0.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["omnivoice"],
+      "sizeBytes": 1500000000,
+      "installedBytes": 2800000000
+    },
+    {
+      "id": "voxcpm2-sidecar",
+      "name": "VoxCPM2 sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter for VoxCPM2.",
+      "homepage": "https://huggingface.co/OpenBMB/VoxCPM2",
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The VoxCPM2 sidecar runtime pack has not been published yet.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["voxcpm2"],
+      "sizeBytes": 4800000000,
+      "installedBytes": 7600000000
+    },
+    {
+      "id": "moss-tts-sidecar",
+      "name": "MOSS-TTS sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter for MOSS-TTS v1.5.",
+      "homepage": "https://huggingface.co/fnlp/MOSS-TTS",
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The MOSS-TTS sidecar runtime pack has not been published yet. Its 17 GB weights make this an advanced, verification-heavy pack.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["moss-tts"],
+      "sizeBytes": 5200000000,
+      "installedBytes": 8400000000
+    },
+    {
+      "id": "breeze-tts2-sidecar",
+      "name": "Breeze TTS 2 sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter for Breeze TTS 2.",
+      "homepage": "https://huggingface.co/BreezeBlue/Breeze-TTS-2",
+      "license": {
+        "id": "BreezeBlue-NC",
+        "name": "BreezeBlue Research & Non-Commercial",
+        "commercial": false,
+        "restricted": true,
+        "url": "https://huggingface.co/BreezeBlue/Breeze-TTS-2"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The Breeze TTS 2 sidecar runtime pack has not been published yet. The weights are non-commercial and require the same acknowledgment as the model.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["breeze-tts2"],
+      "sizeBytes": 7600000000,
+      "installedBytes": 11800000000
+    },
+    {
+      "id": "audio8-tts-sidecar",
+      "name": "Audio8 sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter for Audio8 TTS.",
+      "homepage": "https://huggingface.co/Audio8/Audio8-TTS",
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The Audio8 sidecar runtime pack has not been published yet.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["audio8-tts"],
+      "sizeBytes": 1800000000,
+      "installedBytes": 3400000000
+    },
+    {
+      "id": "indextts2-sidecar",
+      "name": "IndexTTS2 sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter for IndexTTS2.",
+      "homepage": "https://huggingface.co/IndexTeam/IndexTTS-2",
+      "license": {
+        "id": "Bilibili-Model-License",
+        "name": "Bilibili Model Use License",
+        "commercial": null,
+        "restricted": true,
+        "review": true,
+        "url": "https://huggingface.co/IndexTeam/IndexTTS-2"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The IndexTTS2 sidecar runtime pack has not been published yet. Its weights need legal review before distribution.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["indextts2"],
+      "sizeBytes": 6800000000,
+      "installedBytes": 10400000000
+    },
+    {
+      "id": "xtts-v2-sidecar",
+      "name": "XTTS-v2 sidecar runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "platform": "win32",
+      "arch": "x64",
+      "description": "Python environment and adapter for XTTS-v2.",
+      "homepage": "https://huggingface.co/coqui/XTTS-v2",
+      "license": {
+        "id": "Coqui-CPML",
+        "name": "Coqui Public Model License",
+        "commercial": false,
+        "restricted": true,
+        "url": "https://coqui.ai/cpml"
+      },
+      "available": false,
+      "importable": true,
+      "reason": "The XTTS-v2 sidecar runtime pack has not been published yet. The CPML permits evaluation use only unless a separate license is obtained.",
+      "archive": null,
+      "entry": {
+        "server": "start.py"
+      },
+      "requires": ["python-3.12-win-x64"],
+      "provides": ["xtts-v2"],
+      "sizeBytes": 2100000000,
+      "installedBytes": 3800000000
+    }
+  ]
+}

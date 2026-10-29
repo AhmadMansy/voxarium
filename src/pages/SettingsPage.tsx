@@ -9,6 +9,9 @@ import {
   pluralize,
 } from '../lib/utils';
 import { useStudio } from '../state';
+import { capabilityEnabled, capabilityReason, supportsLanguage } from '../models/compat';
+import { assessFit, fitTone } from '../models/fit';
+import { licenseBadge } from '../models/license';
 import type { Accent, Device, GpuInfoResult, GpuPreference, Language, Quality, Rewrites, Theme } from '../types';
 import { Icon } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
@@ -44,11 +47,6 @@ const REWRITE_OPTIONS: { id: Rewrites; label: string; hint: string }[] = [
   { id: 'none', label: 'Off', hint: 'Send the tokenizer exactly what you typed' },
 ];
 
-const LANGUAGES: { id: Language; label: string; hint: string }[] = [
-  { id: 'en', label: 'English', hint: 'Normalize numbers, dates and symbols the English way' },
-  { id: 'none', label: 'Raw', hint: 'Skip normalization and tokenize the text as written' },
-];
-
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -63,8 +61,10 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
     updateSettings,
     info,
     model,
+    models,
     storage,
     engine,
+    setPage,
     refreshModel,
     refreshStorage,
     downloadModel,
@@ -103,6 +103,18 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
   }, []);
 
   const voice = getVoice(settings?.lastVoice);
+  const activeModel = models.activeModel;
+  const activeFit = assessFit(activeModel, models.hardware);
+  const activeLicense = licenseBadge(activeModel.license);
+  const languageOptions = useMemo(() => {
+    const declared = activeModel.languages.map((language) => ({
+      id: language.code,
+      label: language.name,
+      hint: language.quality ? `${language.quality} quality` : 'Declared by this model',
+    }));
+    return [...declared, { id: 'none', label: 'Raw', hint: 'Skip normalization and tokenize exactly as written' }];
+  }, [activeModel]);
+  const languageSupported = supportsLanguage(activeModel, settings?.language);
   const namePreview = useMemo(
     () => buildBaseName(settings?.filenameTemplate || 'voxarium-{date}-{voice}', { voice: voice.name, text: 'example script' }),
     [settings?.filenameTemplate, voice.name],
@@ -268,7 +280,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
         icon="settings"
         eyebrow="Settings"
         title="Studio settings"
-        description="Tune the engine, choose where files live, and make Phonon sound the way you want."
+        description={`Tune ${models.activeModel.shortName}, choose where files live, and make the studio sound the way you want.`}
         actions={
           <>
             <button className="btn btn--subtle" onClick={onOpenSetup}>
@@ -280,6 +292,45 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
           </>
         }
       />
+
+      <section className="card model-strip model-strip--settings">
+        <div className="model-strip__main model-strip__main--static">
+          <span className="model-strip__mark">
+            <Icon name="layers" size={19} />
+          </span>
+          <span className="model-strip__text">
+            <strong>{activeModel.shortName}</strong>
+            <em>
+              {activeModel.family} · {activeModel.runtimeLabel}
+            </em>
+          </span>
+        </div>
+        <div className="model-strip__badges">
+          <span className="tag tag--accent" title={activeModel.ratingNotes}>
+            ★ {activeModel.rating}/10
+          </span>
+          <span className={classNames('tag', `tag--${fitTone(activeFit.level)}`)} title={activeFit.summary}>
+            {activeFit.label}
+          </span>
+          <span className={classNames('tag', `tag--${activeLicense.tone}`)} title={activeLicense.title}>
+            {activeLicense.label}
+          </span>
+        </div>
+        <div className="model-strip__caps">
+          <span className={classNames('tag', capabilityEnabled(activeModel, 'streaming') ? 'tag--ok' : 'tag--muted')}>
+            <Icon name={capabilityEnabled(activeModel, 'streaming') ? 'check' : 'x'} size={10} /> Streaming
+          </span>
+          <span className={classNames('tag', capabilityEnabled(activeModel, 'voiceClone') ? 'tag--ok' : 'tag--muted')}>
+            <Icon name={capabilityEnabled(activeModel, 'voiceClone') ? 'check' : 'x'} size={10} /> Cloning
+          </span>
+          <span className={classNames('tag', capabilityEnabled(activeModel, 'multiSpeaker') ? 'tag--ok' : 'tag--muted')}>
+            <Icon name={capabilityEnabled(activeModel, 'multiSpeaker') ? 'check' : 'x'} size={10} /> Dialogue
+          </span>
+        </div>
+        <button className="btn btn--subtle btn--sm" onClick={() => setPage('models')}>
+          <Icon name="layers" size={14} /> Manage models
+        </button>
+      </section>
 
       {engineDirty && (
         <div className="banner banner--warn banner--sticky">
@@ -542,32 +593,48 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
               </div>
               <div>
                 <div className="settings-field__head">
-                  <strong>Text normalization</strong>
-                  <span>Phonon 31M is trained on English.</span>
+                  <strong>Language</strong>
+                  <span>
+                    {activeModel.shortName} declares {languageOptions.length - 1} language
+                    {languageOptions.length === 2 ? '' : 's'}. Unsupported values fall back to{' '}
+                    {activeModel.defaults.language.toUpperCase()}.
+                  </span>
                 </div>
                 <select
                   className="select"
-                  value={settings.language}
+                  value={languageSupported ? settings.language : activeModel.defaults.language}
                   onChange={(event) => updateSettings({ language: event.target.value as Language })}
                 >
-                  {LANGUAGES.map((language) => (
-                    <option key={language.id} value={language.id}>
+                  {languageOptions.map((language) => (
+                    <option key={language.id} value={language.id} title={language.hint}>
                       {language.label}
                     </option>
                   ))}
                 </select>
+                {!languageSupported && (
+                  <p className="field__hint field__hint--warn">
+                    <Icon name="alert" size={13} /> {settings.language.toUpperCase()} is not declared by{' '}
+                    {activeModel.shortName}; the studio falls back to {activeModel.defaults.language.toUpperCase()}.
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="settings-field">
               <div className="settings-field__head">
                 <strong>Word rewrites</strong>
-                <span>{settings.language === 'none' ? 'Ignored while normalization is off.' : 'How numbers and abbreviations are read aloud.'}</span>
+                <span>
+                  {!capabilityEnabled(activeModel, 'normalization')
+                    ? capabilityReason(activeModel, 'normalization')
+                    : settings.language === 'none'
+                      ? 'Ignored while normalization is off.'
+                      : 'How numbers and abbreviations are read aloud.'}
+                </span>
               </div>
               <select
                 className="select select--wide"
                 value={settings.rewrites}
-                disabled={settings.language === 'none'}
+                disabled={settings.language === 'none' || !capabilityEnabled(activeModel, 'normalization')}
                 onChange={(event) => updateSettings({ rewrites: event.target.value as Rewrites })}
               >
                 {REWRITE_OPTIONS.map((option) => (
@@ -587,11 +654,16 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
                 <label className="condition">
                   <span>
                     Speakers
-                    <em>How many voices are in the scene</em>
+                    <em>
+                      {capabilityEnabled(activeModel, 'multiSpeaker')
+                        ? 'How many voices are in the scene'
+                        : capabilityReason(activeModel, 'multiSpeaker')}
+                    </em>
                   </span>
                   <select
                     className="select"
                     value={settings.conditions.num_speakers}
+                    disabled={!capabilityEnabled(activeModel, 'multiSpeaker')}
                     onChange={(event) =>
                       updateSettings({ conditions: { ...settings.conditions, num_speakers: event.target.value } })
                     }
@@ -751,13 +823,22 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
                   <span className="switch__track"><span className="switch__thumb" /></span>
                 </span>
               </label>
-              <label className="switch-row">
+              <label className={classNames('switch-row', !capabilityEnabled(activeModel, 'streaming') && 'is-disabled')}>
                 <span>
                   <strong>Stream while generating</strong>
-                  <em>Hear speech as the model produces it.</em>
+                  <em>
+                    {capabilityEnabled(activeModel, 'streaming')
+                      ? 'Hear speech as the model produces it.'
+                      : capabilityReason(activeModel, 'streaming')}
+                  </em>
                 </span>
                 <span className="switch">
-                  <input type="checkbox" checked={settings.streaming} onChange={(event) => updateSettings({ streaming: event.target.checked })} />
+                  <input
+                    type="checkbox"
+                    checked={settings.streaming && capabilityEnabled(activeModel, 'streaming')}
+                    disabled={!capabilityEnabled(activeModel, 'streaming')}
+                    onChange={(event) => updateSettings({ streaming: event.target.checked })}
+                  />
                   <span className="switch__track"><span className="switch__thumb" /></span>
                 </span>
               </label>
@@ -813,12 +894,23 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
                 <h2>Voice cloning</h2>
                 <p>Bring your own voice, or import one designed in Gradium Studio.</p>
               </div>
-              <span className="tag">
-                <Icon name="sparkles" size={11} /> Cloud, once
+              <span className={classNames('tag', capabilityEnabled(activeModel, 'voiceClone') ? 'tag--ok' : 'tag--muted')}>
+                <Icon name={capabilityEnabled(activeModel, 'voiceClone') ? 'sparkles' : 'x'} size={11} />{' '}
+                {capabilityEnabled(activeModel, 'voiceClone') ? 'Cloud, once' : 'Unavailable'}
               </span>
             </header>
 
-            <label className="switch-row">
+            {!capabilityEnabled(activeModel, 'voiceClone') && (
+              <div className="inline-error inline-error--info">
+                <Icon name="alert" size={15} />
+                <span>{capabilityReason(activeModel, 'voiceClone')}</span>
+                <button className="btn btn--subtle btn--sm" onClick={() => setPage('models')}>
+                  Choose a model
+                </button>
+              </div>
+            )}
+
+            <label className={classNames('switch-row', !capabilityEnabled(activeModel, 'voiceClone') && 'is-disabled')}>
               <span>
                 <strong>Allow cloud voice cloning</strong>
                 <em>
@@ -830,6 +922,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
                 <input
                   type="checkbox"
                   checked={settings.allowCloudCloning !== false}
+                  disabled={!capabilityEnabled(activeModel, 'voiceClone')}
                   onChange={(event) => updateSettings({ allowCloudCloning: event.target.checked })}
                 />
                 <span className="switch__track"><span className="switch__thumb" /></span>
@@ -892,11 +985,17 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
                 <button
                   className="btn btn--primary btn--sm"
                   onClick={() => openClone('record')}
-                  disabled={settings.allowCloudCloning === false}
+                  disabled={settings.allowCloudCloning === false || !capabilityEnabled(activeModel, 'voiceClone')}
+                  title={capabilityReason(activeModel, 'voiceClone') || undefined}
                 >
                   <Icon name="mic" size={14} /> Record &amp; clone
                 </button>
-                <button className="btn btn--subtle btn--sm" onClick={() => openClone('import')}>
+                <button
+                  className="btn btn--subtle btn--sm"
+                  onClick={() => openClone('import')}
+                  disabled={!capabilityEnabled(activeModel, 'voiceImport')}
+                  title={capabilityReason(activeModel, 'voiceImport') || undefined}
+                >
                   <Icon name="upload" size={14} /> Import voice file
                 </button>
                 <button className="btn btn--ghost btn--sm" onClick={() => void window.studio.paths.reveal('voices')}>
@@ -1064,13 +1163,13 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
             <div className="about-grid">
               <div>
                 <span>Model</span>
-                <strong>Phonon 31M English</strong>
-                <em>gradium/phonon-31m-en</em>
+                <strong>{activeModel.name}</strong>
+                <em>{activeModel.repo}</em>
               </div>
               <div>
                 <span>Engine</span>
-                <strong>phonon-tts</strong>
-                <em>Rust + WebAssembly</em>
+                <strong>{activeModel.runtimeLabel.split(' · ')[0]}</strong>
+                <em>{activeModel.family}</em>
               </div>
               <div>
                 <span>Electron</span>
@@ -1084,21 +1183,23 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
               </div>
             </div>
             <div className="about-links">
-              <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal('https://huggingface.co/gradium/phonon-31m-en')}>
+              <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal(`https://huggingface.co/${activeModel.repo}`)}>
                 <Icon name="external" size={14} /> Model card
               </button>
-              <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal('https://gradium.ai/phonon')}>
-                <Icon name="external" size={14} /> Phonon by Gradium
+              <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal(activeModel.license.url)}>
+                <Icon name="external" size={14} /> License
               </button>
-              <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal('https://github.com/gradium-ai/xn-ptts')}>
-                <Icon name="external" size={14} /> Runtime source
-              </button>
+              {activeModel.runtime === 'phonon' && (
+                <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal('https://github.com/gradium-ai/xn-ptts')}>
+                  <Icon name="external" size={14} /> Runtime source
+                </button>
+              )}
               <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.paths.reveal('data')}>
                 <Icon name="folder" size={14} /> Data folder
               </button>
             </div>
             <p className="about-fineprint">
-              Phonon 31M is licensed Apache-2.0. Audio is generated entirely on this device — no scripts, audio or usage data
+              {activeModel.name} is licensed {activeModel.license.id}. Audio is generated entirely on this device — no scripts, audio or usage data
               are sent anywhere.
             </p>
           </section>

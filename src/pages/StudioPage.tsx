@@ -2,6 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getVoice, localeFlags, localeLabel } from '../data/catalog';
 import { LivePlayer, computePeaks, encodeMp3, encodeWavBuffer } from '../lib/audio';
 import {
+  arabicVarietiesFor,
+  capabilityEnabled,
+  capabilityReason,
+  languageLabel,
+  modelHasArabic,
+  supportsLanguage,
+  voiceCompatibilityNote,
+} from '../models/compat';
+import { fitTone, assessFit } from '../models/fit';
+import { licenseBadge } from '../models/license';
+import {
   applyPronunciations,
   buildBaseName,
   countSentences,
@@ -90,6 +101,7 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
   const {
     settings,
     model,
+    models,
     engine,
     studioText,
     setStudioText,
@@ -115,6 +127,20 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
   const startRef = useRef(0);
 
   const voice = getVoice(settings?.lastVoice);
+  const activeModel = models.activeModel;
+  const activeFit = assessFit(activeModel, models.hardware);
+  const activeLicense = licenseBadge(activeModel.license);
+  const voiceWarning = voiceCompatibilityNote(activeModel, voice);
+  const arabicVarieties = arabicVarietiesFor(activeModel);
+  const showArabic = modelHasArabic(activeModel);
+  const languageSupported = supportsLanguage(activeModel, settings?.language);
+  const capabilityChips = [
+    { key: 'voiceClone' as const, label: 'Cloning' },
+    { key: 'multiSpeaker' as const, label: 'Dialogue' },
+    { key: 'emotion' as const, label: 'Emotion' },
+    { key: 'streaming' as const, label: 'Streaming' },
+    { key: 'arabic' as const, label: 'Arabic' },
+  ];
   const stats = useMemo(() => {
     const text = studioText;
     return {
@@ -158,7 +184,7 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
     }
     if (!settings) return;
     if (!studioText.trim()) {
-      toast('Write something for Phonon to say.', 'info');
+      toast('Write something for the model to say.', 'info');
       return;
     }
     if (engine.status !== 'ready') {
@@ -400,6 +426,9 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
         description="Write a script, cast a voice, and render natural speech entirely on this device."
         actions={
           <>
+            <button className="btn btn--subtle" onClick={() => setPage('models')}>
+              <Icon name="layers" size={15} /> Models
+            </button>
             <button className="btn btn--subtle" onClick={() => void importText()}>
               <Icon name="upload" size={15} /> Import
             </button>
@@ -409,6 +438,81 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
           </>
         }
       />
+
+      <section className="card model-strip">
+        <button className="model-strip__main" onClick={() => setPage('models')} title="Switch model">
+          <span className="model-strip__mark">
+            <Icon name="layers" size={16} />
+          </span>
+          <span className="model-strip__text">
+            <span>Voice model</span>
+            <strong>{activeModel.shortName}</strong>
+            <em>{activeModel.family} · {activeModel.runtimeLabel}</em>
+          </span>
+        </button>
+        <div className="model-strip__badges">
+          <span className="tag tag--accent" title={activeModel.ratingNotes}>
+            ★ {activeModel.rating}/10
+          </span>
+          <span className={classNames('tag', `tag--${activeLicense.tone}`)} title={activeLicense.title}>
+            {activeLicense.label}
+          </span>
+          <span className={classNames('tag', `tag--${fitTone(activeFit.level)}`)} title={activeFit.summary}>
+            <Icon name="thermometer" size={11} /> {activeFit.label}
+          </span>
+        </div>
+        <div className="model-strip__caps">
+          {capabilityChips.map((capability) => {
+            const enabled = capabilityEnabled(activeModel, capability.key);
+            return (
+              <span
+                key={capability.key}
+                className={classNames('tag', enabled ? 'tag--ok' : 'tag--muted')}
+                title={enabled ? `${capability.label} is supported` : capabilityReason(activeModel, capability.key)}
+              >
+                <Icon name={enabled ? 'check' : 'x'} size={10} /> {capability.label}
+              </span>
+            );
+          })}
+        </div>
+        <button className="btn btn--subtle btn--sm" onClick={() => setPage('models')}>
+          Manage <Icon name="chevronRight" size={13} />
+        </button>
+      </section>
+
+      {showArabic && (
+        <div className="model-language-bar">
+          <span className="tag tag--accent">
+            <Icon name="globe" size={11} /> Arabic
+          </span>
+          <label className="model-language-bar__field">
+            <span>Variety</span>
+            <select
+              className="select select--compact"
+              value={settings?.arabicVariety || 'arb'}
+              onChange={(event) => updateSettings({ arabicVariety: event.target.value })}
+              disabled={arabicVarieties.length <= 1}
+            >
+              {arabicVarieties.map((variety) => (
+                <option key={variety.code} value={variety.code}>
+                  {variety.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {arabicVarieties.length <= 1 && <em>Only Modern Standard Arabic is declared for this model.</em>}
+        </div>
+      )}
+
+      {!languageSupported && (
+        <div className="model-language-bar model-language-bar--warn">
+          <Icon name="alert" size={14} />
+          <span>
+            {activeModel.shortName} does not declare {settings?.language?.toUpperCase()}. Pick a supported language in
+            Settings before generating.
+          </span>
+        </div>
+      )}
 
       {!model?.installed && <ModelRequired onOpenSetup={onOpenSetup} />}
 
@@ -421,6 +525,9 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
             <strong>The voice engine could not start</strong>
             <span>{engine.error}</span>
           </div>
+          <button className="btn btn--subtle btn--sm" onClick={() => setPage('models')}>
+            <Icon name="layers" size={14} /> Switch model
+          </button>
           <button className="btn btn--subtle btn--sm" onClick={() => void engine.reload()}>
             <Icon name="refresh" size={14} /> Retry
           </button>
@@ -464,7 +571,7 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
               value={studioText}
               maxLength={6000}
               spellCheck
-              placeholder="Type or paste your script here. Phonon reads numbers, dates and abbreviations naturally — and you can teach it names in the pronunciation dictionary."
+              placeholder="Type or paste your script here. The model reads numbers, dates and abbreviations naturally — and you can teach it names in the pronunciation dictionary."
               onChange={(event) => setStudioText(event.target.value)}
             />
             <div className="editor__foot">
@@ -638,6 +745,17 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
                 <span className="tag">
                   {localeFlags[voice.locale] || '🌐'} {localeLabel(voice.locale)}
                 </span>
+                <span className="tag">
+                  <Icon name="layers" size={11} /> {activeModel.shortName}
+                </span>
+                {languageSupported && settings?.language && settings.language !== 'none' && (
+                  <span className="tag">
+                    <Icon name="globe" size={11} /> {languageLabel(activeModel, settings.language)}
+                    {showArabic && settings.arabicVariety
+                      ? ` · ${arabicVarieties.find((variety) => variety.code === settings.arabicVariety)?.name || 'MSA'}`
+                      : ''}
+                  </span>
+                )}
                 <span className="tag">{settings?.quality.toUpperCase()}</span>
                 <span className="tag">{settings?.device === 'auto' ? 'Auto device' : settings?.device === 'webgpu' ? 'WebGPU' : 'CPU'}</span>
                 <span className="tag">
@@ -695,6 +813,11 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
               </span>
               <Icon name="chevronRight" size={16} className="voice-current__chevron" />
             </button>
+            {voiceWarning && (
+              <p className="voice-panel__warn">
+                <Icon name="alert" size={12} /> {voiceWarning}
+              </p>
+            )}
             <div className="voice-panel__actions">
               <button className="btn btn--subtle btn--sm" onClick={() => void previewVoice()} disabled={previewing || engine.busy}>
                 <Icon name={previewing ? 'loader' : 'play'} size={14} className={previewing ? 'spin' : undefined} />
@@ -758,12 +881,17 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
             <label className="switch-row">
               <span>
                 <strong>Play while generating</strong>
-                <em>Hear audio as it streams in</em>
+                <em>
+                  {capabilityEnabled(activeModel, 'streaming')
+                    ? 'Hear audio as it streams in'
+                    : capabilityReason(activeModel, 'streaming')}
+                </em>
               </span>
               <span className="switch">
                 <input
                   type="checkbox"
                   checked={settings?.streaming ?? true}
+                  disabled={!capabilityEnabled(activeModel, 'streaming')}
                   onChange={(event) => updateSettings({ streaming: event.target.checked })}
                 />
                 <span className="switch__track">
@@ -797,7 +925,7 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
             <dl className="engine-mini__list">
               <div>
                 <dt>Model</dt>
-                <dd>Phonon 31M</dd>
+                <dd>{activeModel.shortName}</dd>
               </div>
               <div>
                 <dt>Device</dt>

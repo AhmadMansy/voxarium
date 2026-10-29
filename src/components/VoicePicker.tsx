@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { VOICES, englishLocales, localeLabel, localeFlags } from '../data/catalog';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { VOICES, englishLocales, getVoice, localeLabel, localeFlags } from '../data/catalog';
+import { voiceCompatibilityNote, voiceCompatibleWithModel, voicesForModel } from '../models/compat';
 import { useFavoriteVoices } from '../lib/favorites';
 import { classNames } from '../lib/utils';
 import { useStudio } from '../state';
@@ -14,7 +15,7 @@ interface VoicePickerProps {
 }
 
 export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
-  const { settings, model, updateSettings, engine, customVoices, openClone } = useStudio();
+  const { settings, model, models, updateSettings, engine, customVoices, openClone } = useStudio();
   const { favorites, isFavorite, toggle } = useFavoriteVoices();
   const [query, setQuery] = useState('');
   const [locale, setLocale] = useState('all');
@@ -30,6 +31,9 @@ export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
   }, [open]);
 
   const installed = useMemo(() => new Set(['default', ...(model?.voiceIds || [])]), [model?.voiceIds]);
+  const activeModel = models.activeModel;
+  const catalogGroup = voicesForModel(activeModel, customVoices);
+  const compatibleCount = catalogGroup.voices.length;
 
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -40,6 +44,9 @@ export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
         return `${voice.name} ${voice.description} ${voice.gender || ''} ${voice.age || ''}`.toLowerCase().includes(needle);
       })
       .sort((a, b) => {
+        const compatibleDelta =
+          Number(voiceCompatibleWithModel(activeModel, b)) - Number(voiceCompatibleWithModel(activeModel, a));
+        if (compatibleDelta !== 0) return compatibleDelta;
         const favouriteDelta = Number(isFavorite(b.id)) - Number(isFavorite(a.id));
         if (favouriteDelta !== 0) return favouriteDelta;
         const customDelta = Number(b.source === 'custom') - Number(a.source === 'custom');
@@ -47,21 +54,25 @@ export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
         if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
         return a.name.localeCompare(b.name);
       });
-  }, [query, locale, favorites, customVoices, isFavorite]);
+  }, [query, locale, favorites, customVoices, isFavorite, activeModel]);
 
   const selected = settings?.lastVoice || 'default';
 
   const choose = (id: string) => {
+    const voice = getVoice(id);
+    if (!voiceCompatibleWithModel(activeModel, voice)) return;
     updateSettings({ lastVoice: id, defaultVoice: id });
     onClose();
   };
+
+  const firstBlocked = results.findIndex((voice) => !voiceCompatibleWithModel(activeModel, voice));
 
   return (
     <Modal
       open={open}
       onClose={onClose}
       title="Choose a voice"
-      subtitle={`${VOICES.length + customVoices.length} voices · ${installed.size - 1 + customVoices.length} on this device`}
+      subtitle={`${activeModel.shortName} · ${compatibleCount} compatible voice${compatibleCount === 1 ? '' : 's'} of ${VOICES.length + customVoices.length}`}
       size="lg"
       icon={<Icon name="voices" size={18} />}
       footer={
@@ -112,62 +123,82 @@ export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
         </div>
 
         <div className="picker__list">
-          {results.map((voice) => {
+          {catalogGroup.reason && (
+            <p className="picker__note picker__note--warn">
+              <Icon name="alert" size={14} /> {catalogGroup.reason}
+            </p>
+          )}
+          {results.map((voice, index) => {
             const isSelected = voice.id === selected;
             const isDownloaded = voice.source === 'custom' || installed.has(voice.id);
+            const compatible = voiceCompatibleWithModel(activeModel, voice);
+            const reason = voiceCompatibilityNote(activeModel, voice);
             return (
-              <div
-                key={voice.id}
-                className={classNames('picker__row', isSelected && 'is-selected')}
-                role="button"
-                tabIndex={0}
-                onClick={() => choose(voice.id)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') choose(voice.id);
-                }}
-              >
-                <VoiceAvatar voiceId={voice.id} size="md" />
-                <div className="picker__info">
-                  <div className="picker__name">
-                    {voice.name}
-                    {voice.isDefault && <em className="tag tag--accent">Default</em>}
-                    {voice.source === 'custom' && (
-                      <em className="tag tag--accent">{voice.customKind === 'clone' ? 'Cloned' : 'Imported'}</em>
-                    )}
-                    {!isDownloaded && (
-                      <span className="picker__remote" title="Downloads on first use">
-                        <Icon name="downloadCloud" size={12} /> On demand
+              <Fragment key={voice.id}>
+                {index === firstBlocked && firstBlocked > 0 && (
+                  <div className="picker__group">
+                    <span>Not compatible with {activeModel.shortName}</span>
+                  </div>
+                )}
+                <div
+                  className={classNames(
+                    'picker__row',
+                    isSelected && 'is-selected',
+                    !compatible && 'is-incompatible',
+                  )}
+                  role="button"
+                  tabIndex={compatible ? 0 : -1}
+                  aria-disabled={!compatible}
+                  title={reason || undefined}
+                  onClick={() => choose(voice.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') choose(voice.id);
+                  }}
+                >
+                  <VoiceAvatar voiceId={voice.id} size="md" />
+                  <div className="picker__info">
+                    <div className="picker__name">
+                      {voice.name}
+                      {voice.isDefault && <em className="tag tag--accent">Default</em>}
+                      {voice.source === 'custom' && (
+                        <em className="tag tag--accent">{voice.customKind === 'clone' ? 'Cloned' : 'Imported'}</em>
+                      )}
+                      {!compatible && <em className="tag tag--warn">Incompatible</em>}
+                      {!isDownloaded && compatible && (
+                        <span className="picker__remote" title="Downloads on first use">
+                          <Icon name="downloadCloud" size={12} /> On demand
+                        </span>
+                      )}
+                    </div>
+                    <p>{reason || voice.description}</p>
+                    <div className="picker__tags">
+                      <span className="tag">
+                        {localeFlags[voice.locale] || '🌐'} {localeLabel(voice.locale)}
+                      </span>
+                      {voice.gender && <span className="tag">{voice.gender}</span>}
+                      {voice.age && <span className="tag">{voice.age}</span>}
+                    </div>
+                  </div>
+                  <div className="picker__actions">
+                    <button
+                      className={classNames('icon-toggle', isFavorite(voice.id) && 'is-on')}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggle(voice.id);
+                      }}
+                      aria-label={isFavorite(voice.id) ? 'Remove from favorites' : 'Add to favorites'}
+                      title="Favorite"
+                    >
+                      <Icon name="star" size={15} />
+                    </button>
+                    {isSelected && (
+                      <span className="picker__check">
+                        <Icon name="check" size={15} />
                       </span>
                     )}
                   </div>
-                  <p>{voice.description}</p>
-                  <div className="picker__tags">
-                    <span className="tag">
-                      {localeFlags[voice.locale] || '🌐'} {localeLabel(voice.locale)}
-                    </span>
-                    {voice.gender && <span className="tag">{voice.gender}</span>}
-                    {voice.age && <span className="tag">{voice.age}</span>}
-                  </div>
                 </div>
-                <div className="picker__actions">
-                  <button
-                    className={classNames('icon-toggle', isFavorite(voice.id) && 'is-on')}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      toggle(voice.id);
-                    }}
-                    aria-label={isFavorite(voice.id) ? 'Remove from favorites' : 'Add to favorites'}
-                    title="Favorite"
-                  >
-                    <Icon name="star" size={15} />
-                  </button>
-                  {isSelected && (
-                    <span className="picker__check">
-                      <Icon name="check" size={15} />
-                    </span>
-                  )}
-                </div>
-              </div>
+              </Fragment>
             );
           })}
           {!results.length && (

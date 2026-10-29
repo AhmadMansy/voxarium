@@ -61,6 +61,7 @@ export function CloneVoiceModal() {
   const [name, setName] = useState('My voice');
   const [language, setLanguage] = useState('en');
   const [consent, setConsent] = useState(false);
+  const [consentAt, setConsentAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +120,7 @@ export function CloneVoiceModal() {
     setName('My voice');
     setLanguage('en');
     setConsent(false);
+    setConsentAt(null);
     setBusy(false);
     setStage('');
     setError(null);
@@ -316,6 +318,10 @@ export function CloneVoiceModal() {
       setError('Confirm that you have the speaker’s permission to clone this voice.');
       return;
     }
+    if (!consentAt) {
+      setError('Tick the permission checkbox again to record your consent.');
+      return;
+    }
     if (!cloneKey?.hasKey) {
       setShowKeyField(true);
       setError('Add a Gradium API key to clone a voice.');
@@ -326,7 +332,7 @@ export function CloneVoiceModal() {
     setStage('Starting…');
     const unsubscribe = window.studio.onCloneProgress((progress) => setStage(progress.message));
     try {
-      const voice = await cloneVoice({ audio: clip.wav, name: name.trim(), language });
+      const voice = await cloneVoice({ audio: clip.wav, name: name.trim(), language, consentAt });
       if (voice) {
         setCreated(voice);
         setStage('');
@@ -456,6 +462,11 @@ export function CloneVoiceModal() {
             </span>
             <span className="tag">{created.id.startsWith('c_') ? 'Custom voice' : 'Catalog voice'}</span>
             <span className="tag">{created.language.toUpperCase()}</span>
+            {consentAt && tab === 'record' && (
+              <span className="tag tag--ok" title={new Date(consentAt).toLocaleString()}>
+                <Icon name="shield" size={10} /> Consent recorded
+              </span>
+            )}
           </div>
           {clip && tab === 'record' && (
             <div className="clone-success__clip">
@@ -631,7 +642,15 @@ export function CloneVoiceModal() {
               </div>
 
               <label className="check-row">
-                <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} disabled={busy} />
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(event) => {
+                    setConsent(event.target.checked);
+                    setConsentAt(event.target.checked ? Date.now() : null);
+                  }}
+                  disabled={busy}
+                />
                 <span>
                   I have the speaker’s permission to clone this voice, and I agree to send this recording to Gradium
                   once. <em>Impersonating someone without consent is not allowed.</em>

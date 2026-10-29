@@ -25,7 +25,7 @@ function sendJson(res, status, body) {
   res.end(data);
 }
 
-async function startModelServer({ dirs, modelFiles }) {
+async function startModelServer({ dirs, resolveModelFile, defaultModelId }) {
   const cors = {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'GET, HEAD, OPTIONS',
@@ -56,7 +56,8 @@ async function startModelServer({ dirs, modelFiles }) {
     }
 
     let filePath = null;
-    const modelMatch = url.pathname.match(/^\/model\/([A-Za-z0-9._-]+)$/);
+    const modelMatch = url.pathname.match(/^\/model\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)$/);
+    const legacyModelMatch = url.pathname.match(/^\/model\/([A-Za-z0-9._-]+)$/);
     const voiceMatch = url.pathname.match(/^\/voice\/([A-Za-z0-9_-]+)\.safetensors$/);
     const customVoiceMatch = url.pathname.match(/^\/voice\/custom\/([A-Za-z0-9_-]+)\.safetensors$/);
 
@@ -65,12 +66,13 @@ async function startModelServer({ dirs, modelFiles }) {
       return;
     }
     if (modelMatch) {
-      const name = modelMatch[1];
-      if (!Object.prototype.hasOwnProperty.call(modelFiles, name)) {
-        sendJson(res, 404, { error: 'unknown model file' });
-        return;
+      if (typeof resolveModelFile === 'function') {
+        filePath = resolveModelFile(modelMatch[1], modelMatch[2]);
       }
-      filePath = path.join(dirs.models, name);
+    } else if (legacyModelMatch) {
+      if (typeof resolveModelFile === 'function') {
+        filePath = resolveModelFile(defaultModelId, legacyModelMatch[1]);
+      }
     } else if (customVoiceMatch) {
       filePath = path.join(dirs.voices, 'custom', `${customVoiceMatch[1]}.safetensors`);
     } else if (voiceMatch) {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { VOICES, allVoices, getVoice, localeFlags, localeLabel } from '../data/catalog';
+import { DEFAULT_VOICE_ID, VOICES, allVoices, getVoice, localeFlags, localeLabel } from '../data/catalog';
+import { voiceCompatibilityNote, voiceCompatibleWithModel } from '../models/compat';
 import {
   applyPronunciations,
   classNames,
@@ -78,7 +79,7 @@ function parseLines(script: string, fallbackVoiceId: string): BatchItem[] {
 }
 
 export function BatchPage() {
-  const { settings, engine, model, studioText, saveGeneration, setPage, toast, customVoices } = useStudio();
+  const { settings, engine, model, models, studioText, saveGeneration, setPage, toast, customVoices } = useStudio();
   const player = usePlayer();
 
   const [script, setScript] = useState(
@@ -90,13 +91,34 @@ export function BatchPage() {
   const [active, setActive] = useState<number | null>(null);
   const [results, setResults] = useState<Record<number, BatchResult>>({});
   const [completed, setCompleted] = useState(0);
+  const [voiceOverrides, setVoiceOverrides] = useState<Record<number, string>>({});
   const abortRef = useRef<AbortController | null>(null);
 
-  const fallbackVoiceId = settings?.lastVoice || 'default';
+  const activeModel = models.activeModel;
+  const studioVoiceId = settings?.lastVoice || DEFAULT_VOICE_ID;
+  const fallbackVoiceId = voiceCompatibleWithModel(activeModel, getVoice(studioVoiceId))
+    ? studioVoiceId
+    : DEFAULT_VOICE_ID;
 
-  const allItems = useMemo(() => parseLines(script, fallbackVoiceId), [script, fallbackVoiceId, customVoices]);
+  const allItems = useMemo(() => {
+    const parsed = parseLines(script, fallbackVoiceId);
+    return parsed.map((item, index) => {
+      const voiceId = voiceOverrides[index];
+      if (!voiceId || voiceId === item.voiceId) return item;
+      return { ...item, voiceId, voiceName: getVoice(voiceId).name };
+    });
+  }, [script, fallbackVoiceId, customVoices, voiceOverrides]);
   const items = useMemo(() => allItems.slice(0, MAX_ITEMS), [allItems]);
   const overflow = Math.max(0, allItems.length - MAX_ITEMS);
+  const incompatible = useMemo(
+    () => items.filter((item) => !voiceCompatibleWithModel(activeModel, getVoice(item.voiceId))),
+    [items, activeModel],
+  );
+  const canSwitchAll = voiceCompatibleWithModel(activeModel, getVoice(DEFAULT_VOICE_ID));
+
+  useEffect(() => {
+    setVoiceOverrides({});
+  }, [script, activeModel.id]);
 
   const words = useMemo(() => items.reduce((total, item) => total + countWords(item.text), 0), [items]);
   const estimated = useMemo(() => estimateDuration(items.map((item) => item.text).join(' ')), [items]);
@@ -130,6 +152,13 @@ export function BatchPage() {
     ].join('\n');
   }, []);
 
+  const switchAll = () => {
+    const next: Record<number, string> = {};
+    for (const item of incompatible) next[item.index] = DEFAULT_VOICE_ID;
+    setVoiceOverrides((current) => ({ ...current, ...next }));
+    toast(`Switched ${incompatible.length} line${incompatible.length === 1 ? '' : 's'} to ${getVoice(DEFAULT_VOICE_ID).name}.`, 'success');
+  };
+
   const begin = async () => {
     if (running) {
       abortRef.current?.abort();
@@ -138,6 +167,14 @@ export function BatchPage() {
     if (!settings) return;
     if (!items.length) {
       toast('Add at least one line to the batch.', 'info');
+      return;
+    }
+    if (incompatible.length) {
+      toast(
+        `${incompatible.length} line${incompatible.length === 1 ? ' uses a voice' : 's use voices'} that ${activeModel.shortName} cannot speak.`,
+        'error',
+        canSwitchAll ? 'Use “Switch all” to move them to a compatible voice.' : 'Install a model with its own voice pack first.',
+      );
       return;
     }
     if (engine.status !== 'ready') {
@@ -241,7 +278,7 @@ export function BatchPage() {
         icon="batch"
         eyebrow="Batch"
         title="Render a whole script"
-        description="Put a voice in square brackets at the start of each line and Phonon will cast every line automatically."
+        description={`Put a voice in square brackets at the start of each line and ${models.activeModel.shortName} will cast every line automatically.`}
         actions={
           <>
             <button className="btn btn--subtle" onClick={() => setScript(example)} disabled={running}>
@@ -300,11 +337,28 @@ export function BatchPage() {
 
         <section className="card batch-queue">
           <div className="side-card__head batch-queue__head">
-            <span className="side-card__title">Queue</span>
+            <span className="side-card__title">Queue · {activeModel.shortName}</span>
             <span className="batch-queue__count">
               {items.length ? `${items.length} line${items.length === 1 ? '' : 's'}` : 'Empty'}
             </span>
           </div>
+
+          {incompatible.length > 0 && (
+            <div className="banner banner--warn batch-queue__warning">
+              <span className="banner__icon">
+                <Icon name="alert" size={16} />
+              </span>
+              <div className="banner__body">
+                <strong>
+                  {incompatible.length} voice{incompatible.length === 1 ? '' : 's'} incompatible with {activeModel.shortName}
+                </strong>
+                <span>{voiceCompatibilityNote(activeModel, getVoice(incompatible[0].voiceId))}</span>
+              </div>
+              <button className="btn btn--primary btn--sm" onClick={switchAll} disabled={!canSwitchAll}>
+                <Icon name="refresh" size={14} /> Switch all
+              </button>
+            </div>
+          )}
 
           {items.length ? (
             <div className="batch-queue__list">
@@ -312,6 +366,7 @@ export function BatchPage() {
                 const result = results[item.index];
                 const isActive = active === item.index;
                 const voice = getVoice(item.voiceId);
+                const compatible = voiceCompatibleWithModel(activeModel, voice);
                 return (
                   <div
                     key={item.index}
@@ -343,6 +398,11 @@ export function BatchPage() {
                         {item.warning && (
                           <span className="tag tag--warn" title={item.warning}>
                             <Icon name="alert" size={10} /> Unknown voice
+                          </span>
+                        )}
+                        {!compatible && (
+                          <span className="tag tag--danger" title={voiceCompatibilityNote(activeModel, voice) || undefined}>
+                            <Icon name="alert" size={10} /> Incompatible
                           </span>
                         )}
                       </div>
@@ -405,7 +465,7 @@ export function BatchPage() {
             <button
               className={classNames('btn btn--lg batch-queue__cta', running ? 'btn--danger' : 'btn--primary')}
               onClick={() => void begin()}
-              disabled={!items.length || (engine.status !== 'ready' && !running)}
+              disabled={!items.length || incompatible.length > 0 || (engine.status !== 'ready' && !running)}
             >
               {running ? (
                 <>

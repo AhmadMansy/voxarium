@@ -2,6 +2,13 @@ import type { ReactNode, SVGProps } from 'react';
 
 const paths = {
   studio: <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4" />,
+  layers: (
+    <>
+      <path d="m12 2 9 5-9 5-9-5 9-5Z" />
+      <path d="m3 12 9 5 9-5" />
+      <path d="m3 17 9 5 9-5" />
+    </>
+  ),
   voices: (
     <>
       <rect x="9" y="2" width="6" height="12" rx="3" />

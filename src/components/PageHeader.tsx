@@ -29,24 +29,25 @@ export function PageHeader({ icon, eyebrow, title, description, actions }: PageH
 }
 
 export function ModelRequired({ onOpenSetup }: { onOpenSetup: () => void }) {
-  const { model } = useStudio();
+  const { models, setPage } = useStudio();
+  const installed = models.install.installed;
   return (
     <div className="model-required">
       <span className="model-required__icon">
         <Icon name="downloadCloud" size={22} />
       </span>
       <div>
-        <strong>{model?.installed ? 'Preparing the voice engine' : 'Phonon 31M is not installed yet'}</strong>
+        <strong>{installed ? 'Preparing the voice engine' : `${models.activeModel.shortName} is not installed yet`}</strong>
         <p>
-          {model?.installed
+          {installed
             ? 'The model is on disk. The local runtime is warming up — this only takes a moment.'
-            : 'Download the 64 MB checkpoint once, then every generation runs entirely on this device.'}
+            : `Install ${models.activeModel.shortName} once, then every generation runs entirely on this device.`}
         </p>
       </div>
-      {!model?.installed && (
-        <button className="btn btn--primary btn--sm" onClick={onOpenSetup}>
-          <Icon name="download" size={15} />
-          Set up model
+      {!installed && (
+        <button className="btn btn--primary btn--sm" onClick={() => setPage('models')}>
+          <Icon name="layers" size={15} />
+          Choose a model
         </button>
       )}
     </div>

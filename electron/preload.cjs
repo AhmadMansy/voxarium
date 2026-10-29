@@ -26,6 +26,34 @@ contextBridge.exposeInMainWorld('studio', {
     importFolder: () => invoke('model:import'),
   },
 
+  models: {
+    snapshot: (options) => invoke('models:snapshot', options),
+    hardware: () => invoke('models:hardware'),
+    download: (options) => invoke('models:download', options),
+    cancel: () => invoke('models:cancel'),
+    verify: (id) => invoke('models:verify', { id }),
+    uninstall: (id) => invoke('models:uninstall', { id }),
+    activate: (id) => invoke('models:activate', { id }),
+    acknowledge: (id) => invoke('models:acknowledge', { id }),
+    importFolder: (id) => invoke('models:import', { id }),
+    openFolder: (id, target) => invoke('models:openFolder', { id, target }),
+    sidecar: {
+      start: (id) => invoke('models:sidecar:start', { id }),
+      stop: (id) => invoke('models:sidecar:stop', { id }),
+      status: (id) => invoke('models:sidecar:status', { id }),
+      logs: (id) => invoke('models:sidecar:logs', { id }),
+    },
+  },
+
+  runtimes: {
+    download: (id) => invoke('runtimes:download', { id }),
+    cancel: () => invoke('runtimes:cancel'),
+    verify: (id) => invoke('runtimes:verify', { id }),
+    uninstall: (id) => invoke('runtimes:uninstall', { id }),
+    importFolder: (id) => invoke('runtimes:import', { id }),
+    openFolder: (id) => invoke('runtimes:openFolder', { id }),
+  },
+
   voices: {
     download: (id) => invoke('voices:download', { id }),
     downloadAll: (ids) => invoke('voices:downloadAll', { ids }),
@@ -81,6 +109,30 @@ contextBridge.exposeInMainWorld('studio', {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('download:progress', listener);
     return () => ipcRenderer.removeListener('download:progress', listener);
+  },
+
+  onModelsProgress: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('models:progress', listener);
+    return () => ipcRenderer.removeListener('models:progress', listener);
+  },
+
+  onModelsChanged: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('models:changed', listener);
+    return () => ipcRenderer.removeListener('models:changed', listener);
+  },
+
+  onSidecarLog: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('sidecar:log', listener);
+    return () => ipcRenderer.removeListener('sidecar:log', listener);
+  },
+
+  onSidecarStatus: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('sidecar:status', listener);
+    return () => ipcRenderer.removeListener('sidecar:status', listener);
   },
 
   onCloneProgress: (callback) => {

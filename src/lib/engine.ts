@@ -1,6 +1,7 @@
-import type { PhononTTS, SpeechStats } from 'phonon-tts';
+import type { Lang, PhononTTS, SpeechStats } from 'phonon-tts';
 import type { EngineInfo, Settings } from '../types';
-import { VOICES, getVoice } from '../data/catalog';
+import type { ModelManifest } from '../models/types';
+import { VOICES, getVoice, isCustomVoice } from '../data/catalog';
 import { concatPcm } from './audio';
 import { toSeedValue } from './utils';
 
@@ -10,10 +11,12 @@ export interface LoadedEngine {
   tts: PhononTTS;
   module: PhononModule;
   info: EngineInfo;
+  modelId: string;
 }
 
 export interface LoadEngineOptions {
   settings: Settings;
+  manifest: ModelManifest;
   serverUrl: string;
   onStage?: (stage: string) => void;
 }
@@ -32,23 +35,59 @@ function workerUrl(settings: Settings): string {
   return url.href;
 }
 
-export async function loadEngine({ settings, serverUrl, onStage }: LoadEngineOptions): Promise<LoadedEngine> {
+export function modelFileUrl(serverUrl: string, modelId: string, name: string): string {
+  return `${serverUrl}/model/${encodeURIComponent(modelId)}/${encodeURIComponent(name)}`;
+}
+
+export function voiceFileUrl(serverUrl: string, voiceId: string): string {
+  if (voiceId === 'default') return `${serverUrl}/model/default-voice.safetensors`;
+  return `${serverUrl}/voice/${encodeURIComponent(voiceId)}.safetensors`;
+}
+
+export function customVoiceUrl(serverUrl: string, voiceId: string): string {
+  return `${serverUrl}/voice/custom/${encodeURIComponent(voiceId)}.safetensors`;
+}
+
+export function runtimeGateError(manifest: ModelManifest, runtimeReady = manifest.runtimePack.available): string | null {
+  if (manifest.runtime === 'phonon') return null;
+  const pack = manifest.runtimePack;
+  if (!runtimeReady) {
+    return `${manifest.shortName} needs its ${manifest.runtime === 'onnx-web' ? 'ONNX' : 'Python sidecar'} runtime pack, which is not installed. ${pack.reason || ''}`.trim();
+  }
+  return `${manifest.shortName} has its ${manifest.runtimeLabel} runtime, but the generation adapter for this model is not wired up yet.`;
+}
+
+export async function loadEngine({
+  settings,
+  manifest,
+  serverUrl,
+  onStage,
+}: LoadEngineOptions): Promise<LoadedEngine> {
+  const gate = runtimeGateError(manifest);
+  if (gate) throw new Error(gate);
+  if (manifest.runtime !== 'phonon') throw new Error(`${manifest.shortName} is not a Phonon runtime.`);
+
   onStage?.('Starting the local runtime…');
   const module = (await import(/* @vite-ignore */ moduleUrl())) as PhononModule;
   if (!module?.PhononTTS) throw new Error('The Phonon runtime could not be loaded.');
+
+  const defaultVoiceFile = manifest.files.find((file) => file.name === 'default-voice.safetensors');
+  if (!defaultVoiceFile) {
+    throw new Error(`${manifest.shortName} is missing its default voice file.`);
+  }
 
   const voices: Record<string, string> = {};
   for (const voice of VOICES) {
     voices[voice.id] =
       voice.id === 'default'
-        ? `${serverUrl}/model/default-voice.safetensors`
-        : `${serverUrl}/voice/${voice.id}.safetensors`;
+        ? modelFileUrl(serverUrl, manifest.id, defaultVoiceFile.name)
+        : voiceFileUrl(serverUrl, voice.id);
   }
 
-  onStage?.('Loading Phonon 31M weights…');
+  onStage?.(`Loading ${manifest.shortName} weights…`);
   const startedAt = performance.now();
   const tts = await module.PhononTTS.load({
-    lang: settings.language,
+    lang: settings.language as Lang,
     rewrites: settings.rewrites,
     conditions: {
       num_speakers: settings.conditions.num_speakers,
@@ -57,11 +96,11 @@ export async function loadEngine({ settings, serverUrl, onStage }: LoadEngineOpt
     quant: settings.quality,
     model: {
       weights: {
-        q8: `${serverUrl}/model/model.q8.gguf`,
-        f32: `${serverUrl}/model/model.safetensors`,
+        q8: modelFileUrl(serverUrl, manifest.id, 'model.q8.gguf'),
+        f32: modelFileUrl(serverUrl, manifest.id, 'model.safetensors'),
       },
-      tokenizer: `${serverUrl}/model/tokenizer.json`,
-      config: `${serverUrl}/model/config.json`,
+      tokenizer: modelFileUrl(serverUrl, manifest.id, 'tokenizer.json'),
+      config: modelFileUrl(serverUrl, manifest.id, 'config.json'),
       voices,
       defaultVoice: 'default',
     },
@@ -78,6 +117,7 @@ export async function loadEngine({ settings, serverUrl, onStage }: LoadEngineOpt
   });
 
   const info: EngineInfo = {
+    modelId: manifest.id,
     sampleRate: tts.sampleRate,
     device: tts.device,
     deviceReason: tts.deviceReason,
@@ -89,7 +129,7 @@ export async function loadEngine({ settings, serverUrl, onStage }: LoadEngineOpt
     loadMs: performance.now() - startedAt,
   };
 
-  return { tts, module, info };
+  return { tts, module, info, modelId: manifest.id };
 }
 
 export function releaseEngine(engine: LoadedEngine | null) {
@@ -178,13 +218,12 @@ export async function tryAddVoice(
   if (voiceId === 'default') return;
   const voice = getVoice(voiceId);
   if (!voice) throw new Error(`Unknown voice: ${voiceId}`);
-  if (voice.source === 'custom') {
+  if (isCustomVoice(voiceId) || voice.source === 'custom') {
     // Custom voices are already on disk, so they only need registering with the runtime.
-    await tts.addVoice(voice.id, `${serverUrl}/voice/custom/${voice.id}.safetensors`);
+    await tts.addVoice(voice.id, customVoiceUrl(serverUrl, voice.id));
     return;
   }
   const status = await window.studio.voices.download(voice.id);
   if (!status.ok) throw new Error(status.error || 'The voice file could not be downloaded.');
-  const url = `${serverUrl}/voice/${voice.id}.safetensors`;
-  await tts.addVoice(voice.id, url);
+  await tts.addVoice(voice.id, voiceFileUrl(serverUrl, voice.id));
 }

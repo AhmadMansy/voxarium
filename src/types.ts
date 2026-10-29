@@ -1,4 +1,20 @@
-export type Page = 'studio' | 'voices' | 'history' | 'batch' | 'settings';
+import type { HardwareProfile } from './models/fit';
+import type {
+  LicenseAck,
+  ModelCapabilities,
+  ModelDownloadEvent,
+  ModelInstallState,
+  ModelLicense,
+  ModelsProgressEvent,
+  ModelsSnapshot,
+  ModelLifecycle,
+  RuntimeKind,
+  RuntimePackState,
+  SidecarLogEvent,
+  SidecarStatus,
+} from './models/types';
+
+export type Page = 'studio' | 'models' | 'voices' | 'history' | 'batch' | 'settings';
 
 export type Theme = 'dark' | 'light';
 export type Accent = 'violet' | 'cyan' | 'amber' | 'rose';
@@ -24,7 +40,7 @@ export interface GpuInfoResult {
   devices: GpuDeviceInfo[];
   featureStatus: Record<string, string>;
 }
-export type Language = 'en' | 'none';
+export type Language = string;
 export type Rewrites = 'default' | 'all' | 'none';
 
 export interface VoiceInfo {
@@ -53,6 +69,8 @@ export interface CustomVoiceRecord {
   bytes: number;
   fileName: string;
   sha256?: string;
+  /** Set when the speaker permission checkbox was confirmed during a cloud clone. */
+  consentAt?: number;
 }
 
 export interface CloneProgress {
@@ -103,6 +121,11 @@ export interface Settings {
   gpuPreference: GpuPreference;
   defaultVoice: string;
   lastVoice: string;
+  /** The model that owns the top-level generation settings. */
+  activeModelId: string;
+  /** Saved settings per model so switching preserves each model's setup. */
+  modelSettings: Record<string, Partial<import('./models/types').ModelPreferences>>;
+  arabicVariety: string;
   quality: Quality;
   device: Device;
   threads: 'auto' | number;
@@ -130,12 +153,19 @@ export interface SpeechStats {
 }
 
 export interface GenerationMeta {
+  modelId: string;
+  modelName: string;
+  runtime: RuntimeKind;
+  license: string;
+  rating: number;
+  capabilities: ModelCapabilities;
   quality: Quality;
   device: Device;
   temperature: number;
   seed: string;
   rewrites: Rewrites;
   language: Language;
+  arabicVariety?: string;
   conditions: Conditions;
 }
 
@@ -161,8 +191,10 @@ export interface ModelFileStatus {
   size: number;
   required: boolean;
   quality?: Quality;
+  sha256?: string;
   exists: boolean;
   bytes: number;
+  verified?: boolean;
   path: string;
 }
 
@@ -171,6 +203,12 @@ export interface ModelStatus {
   baseReady: boolean;
   q8Ready: boolean;
   f32Ready: boolean;
+  modelId?: string;
+  name?: string;
+  runtime?: string;
+  lifecycle?: string;
+  qualities?: Quality[];
+  source?: string | null;
   files: Record<string, ModelFileStatus>;
   voicesDownloaded: number;
   voiceIds: string[];
@@ -179,6 +217,7 @@ export interface ModelStatus {
 
 export interface StorageStats {
   models: { bytes: number; files: number };
+  runtimes?: { bytes: number; files: number };
   voices: { bytes: number; files: number };
   audio: { bytes: number; files: number };
   historyBytes: number;
@@ -199,8 +238,12 @@ export interface AppInfo {
   paths: { data: string; models: string; voices: string; audio: string };
   serverUrl: string | null;
   model: {
+    id: string;
+    name: string;
     repo: string;
-    revision: string;
+    revision: string | null;
+    runtime: RuntimeKind;
+    license: string;
     voicesRepo: string;
     voicesRevision: string;
     files: Record<string, { size: number; required: boolean; quality?: Quality }>;
@@ -225,6 +268,7 @@ export interface DownloadProgress {
 }
 
 export interface EngineInfo {
+  modelId?: string;
   sampleRate: number;
   device: 'cpu' | 'webgpu';
   deviceReason: string;
@@ -262,6 +306,39 @@ export interface StudioApi {
     verify: () => Promise<ModelStatus & { mismatched: string[] }>;
     importFolder: () => Promise<{ ok: boolean; cancelled?: boolean; error?: string; found?: string[]; status?: ModelStatus }>;
   };
+  models: {
+    snapshot: (options?: { forceHardware?: boolean }) => Promise<ModelsSnapshot>;
+    hardware: () => Promise<HardwareProfile>;
+    download: (options: { id: string; quality: Quality }) => Promise<{ ok: boolean; status?: ModelInstallState; error?: string; code?: string }>;
+    cancel: () => Promise<boolean>;
+    verify: (id: string) => Promise<{ status: ModelInstallState; mismatched: string[] }>;
+    uninstall: (id: string) => Promise<{ ok: boolean; status: ModelInstallState }>;
+    activate: (id: string) => Promise<{ ok: boolean; error?: string; snapshot?: ModelsSnapshot }>;
+    acknowledge: (id: string) => Promise<{ ok: boolean; license: ModelLicense; acknowledgedAt: number }>;
+    importFolder: (id: string) => Promise<{
+      ok: boolean;
+      cancelled?: boolean;
+      error?: string;
+      found?: string[];
+      status?: ModelInstallState;
+    }>;
+    openFolder: (id: string, target?: 'model' | 'staging') => Promise<boolean>;
+    sidecar: {
+      start: (id: string) => Promise<{ ok: boolean; status?: SidecarStatus; error?: string }>;
+      stop: (id: string) => Promise<{ ok: boolean }>;
+      status: (id: string) => Promise<SidecarStatus>;
+      logs: (id: string) => Promise<SidecarLogEvent[]>;
+    };
+  };
+
+  runtimes: {
+    download: (id: string) => Promise<{ ok: boolean; status?: RuntimePackState; error?: string }>;
+    cancel: () => Promise<boolean>;
+    verify: (id: string) => Promise<{ ok: boolean; status?: RuntimePackState; error?: string }>;
+    uninstall: (id: string) => Promise<{ ok: boolean; status?: RuntimePackState; error?: string }>;
+    importFolder: (id: string) => Promise<{ ok: boolean; cancelled?: boolean; status?: RuntimePackState; error?: string }>;
+    openFolder: (id: string) => Promise<boolean>;
+  };
   voices: {
     download: (id: string) => Promise<{ ok: boolean; error?: string }>;
     downloadAll: (ids: string[]) => Promise<{ ok: boolean; downloaded?: number; error?: string }>;
@@ -286,6 +363,7 @@ export interface StudioApi {
       name: string;
       language: string;
       startS?: number;
+      consentAt?: number;
     }) => Promise<{ ok: boolean; code?: string; error?: string; voice?: CustomVoiceRecord }>;
   };
   history: {
@@ -335,6 +413,10 @@ export interface StudioApi {
     copy: (text: string) => Promise<boolean>;
   };
   onDownloadProgress: (callback: (progress: DownloadProgress) => void) => () => void;
+  onModelsProgress: (callback: (progress: ModelsProgressEvent) => void) => () => void;
+  onModelsChanged: (callback: () => void) => () => void;
+  onSidecarLog: (callback: (event: SidecarLogEvent) => void) => () => void;
+  onSidecarStatus: (callback: (status: SidecarStatus) => void) => () => void;
   onCloneProgress: (callback: (progress: CloneProgress) => void) => () => void;
   onMenuAction: (callback: (action: { action: string; page?: Page }) => void) => () => void;
 }

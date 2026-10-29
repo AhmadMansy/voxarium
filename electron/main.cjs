@@ -18,23 +18,25 @@ const fsp = fs.promises;
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { startModelServer } = require('./model-server.cjs');
+const { createModelState, adoptLegacyFiles } = require('./models/state.cjs');
+const { createModelManager } = require('./models/downloads.cjs');
+const { probeHardware } = require('./models/hardware.cjs');
+const { createSidecarSupervisor } = require('./models/sidecar.cjs');
+const { createRuntimeManager } = require('./models/runtimes.cjs');
+const { loadManifests, getModel } = require('./models/registry.cjs');
 
 const IS_DEV = Boolean(process.env.VITE_DEV_SERVER_URL);
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || '';
 const APP_ID = 'com.voxarium.app';
 
-const MODEL_REPO = 'gradium/phonon-31m-en';
-const MODEL_REVISION = '92741c5b07d085ff840e26fea8ce43110b87852f';
+// Playwright runs several profiles side by side; this keeps every run out of the
+// user's real %APPDATA% folder. It must be set before the app is ready.
+if (process.env.VOXARIUM_USER_DATA) {
+  app.setPath('userData', path.resolve(process.env.VOXARIUM_USER_DATA));
+}
+
 const VOICES_REPO = 'gradium/phonon-voices';
 const VOICES_REVISION = '0ee17205f254b5abc43b266c8a0f215565c352f7';
-
-const MODEL_FILES = {
-  'config.json': { size: 4634, required: true },
-  'tokenizer.json': { size: 277967, required: true },
-  'model.q8.gguf': { size: 64512352, required: false, quality: 'q8' },
-  'model.safetensors': { size: 102823920, required: false, quality: 'f32' },
-  'default-voice.safetensors': { size: 256136, required: true },
-};
 
 // Voice files are tiny (256 KB each) and there are 102 of them in the catalog.
 const VOICE_FILE_SIZE = 256136;
@@ -46,6 +48,16 @@ let modelServer = null;
 
 let activeDownload = null;
 let quitAfterServerClose = false;
+/** @type {ReturnType<typeof createModelState> | null} */
+let modelState = null;
+/** @type {ReturnType<typeof createModelManager> | null} */
+let modelManager = null;
+/** @type {ReturnType<typeof createSidecarSupervisor> | null} */
+let sidecars = null;
+/** @type {ReturnType<typeof createRuntimeManager> | null} */
+let runtimeManager = null;
+let hardwareCache = null;
+let modelsInitialized = false;
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -115,6 +127,7 @@ function retargetLegacyHistory() {
 const DIRS = () => ({
   data: DATA_DIR(),
   models: path.join(DATA_DIR(), 'models'),
+  runtimes: path.join(DATA_DIR(), 'runtimes'),
   voices: path.join(DATA_DIR(), 'voices'),
   audio: path.join(DATA_DIR(), 'audio'),
 });
@@ -147,6 +160,75 @@ async function writeJsonAtomic(file, value) {
   await fsp.rename(tmp, file);
 }
 
+function initModelServices() {
+  if (modelsInitialized) return;
+  modelState = createModelState({
+    dataDir: DATA_DIR(),
+    dirs: DIRS(),
+    readJson,
+    writeJsonAtomic,
+  });
+  modelManager = createModelManager({
+    dirs: DIRS(),
+    appVersion: app.getVersion(),
+    state: modelState,
+    broadcast: (payload) => send('models:progress', payload),
+    log: (...args) => console.log(...args),
+  });
+  runtimeManager = createRuntimeManager({
+    dirs: DIRS(),
+    appVersion: app.getVersion(),
+    readJson,
+    writeJsonAtomic,
+    broadcast: (payload) => send('models:progress', payload),
+    log: (...args) => console.log(...args),
+  });
+  sidecars = createSidecarSupervisor({ dirs: DIRS(), send, runtimes: runtimeManager });
+  modelsInitialized = true;
+}
+
+function activeModelId() {
+  return modelState ? modelState.read().activeModelId : getModel(null).id;
+}
+
+function modelRuntime(model) {
+  initModelServices();
+  return runtimeManager.modelRuntime(model);
+}
+
+function requiresLicenseAck(model) {
+  return Boolean(model.license.restricted || model.license.review || model.license.commercial === false);
+}
+
+async function hardware(force = false) {
+  if (!hardwareCache || force) {
+    hardwareCache = await probeHardware({
+      app,
+      dataDir: DATA_DIR(),
+      gpuPreference: getSettings().gpuPreference,
+    });
+  }
+  return hardwareCache;
+}
+
+async function modelsSnapshot({ forceHardware = false } = {}) {
+  initModelServices();
+  const state = modelState.read();
+  return {
+    activeModelId: state.activeModelId,
+    generatedAt: loadManifests().document.generatedAt,
+    hardware: await hardware(forceHardware),
+    models: modelManager.statusAll(),
+    licenses: state.licenses,
+    sidecars: sidecars.statusAll(),
+    runtimes: runtimeManager.statusAll(),
+  };
+}
+
+function notifyModels() {
+  send('models:changed');
+}
+
 const defaultSettings = () => ({
   theme: 'dark',
   accent: 'violet',
@@ -158,6 +240,9 @@ const defaultSettings = () => ({
   gpuPreference: 'auto',
   defaultVoice: 'default',
   lastVoice: 'default',
+  activeModelId: 'phonon-31m-en',
+  modelSettings: {},
+  arabicVariety: 'arb',
   quality: 'q8',
   device: 'auto',
   threads: 'auto',
@@ -218,21 +303,11 @@ function broadcastProgress(payload) {
 }
 
 function modelStatus() {
+  initModelServices();
   const dirs = DIRS();
-  const files = {};
-  for (const [name, meta] of Object.entries(MODEL_FILES)) {
-    const filePath = path.join(dirs.models, name);
-    let size = 0;
-    try {
-      size = fs.statSync(filePath).size;
-    } catch {}
-    files[name] = {
-      ...meta,
-      exists: size === meta.size,
-      bytes: size,
-      path: filePath,
-    };
-  }
+  const id = activeModelId();
+  const model = getModel(id);
+  const status = modelManager.status(id);
   const voiceIds = [];
   try {
     for (const name of fs.readdirSync(dirs.voices)) {
@@ -242,15 +317,13 @@ function modelStatus() {
       } catch {}
     }
   } catch {}
-  const q8 = files['model.q8.gguf'];
-  const f32 = files['model.safetensors'];
-  const base = files['config.json'].exists && files['tokenizer.json'].exists && files['default-voice.safetensors'].exists;
   return {
-    installed: base && (q8.exists || f32.exists),
-    baseReady: base,
-    q8Ready: q8.exists,
-    f32Ready: f32.exists,
-    files,
+    ...status,
+    modelId: id,
+    name: model.shortName,
+    runtime: model.runtime,
+    q8Ready: status.qualities.includes('q8'),
+    f32Ready: status.qualities.includes('f32'),
     voicesDownloaded: voiceIds.length,
     voiceIds,
     dirs: dirs,
@@ -281,6 +354,7 @@ function dirSize(dir) {
 async function storageStats() {
   const dirs = DIRS();
   const models = dirSize(dirs.models);
+  const runtimes = dirSize(dirs.runtimes);
   const voices = dirSize(dirs.voices);
   const audio = dirSize(dirs.audio);
   let historyBytes = 0;
@@ -294,24 +368,13 @@ async function storageStats() {
   } catch {}
   return {
     models,
+    runtimes,
     voices,
     audio,
     historyBytes,
-    totalBytes: models.bytes + voices.bytes + audio.bytes,
+    totalBytes: models.bytes + runtimes.bytes + voices.bytes + audio.bytes,
     freeDisk,
   };
-}
-
-function emitFileProgress(kind, file, loaded, total, extra = {}) {
-  broadcastProgress({
-    kind,
-    file,
-    loaded,
-    total,
-    percent: total ? Math.min(100, (loaded / total) * 100) : null,
-    at: Date.now(),
-    ...extra,
-  });
 }
 
 async function downloadToFile(url, destination, expectedSize, { signal, onProgress } = {}) {
@@ -367,40 +430,26 @@ async function downloadToFile(url, destination, expectedSize, { signal, onProgre
   return { cached: false, bytes: actual };
 }
 
-async function downloadModelFiles(quality) {
-  const dirs = DIRS();
-  fs.mkdirSync(dirs.models, { recursive: true });
-  const names = ['config.json', 'tokenizer.json', 'default-voice.safetensors'];
-  names.push(quality === 'f32' ? 'model.safetensors' : 'model.q8.gguf');
-  const controller = new AbortController();
-  activeDownload = { controller, kind: 'model' };
-  try {
-    for (let index = 0; index < names.length; index += 1) {
-      const name = names[index];
-      const meta = MODEL_FILES[name];
-      const url = `https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REVISION}/${name}`;
-      emitFileProgress('model', name, 0, meta.size, {
-        index,
-        count: names.length,
-        started: true,
-        quality,
-      });
-      await downloadToFile(url, path.join(dirs.models, name), meta.size, {
-        signal: controller.signal,
-        onProgress: (progress) =>
-          emitFileProgress('model', name, progress.loaded, progress.total, {
-            index,
-            count: names.length,
-            cached: progress.cached,
-            quality,
-          }),
-      });
-    }
-    await saveSettings({ quality, setupComplete: true });
-    return { ok: true, status: modelStatus() };
-  } finally {
-    activeDownload = null;
+async function downloadModelFiles(id, quality) {
+  initModelServices();
+  const model = getModel(id);
+  const runtime = modelRuntime(model);
+  if (!runtime.ready) {
+    return { ok: false, code: 'runtime', error: runtime.reason || 'This model has no installed runtime pack.' };
   }
+  if (!model.files.length) {
+    return { ok: false, error: 'This model has no verified files pinned yet.' };
+  }
+  if (requiresLicenseAck(model) && !modelState.acknowledged(model.id)) {
+    return { ok: false, code: 'license', error: `Acknowledge the ${model.license.name} before installing ${model.shortName}.` };
+  }
+  const result = await modelManager.download(model.id, quality);
+  if (result.ok) {
+    await saveSettings({ quality, setupComplete: true });
+    broadcastProgress({ kind: 'model', done: true });
+    notifyModels();
+  }
+  return result;
 }
 
 function voiceUrl(id) {
@@ -558,7 +607,7 @@ function listCustomVoices() {
   return valid.sort((a, b) => b.createdAt - a.createdAt);
 }
 
-async function saveCustomVoice(buffer, { name, source, language } = {}) {
+async function saveCustomVoice(buffer, { name, source, language, consentAt } = {}) {
   const info = readVoiceSafetensors(buffer);
   const entries = customVoiceEntries();
   const id = `c_${crypto.randomBytes(6).toString('hex')}`;
@@ -583,6 +632,9 @@ async function saveCustomVoice(buffer, { name, source, language } = {}) {
     bytes: info.bytes,
     sha256: crypto.createHash('sha256').update(buffer).digest('hex'),
   };
+  if (entry.source === 'clone') {
+    entry.consentAt = Number.isFinite(Number(consentAt)) ? Number(consentAt) : Date.now();
+  }
   // Drop metadata for files that no longer exist while saving.
   const alive = entries.filter((item) => {
     try {
@@ -658,7 +710,7 @@ function gradiumError(body, response) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function cloneVoiceWithGradium({ audio, name, language, startS }) {
+async function cloneVoiceWithGradium({ audio, name, language, startS, consentAt }) {
   const apiKey = readCloneKey();
   if (!apiKey) {
     return { ok: false, code: 'no-key', error: 'Add a Gradium API key to clone a voice.' };
@@ -747,7 +799,7 @@ async function cloneVoiceWithGradium({ audio, name, language, startS }) {
   } catch (error) {
     return { ok: false, error: `Gradium returned an unexpected voice file. ${error instanceof Error ? error.message : ''}`.trim() };
   }
-  const saved = await saveCustomVoice(voiceBuffer, { name, source: 'clone', language: lang });
+  const saved = await saveCustomVoice(voiceBuffer, { name, source: 'clone', language: lang, consentAt });
   progress('done', 'Voice ready.', { voiceId: saved.id });
   return { ok: true, voice: saved };
 }
@@ -1026,26 +1078,35 @@ function registerAppProtocol() {
 function registerIpc() {
   const dirs = DIRS();
 
-  ipcMain.handle('app:info', async () => ({
-    version: app.getVersion(),
-    name: app.getName(),
-    electron: process.versions.electron,
-    chrome: process.versions.chrome,
-    node: process.versions.node,
-    v8: process.versions.v8,
-    platform: process.platform,
-    arch: process.arch,
-    isDev: IS_DEV,
-    paths: dirs,
-    serverUrl: modelServer ? modelServer.url : null,
-    model: {
-      repo: MODEL_REPO,
-      revision: MODEL_REVISION,
-      voicesRepo: VOICES_REPO,
-      voicesRevision: VOICES_REVISION,
-      files: MODEL_FILES,
-    },
-  }));
+  ipcMain.handle('app:info', async () => {
+    const model = getModel(activeModelId());
+    return {
+      version: app.getVersion(),
+      name: app.getName(),
+      electron: process.versions.electron,
+      chrome: process.versions.chrome,
+      node: process.versions.node,
+      v8: process.versions.v8,
+      platform: process.platform,
+      arch: process.arch,
+      isDev: IS_DEV,
+      paths: dirs,
+      serverUrl: modelServer ? modelServer.url : null,
+      model: {
+        id: model.id,
+        name: model.name,
+        repo: model.repo,
+        revision: model.revision,
+        runtime: model.runtime,
+        license: model.license.id,
+        voicesRepo: VOICES_REPO,
+        voicesRevision: VOICES_REVISION,
+        files: Object.fromEntries(
+          model.files.map((file) => [file.name, { size: file.size, required: file.required, quality: file.quality }]),
+        ),
+      },
+    };
+  });
 
   ipcMain.handle('app:keepAwake', (event, on) => {
     try {
@@ -1113,57 +1174,231 @@ function registerIpc() {
     return next;
   });
 
-  ipcMain.handle('model:status', async () => modelStatus());
-  ipcMain.handle('model:download', async (event, { quality } = {}) => {
-    if (activeDownload) return { ok: false, error: 'Another download is already running.' };
-    const result = await downloadModelFiles(quality === 'f32' ? 'f32' : 'q8');
-    broadcastProgress({ kind: 'model', done: true });
+  ipcMain.handle('models:snapshot', async (event, options = {}) => modelsSnapshot({ forceHardware: Boolean(options?.forceHardware) }));
+
+  ipcMain.handle('models:hardware', async () => {
+    const profile = await hardware(true);
+    return profile;
+  });
+
+  ipcMain.handle('models:download', async (event, { id, quality } = {}) => {
+    initModelServices();
+    const model = getModel(id || activeModelId());
+    const fit = await hardware();
+    if (fit.freeDiskGb != null && fit.freeDiskGb < model.hardware.diskGb * 1.1) {
+      return {
+        ok: false,
+        error: `Not enough free disk space: ${model.hardware.diskGb} GB is needed and ${fit.freeDiskGb} GB is free.`,
+      };
+    }
+    const result = await downloadModelFiles(model.id, quality === 'f32' ? 'f32' : 'q8');
+    notifyModels();
     return result;
   });
-  ipcMain.handle('model:cancel', async () => {
-    activeDownload?.controller.abort();
+
+  ipcMain.handle('models:cancel', async () => {
+    await modelManager?.cancel();
     return true;
   });
-  ipcMain.handle('model:clear', async (event, { what = 'model' } = {}) => {
-    const dir = DIRS().models;
-    const names = what === 'all' ? Object.keys(MODEL_FILES) : Object.keys(MODEL_FILES).filter((n) => MODEL_FILES[n].quality);
-    for (const name of names) await fsp.rm(path.join(dir, name), { force: true });
-    return modelStatus();
+
+  ipcMain.handle('models:verify', async (event, { id } = {}) => {
+    initModelServices();
+    const result = await modelManager.verify(id || activeModelId());
+    notifyModels();
+    return result;
+  });
+
+  ipcMain.handle('models:uninstall', async (event, { id } = {}) => {
+    initModelServices();
+    if (sidecars) await sidecars.stop(id || activeModelId());
+    const status = await modelManager.uninstall(id || activeModelId());
+    notifyModels();
+    return { ok: true, status };
+  });
+
+  ipcMain.handle('models:activate', async (event, { id } = {}) => {
+    initModelServices();
+    const model = getModel(id);
+    const status = modelManager.status(model.id);
+    if (!status.installed) {
+      return { ok: false, error: `${model.shortName} is not installed yet.` };
+    }
+    if (!model.runtimePack.available) {
+      const runtime = modelRuntime(model);
+      if (!runtime.ready) {
+        return { ok: false, code: 'runtime', error: runtime.reason || `${model.shortName} needs its runtime pack before it can run.` };
+      }
+    }
+    if (requiresLicenseAck(model) && !modelState.acknowledged(model.id)) {
+      return { ok: false, error: `Acknowledge the ${model.license.name} before activating ${model.shortName}.` };
+    }
+    if (sidecars) await sidecars.stopAll();
+    await modelState.setActive(model.id);
+    await saveSettings({ activeModelId: model.id });
+    notifyModels();
+    return { ok: true, snapshot: await modelsSnapshot() };
+  });
+
+  ipcMain.handle('models:acknowledge', async (event, { id } = {}) => {
+    initModelServices();
+    const model = getModel(id);
+    await modelState.acknowledge(model.id);
+    notifyModels();
+    return { ok: true, license: model.license, acknowledgedAt: Date.now() };
+  });
+
+  ipcMain.handle('models:import', async (event, { id } = {}) => {
+    initModelServices();
+    const model = getModel(id || activeModelId());
+    if (requiresLicenseAck(model) && !modelState.acknowledged(model.id)) {
+      return { ok: false, code: 'license', error: `Acknowledge the ${model.license.name} before importing ${model.shortName}.` };
+    }
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: `Locate ${model.shortName} files`,
+      message: `Select a folder containing ${model.files.map((file) => file.name).join(', ')}`,
+      properties: ['openDirectory'],
+    });
+    if (result.canceled || !result.filePaths[0]) return { ok: false, cancelled: true };
+    const imported = await modelManager.importFolder(model.id, result.filePaths[0]);
+    if (imported.ok) notifyModels();
+    return imported;
+  });
+
+  ipcMain.handle('models:openFolder', async (event, { id, target = 'model' } = {}) => {
+    initModelServices();
+    const model = getModel(id || activeModelId());
+    const dir = target === 'staging' ? path.join(DIRS().models, '.staging', model.id) : path.join(DIRS().models, model.id);
+    fs.mkdirSync(dir, { recursive: true });
+    await shell.openPath(dir);
+    return true;
+  });
+
+  ipcMain.handle('models:sidecar:start', async (event, { id } = {}) => {
+    initModelServices();
+    return sidecars.start(getModel(id || activeModelId()).id);
+  });
+  ipcMain.handle('models:sidecar:stop', async (event, { id } = {}) => {
+    initModelServices();
+    return { ok: await sidecars.stop(getModel(id || activeModelId()).id) };
+  });
+  ipcMain.handle('models:sidecar:status', async (event, { id } = {}) => {
+    initModelServices();
+    return sidecars.status(getModel(id || activeModelId()).id);
+  });
+  ipcMain.handle('models:sidecar:logs', async (event, { id } = {}) => {
+    initModelServices();
+    return sidecars.logs(getModel(id || activeModelId()).id);
+  });
+
+  ipcMain.handle('runtimes:download', async (event, { id } = {}) => {
+    initModelServices();
+    const pack = runtimeManager.getPack(id);
+    if (!pack) return { ok: false, error: 'Unknown runtime pack.' };
+    const fit = await hardware();
+    const neededGb = (Number(pack.installedBytes || pack.sizeBytes || 0) * 1.2) / 1_000_000_000;
+    if (fit.freeDiskGb != null && fit.freeDiskGb < neededGb) {
+      return {
+        ok: false,
+        error: `Not enough free disk space: ${pack.name} needs about ${neededGb.toFixed(1)} GB and ${fit.freeDiskGb.toFixed(1)} GB are free.`,
+      };
+    }
+    const result = await runtimeManager.download(pack.id);
+    notifyModels();
+    return result;
+  });
+
+  ipcMain.handle('runtimes:cancel', async () => {
+    await runtimeManager?.cancel();
+    return true;
+  });
+
+  ipcMain.handle('runtimes:verify', async (event, { id } = {}) => {
+    initModelServices();
+    const result = await runtimeManager.verify(id);
+    notifyModels();
+    return result;
+  });
+
+  ipcMain.handle('runtimes:uninstall', async (event, { id } = {}) => {
+    initModelServices();
+    const pack = runtimeManager.getPack(id);
+    if (!pack) return { ok: false, error: 'Unknown runtime pack.' };
+    if (sidecars) {
+      const running = sidecars.statusAll().filter((status) => status.state === 'ready' || status.state === 'starting');
+      for (const status of running) {
+        const model = getModel(status.modelId);
+        if (model.runtimePack?.packId === pack.id || (pack.requires || []).includes(model.runtimePack?.packId)) {
+          await sidecars.stop(model.id);
+        }
+      }
+    }
+    const result = await runtimeManager.uninstall(pack.id);
+    notifyModels();
+    return result;
+  });
+
+  ipcMain.handle('runtimes:import', async (event, { id } = {}) => {
+    initModelServices();
+    const pack = runtimeManager.getPack(id);
+    if (!pack) return { ok: false, error: 'Unknown runtime pack.' };
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: `Locate the ${pack.name} folder`,
+      message: `Select the folder that contains ${Object.values(pack.entry || {}).join(' and ') || 'the runtime entry point'}.`,
+      properties: ['openDirectory'],
+    });
+    if (result.canceled || !result.filePaths[0]) return { ok: false, cancelled: true };
+    const imported = await runtimeManager.importFolder(pack.id, result.filePaths[0]);
+    if (imported.ok) notifyModels();
+    return imported;
+  });
+
+  ipcMain.handle('runtimes:openFolder', async (event, { id } = {}) => {
+    initModelServices();
+    const pack = runtimeManager.getPack(id);
+    if (!pack) return false;
+    const dir = path.join(DIRS().runtimes, pack.id);
+    fs.mkdirSync(dir, { recursive: true });
+    await shell.openPath(dir);
+    return true;
+  });
+
+  ipcMain.handle('model:status', async () => modelStatus());
+  ipcMain.handle('model:download', async (event, { quality } = {}) =>
+    downloadModelFiles(activeModelId(), quality === 'f32' ? 'f32' : 'q8'),
+  );
+  ipcMain.handle('model:cancel', async () => {
+    activeDownload?.controller.abort();
+    await modelManager?.cancel();
+    return true;
+  });
+  ipcMain.handle('model:clear', async () => {
+    initModelServices();
+    const status = await modelManager.uninstall(activeModelId());
+    notifyModels();
+    return { ...modelStatus(), ...status };
   });
   ipcMain.handle('model:verify', async () => {
-    const status = modelStatus();
-    const mismatched = Object.entries(status.files)
-      .filter(([, file]) => file.bytes > 0 && !file.exists)
-      .map(([name]) => name);
-    return { ...status, mismatched };
+    initModelServices();
+    const result = await modelManager.verify(activeModelId());
+    notifyModels();
+    return { ...modelStatus(), mismatched: result.mismatched };
   });
-  ipcMain.handle('model:import', async () => {
+  ipcMain.handle('model:import', async (event) => {
+    initModelServices();
+    const model = getModel(activeModelId());
     const result = await dialog.showOpenDialog(mainWindow, {
       title: 'Locate Phonon model files',
       message: 'Select a folder containing config.json, tokenizer.json and model.q8.gguf',
       properties: ['openDirectory'],
     });
     if (result.canceled || !result.filePaths[0]) return { ok: false, cancelled: true };
-    const source = result.filePaths[0];
-    const wanted = Object.keys(MODEL_FILES);
-    const found = [];
-    fs.mkdirSync(DIRS().models, { recursive: true });
-    for (const name of wanted) {
-      const from = path.join(source, name);
-      if (fs.existsSync(from)) {
-        await fsp.copyFile(from, path.join(DIRS().models, name));
-        found.push(name);
-      }
-    }
-    if (!found.includes('config.json') || !found.includes('tokenizer.json')) {
-      return { ok: false, error: 'That folder is missing config.json or tokenizer.json.' };
-    }
-    if (!found.includes('model.q8.gguf') && !found.includes('model.safetensors')) {
-      return { ok: false, error: 'That folder is missing model.q8.gguf or model.safetensors.' };
-    }
-    const hasF32 = found.includes('model.safetensors');
-    await saveSettings({ quality: hasF32 && !found.includes('model.q8.gguf') ? 'f32' : 'q8', setupComplete: true });
-    return { ok: true, found, status: modelStatus() };
+    const imported = await modelManager.importFolder(model.id, result.filePaths[0]);
+    if (!imported.ok) return imported;
+    const hasF32 = model.files.some((file) => file.quality === 'f32' && imported.found.includes(file.name));
+    const hasQ8 = model.files.some((file) => file.quality === 'q8' && imported.found.includes(file.name));
+    await saveSettings({ quality: hasQ8 || !hasF32 ? 'q8' : 'f32', setupComplete: true });
+    notifyModels();
+    return { ...imported, status: modelStatus() };
   });
 
   ipcMain.handle('voices:download', async (event, { id } = {}) => {
@@ -1279,9 +1514,12 @@ function registerIpc() {
     await writeCloneKey(clean);
     return { ok: true, ...cloneKeyStatus() };
   });
-  ipcMain.handle('clone:create', async (event, { audio, name, language, startS } = {}) => {
+  ipcMain.handle('clone:create', async (event, { audio, name, language, startS, consentAt } = {}) => {
     try {
-      return await cloneVoiceWithGradium({ audio, name, language, startS });
+      if (!Number.isFinite(Number(consentAt))) {
+        return { ok: false, error: 'Confirm the speaker permission checkbox before cloning a voice.' };
+      }
+      return await cloneVoiceWithGradium({ audio, name, language, startS, consentAt: Number(consentAt) });
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
@@ -1542,8 +1780,19 @@ if (!app.requestSingleInstanceLock()) {
     ensureDirs();
     app.setAppUserModelId(APP_ID);
     registerAppProtocol();
+    initModelServices();
     try {
-      modelServer = await startModelServer({ dirs: DIRS(), modelFiles: MODEL_FILES });
+      const adopted = await adoptLegacyFiles({
+        dirs: DIRS(),
+        state: modelState,
+        verifyFile: (file, sha) => modelManager.sha256File(file).then((hash) => hash === sha).catch(() => false),
+      });
+      if (adopted.files.length) notifyModels();
+      modelServer = await startModelServer({
+        dirs: DIRS(),
+        resolveModelFile: (id, name) => modelManager.resolveFile(id, name),
+        defaultModelId: getModel(null).id,
+      });
       console.log(`[voxarium] local model server on ${modelServer.url}`);
     } catch (error) {
       console.error('[voxarium] failed to start model server', error);
@@ -1578,11 +1827,17 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('before-quit', async (event) => {
-    if (!modelServer || quitAfterServerClose) return;
+    if ((!modelServer && !sidecars) || quitAfterServerClose) return;
     event.preventDefault();
     quitAfterServerClose = true;
     try {
-      await modelServer.close();
+      await sidecars?.cleanup();
+    } catch {}
+    try {
+      await runtimeManager?.cancel();
+    } catch {}
+    try {
+      await modelServer?.close();
     } catch {}
     app.quit();
   });

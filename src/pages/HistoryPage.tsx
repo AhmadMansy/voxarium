@@ -12,6 +12,8 @@ import {
 } from '../lib/utils';
 import { usePlaybackTime, usePlayer } from '../player';
 import { useStudio } from '../state';
+import { capabilityLabel } from '../models/compat';
+import { getModel } from '../models/registry';
 import type { HistoryEntry } from '../types';
 import { Icon } from '../components/Icons';
 import { PageHeader } from '../components/PageHeader';
@@ -45,7 +47,9 @@ export function HistoryPage() {
     return history.filter((entry) => {
       if (favoritesOnly && !entry.favorite) return false;
       if (!needle) return true;
-      return `${entry.title} ${entry.text} ${entry.voiceName}`.toLowerCase().includes(needle);
+      return `${entry.title} ${entry.text} ${entry.voiceName} ${entry.meta?.modelName || ''} ${entry.meta?.license || ''}`
+        .toLowerCase()
+        .includes(needle);
     });
   }, [history, query, favoritesOnly]);
 
@@ -241,7 +245,8 @@ export function HistoryPage() {
                         {entry.favorite && <Icon name="star" size={11} className="history-item__star" />}
                       </span>
                       <span className="history-item__meta">
-                        {entry.voiceName} · {formatDate(entry.createdAt)}
+                        {entry.voiceName} · {entry.meta?.modelName || getModel(entry.meta?.modelId).shortName} ·{' '}
+                        {formatDate(entry.createdAt)}
                       </span>
                       <span className="history-item__wave">
                         <Waveform peaks={entry.peaks} bars={44} quiet className="waveform--mini" />
@@ -327,9 +332,9 @@ export function HistoryPage() {
                   <button
                     className="btn btn--subtle btn--sm"
                     onClick={() => reuseHistory(selected)}
-                    title="Load this script and voice into the studio"
+                    title="Restore this take's model, voice, language and settings"
                   >
-                    <Icon name="edit" size={14} /> Reuse
+                    <Icon name="edit" size={14} /> Reuse settings
                   </button>
                   <button
                     className="btn btn--icon btn--ghost btn--danger-text"
@@ -411,6 +416,17 @@ export function HistoryPage() {
                       </dd>
                     </div>
                     <div>
+                      <dt>Model</dt>
+                      <dd>{selected.meta?.modelName || getModel(selected.meta?.modelId).shortName}</dd>
+                    </div>
+                    <div>
+                      <dt>Language</dt>
+                      <dd>
+                        {selected.meta?.language || 'en'}
+                        {selected.meta?.arabicVariety ? ` · ${selected.meta.arabicVariety}` : ''}
+                      </dd>
+                    </div>
+                    <div>
                       <dt>Duration</dt>
                       <dd>{formatDurationPrecise(selected.duration)}</dd>
                     </div>
@@ -486,6 +502,28 @@ export function HistoryPage() {
                     <p className="detail-muted">Timing details were not captured for this take.</p>
                   )}
                 </div>
+              </div>
+
+              <div className="detail-block history-detail__model">
+                <h3>Model &amp; license</h3>
+                <div className="history-detail__model-row">
+                  <span className="tag tag--accent">{selected.meta?.modelName || getModel(selected.meta?.modelId).shortName}</span>
+                  <span className="tag">{selected.meta?.runtime || getModel(selected.meta?.modelId).runtimeLabel}</span>
+                  <span className="tag">{selected.meta?.license || getModel(selected.meta?.modelId).license.id}</span>
+                  {selected.meta?.capabilities &&
+                    (Object.keys(selected.meta.capabilities) as (keyof typeof selected.meta.capabilities)[])
+                      .filter((key) => selected.meta.capabilities[key] === true)
+                      .slice(0, 4)
+                      .map((key) => (
+                        <span className="tag tag--ok" key={key}>
+                          <Icon name="check" size={10} /> {capabilityLabel(key)}
+                        </span>
+                      ))}
+                </div>
+                <p className="detail-muted">
+                  Reuse switches to the model that made this take and restores its voice, language and settings. If that
+                  model is not installed, Voxarium keeps the current model running.
+                </p>
               </div>
 
               <div className="history-detail__script">

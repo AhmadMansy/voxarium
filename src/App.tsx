@@ -8,6 +8,7 @@ import { usePlayer } from './player';
 import { useStudio } from './state';
 import { BatchPage } from './pages/BatchPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { ModelsPage } from './pages/ModelsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StudioPage } from './pages/StudioPage';
 import { VoicesPage } from './pages/VoicesPage';
@@ -16,6 +17,7 @@ import { classNames } from './lib/utils';
 
 const NAV: { id: Page; label: string; icon: IconName; hint: string }[] = [
   { id: 'studio', label: 'Studio', icon: 'studio', hint: 'Write and render speech' },
+  { id: 'models', label: 'Models', icon: 'layers', hint: 'Install and switch voice engines' },
   { id: 'voices', label: 'Voices', icon: 'voices', hint: 'Browse the cast' },
   { id: 'history', label: 'History', icon: 'history', hint: 'Your recordings' },
   { id: 'batch', label: 'Batch', icon: 'batch', hint: 'Render a full script' },
@@ -24,6 +26,7 @@ const NAV: { id: Page; label: string; icon: IconName; hint: string }[] = [
 
 const PAGE_LABEL: Record<Page, string> = {
   studio: 'Studio',
+  models: 'Models',
   voices: 'Voice library',
   history: 'History',
   batch: 'Batch render',
@@ -80,6 +83,7 @@ export function App() {
     settings,
     info,
     model,
+    models,
     engine,
     page,
     setPage,
@@ -101,7 +105,7 @@ export function App() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
-      const match = /^([1-5])$/.exec(event.key);
+      const match = /^([1-6])$/.exec(event.key);
       if (!match) return;
       event.preventDefault();
       setPage(NAV[Number(match[1]) - 1].id);
@@ -197,7 +201,7 @@ export function App() {
             </span>
             <span>
               <strong>Install model</strong>
-              <em>64 MB one-time download</em>
+              <em>{models.activeModel.shortName} · {models.activeModel.downloadBytes ? `${Math.round(models.activeModel.downloadBytes / 1024 / 1024)} MB` : 'open Models'}</em>
             </span>
             <Icon name="chevronRight" size={14} />
           </button>
@@ -213,7 +217,7 @@ export function App() {
                   ? `${engine.info?.threads ?? 1} thread${(engine.info?.threads ?? 1) === 1 ? '' : 's'} · 24 kHz`
                   : engine.status === 'loading'
                     ? engine.stage || 'Loading the local runtime'
-                    : 'Phonon 31M · on device'}
+                    : `${models.activeModel.shortName} · on device`}
               </em>
             </span>
             <Icon name={engine.status === 'error' ? 'refresh' : 'chevronRight'} size={14} />
@@ -258,6 +262,7 @@ export function App() {
         <main className="app-body">
           <div className="page-scroll" key={page}>
             {page === 'studio' && <StudioPage onOpenSetup={openSetup} />}
+            {page === 'models' && <ModelsPage />}
             {page === 'voices' && <VoicesPage />}
             {page === 'history' && <HistoryPage />}
             {page === 'batch' && <BatchPage />}
