@@ -802,6 +802,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     const engine = engineRef.current;
     const appInfo = infoRef.current;
     if (!engine) throw new Error('The model is not ready yet.');
+    if (engine.runtime === 'sidecar') return;
     if (!appInfo?.serverUrl) throw new Error('The local model server is unavailable.');
     const existing = addedVoicesRef.current.get(voiceId);
     if (existing) return existing;
@@ -830,11 +831,18 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       keepPartial?: boolean;
     }) => {
       const engine = engineRef.current;
+      const manifest = activeModelRef.current;
       if (!engine) throw new Error('The model is not ready yet.');
       await ensureVoice(options.voiceId);
       setActiveRequests((count) => count + 1);
       try {
-        return await runSynthesis({ tts: engine.tts, ...options });
+        return await runSynthesis({
+          tts: engine.tts,
+          manifest,
+          sidecar: engine.sidecar,
+          language: settingsRef.current?.language,
+          ...options,
+        });
       } finally {
         setActiveRequests((count) => Math.max(0, count - 1));
       }

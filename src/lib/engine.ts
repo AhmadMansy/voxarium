@@ -4,14 +4,17 @@ import type { ModelManifest } from '../models/types';
 import { VOICES, getVoice, isCustomVoice } from '../data/catalog';
 import { concatPcm } from './audio';
 import { toSeedValue } from './utils';
+import { assertLocalSidecar, synthesizeWithSidecar } from './sidecar';
 
 type PhononModule = typeof import('phonon-tts');
 
 export interface LoadedEngine {
-  tts: PhononTTS;
-  module: PhononModule;
+  tts: PhononTTS | null;
+  module: PhononModule | null;
   info: EngineInfo;
   modelId: string;
+  runtime: ModelManifest['runtime'];
+  sidecar?: { baseUrl: string; token: string };
 }
 
 export interface LoadEngineOptions {
@@ -54,6 +57,7 @@ export function runtimeGateError(manifest: ModelManifest, runtimeReady = manifes
   if (!runtimeReady) {
     return `${manifest.shortName} needs its ${manifest.runtime === 'onnx-web' ? 'ONNX' : 'Python sidecar'} runtime pack, which is not installed. ${pack.reason || ''}`.trim();
   }
+  if (manifest.runtime === 'sidecar') return null;
   return `${manifest.shortName} has its ${manifest.runtimeLabel} runtime, but the generation adapter for this model is not wired up yet.`;
 }
 
@@ -65,6 +69,60 @@ export async function loadEngine({
 }: LoadEngineOptions): Promise<LoadedEngine> {
   const gate = runtimeGateError(manifest);
   if (gate) throw new Error(gate);
+
+  if (manifest.runtime === 'sidecar') {
+    onStage?.('Starting sidecar…');
+    const status = await window.studio.models.sidecar.status(manifest.id);
+    if (status.state !== 'ready' || !status.url || !status.token) {
+      const started = await window.studio.models.sidecar.start(manifest.id);
+      if (!started.ok || !started.status?.url || !started.status?.token) {
+        throw new Error(started.error || 'The sidecar failed to start.');
+      }
+      assertLocalSidecar(started.status);
+      const info: EngineInfo = {
+        modelId: manifest.id,
+        sampleRate: 24000,
+        device: 'cpu',
+        deviceReason: 'Sidecar runs on the local Python runtime.',
+        threads: 1,
+        threadsReason: 'Managed by the sidecar.',
+        features: {},
+        languages: manifest.languages.map((lang) => lang.code),
+        crossOriginIsolated: typeof crossOriginIsolated === 'boolean' ? crossOriginIsolated : false,
+        loadMs: 0,
+      };
+      return {
+        tts: null,
+        module: null,
+        info,
+        modelId: manifest.id,
+        runtime: 'sidecar',
+        sidecar: { baseUrl: started.status.url.replace(/\/$/, ''), token: started.status.token },
+      };
+    }
+    assertLocalSidecar(status);
+    const info: EngineInfo = {
+      modelId: manifest.id,
+      sampleRate: 24000,
+      device: 'cpu',
+      deviceReason: 'Sidecar runs on the local Python runtime.',
+      threads: 1,
+      threadsReason: 'Managed by the sidecar.',
+      features: {},
+      languages: manifest.languages.map((lang) => lang.code),
+      crossOriginIsolated: typeof crossOriginIsolated === 'boolean' ? crossOriginIsolated : false,
+      loadMs: 0,
+    };
+    return {
+      tts: null,
+      module: null,
+      info,
+      modelId: manifest.id,
+      runtime: 'sidecar',
+      sidecar: { baseUrl: status.url.replace(/\/$/, ''), token: status.token },
+    };
+  }
+
   if (manifest.runtime !== 'phonon') throw new Error(`${manifest.shortName} is not a Phonon runtime.`);
 
   onStage?.('Starting the local runtime…');
@@ -129,18 +187,18 @@ export async function loadEngine({
     loadMs: performance.now() - startedAt,
   };
 
-  return { tts, module, info, modelId: manifest.id };
+  return { tts, module, info, modelId: manifest.id, runtime: 'phonon' };
 }
 
 export function releaseEngine(engine: LoadedEngine | null) {
   if (!engine) return;
   try {
-    engine.tts.dispose();
+    engine.tts?.dispose();
   } catch {}
 }
 
 export interface SynthesizeOptions {
-  tts: PhononTTS;
+  tts?: PhononTTS | null;
   text: string;
   voiceId: string;
   temperature?: number;
@@ -149,6 +207,9 @@ export interface SynthesizeOptions {
   onChunk?: (pcm: Float32Array, totalSamples: number) => void;
   /** Return the audio produced so far when the signal aborts. */
   keepPartial?: boolean;
+  manifest?: ModelManifest;
+  sidecar?: { baseUrl: string; token: string };
+  language?: string;
 }
 
 export interface SynthesizeResult {
@@ -165,8 +226,26 @@ export async function synthesize({
   signal,
   onChunk,
   keepPartial,
+  manifest,
+  sidecar,
+  language,
 }: SynthesizeOptions): Promise<SynthesizeResult> {
   if (!text.trim()) throw new Error('There is no text to speak.');
+  if (manifest?.runtime === 'sidecar' && sidecar) {
+    const result = await synthesizeWithSidecar({
+      baseUrl: sidecar.baseUrl,
+      token: sidecar.token,
+      text,
+      voiceId,
+      language,
+      temperature,
+      seed: seed == null ? undefined : String(seed),
+      signal,
+      onChunk,
+    });
+    return { pcm: result.pcm, stats: result.stats };
+  }
+  if (!tts) throw new Error('The model is not ready yet.');
   const stream = tts.stream(text, {
     voice: voiceId,
     temperature,
@@ -208,10 +287,11 @@ export function previewLine(voiceId: string, sample?: string): string {
 }
 
 export async function tryAddVoice(
-  tts: PhononTTS,
+  tts: PhononTTS | null,
   voiceId: string,
   serverUrl: string,
 ): Promise<void> {
+  if (!tts) return;
   // `tts.voices` lists every configured voice name, including files that were never
   // fetched, so it cannot be used to decide whether a voice is actually usable yet.
   // The default voice is loaded up front; every other voice is added here.
