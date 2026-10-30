@@ -7,6 +7,11 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 
 const LAUNCH_TIMEOUT_MS = 120_000;
+// Shown in Voxarium's Integrations activity log.
+let clientName = 'cli';
+function setClientName(name) {
+  clientName = String(name || 'cli').slice(0, 40);
+}
 
 function userDataDir() {
   if (process.env.VOXARIUM_USER_DATA) return process.env.VOXARIUM_USER_DATA;
@@ -45,7 +50,7 @@ async function call(method, route, body, { url, token }) {
   try {
     response = await fetch(`${url}${route}`, {
       method,
-      headers: { authorization: `Bearer ${token}`, ...(body ? { 'content-type': 'application/json' } : {}) },
+      headers: { authorization: `Bearer ${token}`, 'x-voxarium-client': clientName, ...(body ? { 'content-type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (error) {
@@ -100,4 +105,4 @@ async function connect({ launch = true, log = () => {} } = {}) {
   throw new VoxariumError('Voxarium did not start in time.', 0);
 }
 
-module.exports = { connect, call, endpoint, readDiscovery, userDataDir, VoxariumError };
+module.exports = { connect, call, endpoint, readDiscovery, setClientName, userDataDir, VoxariumError };

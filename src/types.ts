@@ -14,7 +14,7 @@ import type {
   SidecarStatus,
 } from './models/types';
 
-export type Page = 'studio' | 'models' | 'voices' | 'history' | 'batch' | 'settings';
+export type Page = 'studio' | 'models' | 'voices' | 'history' | 'batch' | 'integrations' | 'settings';
 
 export type Theme = 'dark' | 'light';
 export type Accent = 'violet' | 'cyan' | 'amber' | 'rose';
@@ -167,6 +167,27 @@ export interface ApiStatus {
   cli: { command: string; args: string[]; env: Record<string, string> };
   mcp: { command: string; args: string[]; env: Record<string, string> };
 }
+
+/** One request in the local API's activity log (kept in memory, last 100). */
+export interface ApiActivity {
+  id: string;
+  at: number;
+  client: string;
+  route: string;
+  status: number;
+  ms: number;
+  error: string | null;
+  model?: string;
+  voice?: string;
+  chars?: number;
+  duration?: number;
+  saved?: boolean;
+  played?: boolean;
+}
+
+export type ApiTestResult =
+  | { ok: true; model: string; voice: string; duration: number; audio_base64: string; license: string; commercial: boolean | null }
+  | { ok: false; error: string };
 
 export interface EngineBridgeRequest {
   id: string;
@@ -395,6 +416,9 @@ export interface StudioApi {
   api: {
     status: () => Promise<ApiStatus | null>;
     regenerateToken: () => Promise<ApiStatus | null>;
+    activity: () => Promise<ApiActivity[]>;
+    test: (payload: { text: string; voice?: string; instruction?: string }) => Promise<ApiTestResult>;
+    onActivity: (callback: (entry: ApiActivity) => void) => () => void;
     onChanged: (callback: (status: ApiStatus | null) => void) => () => void;
   };
   engineBridge: {

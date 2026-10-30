@@ -1281,7 +1281,10 @@
   font-family: var(--mono);
   font-size: 11.5px;
   line-height: 1.55;
-  white-space: pre;
+  /* Long one-line commands wrap instead of running under the Copy button. */
+  padding-right: 92px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .api-snippet .btn {

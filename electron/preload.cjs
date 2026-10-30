@@ -69,6 +69,13 @@ contextBridge.exposeInMainWorld('studio', {
   api: {
     status: () => invoke('api:status'),
     regenerateToken: () => invoke('api:regenerateToken'),
+    activity: () => invoke('api:activity'),
+    test: (payload) => invoke('api:test', payload),
+    onActivity: (callback) => {
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('api:activity', listener);
+      return () => ipcRenderer.removeListener('api:activity', listener);
+    },
     onChanged: (callback) => {
       const listener = (_event, payload) => callback(payload);
       ipcRenderer.on('api:changed', listener);

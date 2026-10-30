@@ -2,7 +2,12 @@
 
 Voxarium can serve speech to other programs on the same computer: any app that
 speaks the OpenAI speech API, scripts through the CLI, and AI agents through MCP.
-Turn it on in **Settings › Local API & integrations**.
+Everything lives on the **Integrations** page (sidebar, Ctrl+6): the API switch,
+port and token, copy-paste setup for Claude Code, Claude Desktop, Cursor, the
+OpenAI SDK, curl and the CLI, a **Try it** box that sends a real request, and the
+**Recent requests** log (last 100, in memory) showing which client called, the
+model and voice, the audio length, status and any error. Tray and startup options
+are in **Settings › Background**.
 
 Everything goes through **one engine**. API, CLI and MCP requests run on the same
 engine as the Studio: the same active model, voices, settings and History. If a

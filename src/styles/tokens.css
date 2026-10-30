@@ -564,6 +564,13 @@ kbd {
     background 0.16s var(--ease);
 }
 
+/* Multi-line inputs size to their rows instead of the single-line height. */
+textarea.input {
+  height: auto;
+  padding: 8px 11px;
+  line-height: 1.45;
+}
+
 .input::placeholder {
   color: var(--text-muted);
 }

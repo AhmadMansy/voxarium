@@ -171,6 +171,20 @@ try {
   assert.equal(fs.readFileSync(mcpWav).subarray(0, 4).toString(), 'RIFF');
   assert.match(replies.get(4).result.content[0].text, /phonon-31m-en/);
 
+  step('Integrations page: status, Try it and the request log');
+  await page.locator('.nav-item', { hasText: 'Integrations' }).click();
+  await page.waitForSelector('.page--integrations');
+  assert.equal(await page.locator('.nav-item__dot').count(), 1, 'the sidebar shows the API is on');
+  assert.match(await page.locator('.integrations-toggle').innerText(), new RegExp(`API on · ${port}`));
+  await page.getByRole('button', { name: /Speak through the API/ }).click();
+  await page.waitForSelector('.try-it__result', { timeout: 120000 });
+  assert.match(await page.locator('.try-it__result').innerText(), /s · /);
+  await page.waitForFunction(() => document.querySelectorAll('.activity-row:not(.activity-row--head)').length >= 5);
+  const clients = await page.locator('.activity-row__client').allInnerTexts();
+  for (const expected of ['voxarium · try it', 'cli', 'mcp · test']) assert.ok(clients.includes(expected), `activity shows ${expected}`);
+  assert.ok(await page.locator('.activity-row.is-error').count() >= 1, 'failed requests are listed');
+  await page.locator('.client-tabs button', { hasText: 'Claude Code' }).click();
+  assert.match(await page.locator('.api-snippet pre').innerText(), /claude mcp add voxarium/);
   step('closing the window keeps Voxarium in the tray with the API up');
   await page.evaluate(() => window.close());
   await new Promise((r) => setTimeout(r, 1500));

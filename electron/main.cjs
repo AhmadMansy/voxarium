@@ -67,6 +67,8 @@ let modelsInitialized = false;
 let engineBridge = null;
 /** @type {ReturnType<typeof createIntegrations> | null} */
 let integrations = null;
+/** @type {ReturnType<typeof createApiServer> | null} */
+let apiServer = null;
 // Set when the user really quits, so close-to-tray does not swallow it.
 let isQuitting = false;
 // Launched by a CLI/MCP client or at login: run in the tray without showing a window.
@@ -1272,6 +1274,24 @@ function registerIpc() {
   });
 
   ipcMain.handle('api:status', async () => integrations?.status() || null);
+  ipcMain.handle('api:activity', async () => apiServer?.activity() || []);
+  // "Try it" goes through the real HTTP server, exactly like an outside app.
+  ipcMain.handle('api:test', async (event, { text, voice, instruction } = {}) => {
+    const url = apiServer?.url();
+    if (!url) return { ok: false, error: 'Turn on the local API first.' };
+    try {
+      const response = await fetch(`${url}/v1/speak`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${integrations.token()}`, 'content-type': 'application/json', 'x-voxarium-client': 'voxarium · try it' },
+        body: JSON.stringify({ text: String(text || '').slice(0, 2000), voice: voice || undefined, instruction: instruction || undefined, format: 'wav' }),
+      });
+      const body = await response.json();
+      if (!response.ok) return { ok: false, error: body?.error?.message || `HTTP ${response.status}` };
+      return { ok: true, ...body };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
   ipcMain.handle('api:regenerateToken', async () => {
     if (!integrations) return null;
     integrations.regenerateToken();
@@ -1955,6 +1975,15 @@ if (!app.requestSingleInstanceLock()) {
       // The icon is also supplied per-window; this makes the taskbar group correctly.
     }
     engineBridge = createEngineBridge({ ipcMain, ensureWindow: ensureEngineWindow, log: (...args) => console.log(...args) });
+    apiServer = createApiServer({
+      bridge: engineBridge,
+      getToken: () => integrations?.token(),
+      encodeWav,
+      encodePcm16,
+      onActivity: (entry) => send('api:activity', entry),
+      version: app.getVersion(),
+      log: (...args) => console.log(...args),
+    });
     integrations = createIntegrations({
       app,
       Tray,
@@ -1963,14 +1992,7 @@ if (!app.requestSingleInstanceLock()) {
       clipboard,
       dataDir: DATA_DIR(),
       iconPath: appIconPath(),
-      apiServer: createApiServer({
-        bridge: engineBridge,
-        getToken: () => integrations?.token(),
-        encodeWav,
-        encodePcm16,
-        version: app.getVersion(),
-        log: (...args) => console.log(...args),
-      }),
+      apiServer,
       getSettings,
       showWindow,
       quit: quitApp,

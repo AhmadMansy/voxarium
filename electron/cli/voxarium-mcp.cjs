@@ -6,7 +6,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
-const { connect, call } = require('./client.cjs');
+const { connect, call, setClientName } = require('./client.cjs');
+
+setClientName('mcp');
 
 const SERVER = { name: 'voxarium', version: '1.0.0' };
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
@@ -122,6 +124,7 @@ async function handle(message) {
     switch (method) {
       case 'initialize': {
         const requested = params?.protocolVersion;
+        if (params?.clientInfo?.name) setClientName(`mcp · ${params.clientInfo.name}`);
         return write({
           jsonrpc: '2.0',
           id,

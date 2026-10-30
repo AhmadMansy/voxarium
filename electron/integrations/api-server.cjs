@@ -108,16 +108,38 @@ function speechRequest(body, { openai }) {
   };
 }
 
-function createApiServer({ bridge, getToken, encodeWav, encodePcm16, log = console.log, version = '1.0.0' }) {
+const ACTIVITY_LIMIT = 100;
+
+/** A short label for whoever sent the request, for the activity log. */
+function clientLabel(req) {
+  const declared = String(req.headers['x-voxarium-client'] || '').trim();
+  if (declared) return declared.slice(0, 40);
+  const agent = String(req.headers['user-agent'] || '').trim();
+  if (!agent) return 'unknown';
+  // "OpenAI/Python 1.54.0" stays readable; long browser-style strings are cut.
+  return agent.split(/\s+/)[0].slice(0, 40);
+}
+
+function createApiServer({ bridge, getToken, encodeWav, encodePcm16, onActivity, log = console.log, version = '1.0.0' }) {
   let server = null;
   let port = null;
+  const activity = [];
+
+  function record(entry) {
+    activity.unshift(entry);
+    if (activity.length > ACTIVITY_LIMIT) activity.length = ACTIVITY_LIMIT;
+    try {
+      onActivity?.(entry);
+    } catch {}
+  }
+
   const authorized = (req) => {
     const token = getToken();
     const header = String(req.headers.authorization || '');
     return Boolean(token) && header === `Bearer ${token}`;
   };
 
-  async function handle(req, res) {
+  async function handle(req, res, entry) {
     // Browsers always send Origin on cross-site requests; local clients do not.
     if (req.headers.origin) throw new ApiError(403, 'Browser requests are not accepted by the Voxarium API.', 'forbidden');
     const host = String(req.headers.host || '');
@@ -126,6 +148,7 @@ function createApiServer({ bridge, getToken, encodeWav, encodePcm16, log = conso
     }
     const url = new URL(req.url || '/', `http://127.0.0.1:${port}`);
     const route = `${req.method} ${url.pathname.replace(/\/+$/, '') || '/'}`;
+    entry.route = route;
 
     if (route === 'GET /' || route === 'GET /v1') {
       return sendJson(res, 200, { name: 'Voxarium local API', version, docs: 'GET /v1/models, GET /v1/voices, POST /v1/audio/speech, POST /v1/speak' });
@@ -147,7 +170,9 @@ function createApiServer({ bridge, getToken, encodeWav, encodePcm16, log = conso
       }
       case 'POST /v1/audio/speech': {
         const request = speechRequest(await readBody(req), { openai: true });
+        entry.chars = request.text.length;
         const result = await bridge.request('synthesize', request);
+        Object.assign(entry, { model: result.modelId, voice: result.voiceId, duration: result.duration });
         const audio = request.format === 'mp3' ? Buffer.from(result.mp3) : request.format === 'pcm' ? encodePcm16(result.pcm) : encodeWav(result.pcm, result.sampleRate);
         res.writeHead(200, {
           'content-type': FORMATS[request.format],
@@ -162,7 +187,9 @@ function createApiServer({ bridge, getToken, encodeWav, encodePcm16, log = conso
       case 'POST /v1/speak': {
         const body = await readBody(req);
         const request = speechRequest(body, { openai: false });
+        entry.chars = request.text.length;
         const result = await bridge.request('synthesize', request);
+        Object.assign(entry, { model: result.modelId, voice: result.voiceId, duration: result.duration, saved: Boolean(result.historyId), played: Boolean(result.played) });
         const audio = request.format === 'mp3' ? Buffer.from(result.mp3) : request.format === 'pcm' ? encodePcm16(result.pcm) : encodeWav(result.pcm, result.sampleRate);
         const payload = {
           model: result.modelId,
@@ -189,11 +216,23 @@ function createApiServer({ bridge, getToken, encodeWav, encodePcm16, log = conso
     await stop();
     port = requestedPort;
     server = http.createServer((req, res) => {
-      handle(req, res).catch((error) => {
-        if (!Number.isInteger(error?.status)) log(`[voxarium] api error: ${error instanceof Error ? error.stack : error}`);
-        if (!res.headersSent) sendError(res, error);
-        else res.destroy();
-      });
+      const started = Date.now();
+      const entry = { id: `${started}-${Math.random().toString(36).slice(2, 8)}`, at: started, client: clientLabel(req), route: `${req.method} ${req.url}`, status: 200 };
+      const finish = (status, error) => {
+        // Health checks run before every CLI/MCP command; only log them when they fail.
+        if (status < 400 && /\/v1\/health$/.test(entry.route)) return;
+        record({ ...entry, status, error: error || null, ms: Date.now() - started });
+      };
+      handle(req, res, entry).then(
+        () => finish(res.statusCode),
+        (error) => {
+          if (!Number.isInteger(error?.status)) log(`[voxarium] api error: ${error instanceof Error ? error.stack : error}`);
+          const status = Number.isInteger(error?.status) ? error.status : 500;
+          finish(status, error instanceof Error ? error.message : String(error));
+          if (!res.headersSent) sendError(res, error);
+          else res.destroy();
+        },
+      );
     });
     // Synthesis on large models can take minutes; never time out an active request.
     server.requestTimeout = 0;
@@ -224,6 +263,7 @@ function createApiServer({ bridge, getToken, encodeWav, encodePcm16, log = conso
     start,
     stop,
     running: () => Boolean(server),
+    activity: () => activity.slice(),
     port: () => (server ? port : null),
     url: () => (server ? `http://127.0.0.1:${port}` : null),
   };

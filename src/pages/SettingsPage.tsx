@@ -14,7 +14,7 @@ import { assessFit, fitTone } from '../models/fit';
 import { licenseBadge } from '../models/license';
 import type { Accent, Device, GpuInfoResult, GpuPreference, Language, Quality, Rewrites, Theme } from '../types';
 import { Icon } from '../components/Icons';
-import { IntegrationsCard } from '../components/IntegrationsCard';
+import { BackgroundCard } from '../components/BackgroundCard';
 import { PageHeader } from '../components/PageHeader';
 import { VoiceAvatar } from '../components/VoiceAvatar';
 
@@ -1095,7 +1095,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
             </div>
           </section>
 
-          <IntegrationsCard />
+          <BackgroundCard />
 
           <section className="card settings-card">
             <header className="settings-card__head">

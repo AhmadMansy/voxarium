@@ -8,6 +8,7 @@ import { usePlayer } from './player';
 import { useStudio } from './state';
 import { BatchPage } from './pages/BatchPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { IntegrationsPage } from './pages/IntegrationsPage';
 import { ModelsPage } from './pages/ModelsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StudioPage } from './pages/StudioPage';
@@ -21,6 +22,7 @@ const NAV: { id: Page; label: string; icon: IconName; hint: string }[] = [
   { id: 'voices', label: 'Voices', icon: 'voices', hint: 'Browse the cast' },
   { id: 'history', label: 'History', icon: 'history', hint: 'Your recordings' },
   { id: 'batch', label: 'Batch', icon: 'batch', hint: 'Render a full script' },
+  { id: 'integrations', label: 'Integrations', icon: 'plug', hint: 'API, MCP and command line' },
   { id: 'settings', label: 'Settings', icon: 'settings', hint: 'Tune the studio' },
 ];
 
@@ -30,6 +32,7 @@ const PAGE_LABEL: Record<Page, string> = {
   voices: 'Voice library',
   history: 'History',
   batch: 'Batch render',
+  integrations: 'Integrations',
   settings: 'Settings',
 };
 
@@ -105,7 +108,7 @@ export function App() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
-      const match = /^([1-6])$/.exec(event.key);
+      const match = /^([1-7])$/.exec(event.key);
       if (!match) return;
       event.preventDefault();
       setPage(NAV[Number(match[1]) - 1].id);
@@ -186,6 +189,9 @@ export function App() {
                 </span>
                 <span className="nav-item__label">{item.label}</span>
                 {badge && <span className="nav-item__badge">{badge}</span>}
+                {item.id === 'integrations' && settings.apiEnabled && (
+                  <span className="nav-item__dot" title="The local API is on" aria-label="API on" />
+                )}
                 {item.id === 'studio' && !badge && <span className="nav-item__key">⌘1</span>}
               </button>
             );
@@ -266,6 +272,7 @@ export function App() {
             {page === 'voices' && <VoicesPage />}
             {page === 'history' && <HistoryPage />}
             {page === 'batch' && <BatchPage />}
+            {page === 'integrations' && <IntegrationsPage />}
             {page === 'settings' && <SettingsPage onOpenSetup={openSetup} />}
           </div>
         </main>

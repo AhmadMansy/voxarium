@@ -234,6 +234,13 @@ const paths = {
       <path d="m11 12 8-8M16 4l4 4M13 7l3 3" />
     </>
   ),
+  plug: (
+    <>
+      <path d="M9 2v5M15 2v5" />
+      <path d="M6 7h12v4a6 6 0 0 1-12 0V7Z" />
+      <path d="M12 17v5" />
+    </>
+  ),
   speaker: (
     <>
       <path d="M11 5 6 9H3v6h3l5 4V5Z" />
