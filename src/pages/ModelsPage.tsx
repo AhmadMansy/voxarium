@@ -11,6 +11,7 @@ import {
 } from '../models/license';
 import {
   arabicVarietiesFor,
+  capabilityEnabled,
   capabilityLabel,
   modelHasArabic,
   voicesForModel,
@@ -514,10 +515,10 @@ function ModelCard({ model }: { model: ModelManifest }) {
             <strong>Capabilities</strong>
             <ul className="model-card__capabilities">
               {CAPABILITY_ORDER.map((capability) => (
-                <li key={capability} className={model.capabilities[capability] ? 'is-on' : 'is-off'}>
-                  <Icon name={model.capabilities[capability] ? 'check' : 'x'} size={11} />
+                <li key={capability} className={capabilityEnabled(model, capability) ? 'is-on' : 'is-off'}>
+                  <Icon name={capabilityEnabled(model, capability) ? 'check' : 'x'} size={11} />
                   {capabilityLabel(capability)}
-                  {!model.capabilities[capability] && <span className="sr-only"> not supported</span>}
+                  {!capabilityEnabled(model, capability) && <span className="sr-only"> not supported</span>}
                 </li>
               ))}
             </ul>

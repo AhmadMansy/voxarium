@@ -101,6 +101,8 @@ export function capabilityLabel(capability: keyof ModelCapabilities): string {
 }
 
 export function capabilityEnabled(model: ModelManifest, capability: keyof ModelCapabilities): boolean {
+  // The language list is the source of truth for Arabic, whatever the flag says.
+  if (capability === 'arabic') return modelHasArabic(model);
   return Boolean(model.capabilities[capability]);
 }
 

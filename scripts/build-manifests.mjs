@@ -222,7 +222,9 @@ const models = [
       ['ru', 'Russian'], ['sk', 'Slovak'], ['sl', 'Slovenian'], ['sv', 'Swedish'],
       ['tr', 'Turkish'], ['uk', 'Ukrainian'], ['vi', 'Vietnamese'],
     ),
-    capabilities: caps({ streaming: true, emotion: true, normalization: true, seed: true }),
+    // No emotion/style control (voices are fixed style presets), but the text accepts
+    // expression tags such as <laugh>, <breath> and <sigh>.
+    capabilities: caps({ streaming: true, nonVerbal: true, normalization: true, seed: true }),
     voices: { format: 'supertonic-style', note: 'Style presets instead of speaker embeddings.', compatibleLocales: ['ar-sa', 'en-us'] },
     hardware: { backend: 'sidecar', minRamGb: 4, recRamGb: 8, minVramGb: 0, recVramGb: 0, diskGb: 0.45 },
     defaults: { quality: 'f32', device: 'cpu', temperature: 0.3, seed: '4242424242424242', language: 'en', rewrites: 'default', threads: 'auto' },
@@ -705,6 +707,8 @@ const document = {
   models: built.map((model, index) => ({
     ...base,
     ...model,
+    // Arabic support comes from the declared languages, never a separate flag.
+    capabilities: { ...model.capabilities, arabic: model.languages.some((language) => language.arabic || language.code === 'ar') },
     order: index,
     downloadBytes:
       model.files && model.files.length

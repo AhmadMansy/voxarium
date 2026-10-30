@@ -424,7 +424,12 @@ try {
     assert.equal(modelHasArabic(getModel('kokoro-82m')), false);
     assert.equal(modelHasArabic(getModel('omnivoice')), true);
     assert.equal(modelHasArabic(getModel('supertonic-3')), true);
-    assert.equal(getModel('supertonic-3').capabilities.arabic, false);
+    // The Arabic capability always matches the declared languages (UI chips read it).
+    for (const model of MODELS) {
+      assert.equal(model.capabilities.arabic, modelHasArabic(model), `${model.id} Arabic flag`);
+      assert.equal(compat.capabilityEnabled(model, 'arabic'), modelHasArabic(model), `${model.id} Arabic chip`);
+    }
+    assert.equal(getModel('supertonic-3').capabilities.nonVerbal, true, 'Supertonic accepts <laugh>/<sigh>/<breath> tags');
     assert.equal(arabicVarietiesFor(getModel('omnivoice')).length, ARABIC_VARIETIES.length);
     assert.deepEqual(
       arabicVarietiesFor(getModel('supertonic-3')).map((variety) => variety.code),
