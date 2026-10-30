@@ -22,7 +22,7 @@ import type {
   StorageStats,
   VoiceInfo,
 } from './types';
-import { customVoiceToInfo, getVoice, setCustomVoices as setCustomVoiceRegistry } from './data/catalog';
+import { customVoiceToInfo, getVoice, setCustomVoices as setCustomVoiceRegistry, setModelVoices } from './data/catalog';
 import { computePeaks } from './lib/audio';
 import {
   loadEngine,
@@ -94,6 +94,9 @@ interface ModelManager {
   uninstallRuntime: (id: string) => Promise<boolean>;
   importRuntime: (id: string) => Promise<boolean>;
   openRuntimeFolder: (id: string) => Promise<void>;
+  /** Hugging Face token status, needed only for gated repositories. */
+  hfToken: { hasToken: boolean; encrypted: boolean } | null;
+  saveHfToken: (token: string) => Promise<boolean>;
 }
 
 interface StudioContextValue {
@@ -140,6 +143,8 @@ interface StudioContextValue {
     stage: string;
     runtimeDirty: boolean;
     busy: boolean;
+    /** Voices reported by the loaded sidecar model (empty for Phonon). */
+    voices: VoiceInfo[];
     reload: () => Promise<void>;
     ensureVoice: (voiceId: string) => Promise<void>;
     synthesize: (options: {
@@ -758,6 +763,20 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [toast],
   );
 
+  // Sidecar models report their own voices once they load. Register them so the
+  // pickers can resolve them, and move the selection onto this model's voices.
+  const [modelVoicesVersion, setModelVoicesVersion] = useState(0);
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (engineStatus !== 'ready' || !engine?.voices) return;
+    setModelVoices(engine.modelId, engine.voices);
+    setModelVoicesVersion((version) => version + 1);
+    const current = settingsRef.current?.lastVoice;
+    if (engine.defaultVoiceId && !engine.voices.some((voice) => voice.id === current)) {
+      updateSettings({ lastVoice: engine.defaultVoiceId });
+    }
+  }, [engineStatus, engineInfo, updateSettings]);
+
   const commitSettings = useCallback(async (next: Settings) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSettings(next);
@@ -841,6 +860,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           manifest,
           sidecar: engine.sidecar,
           language: settingsRef.current?.language,
+          variety: settingsRef.current?.arabicVariety,
           ...options,
         });
       } finally {
@@ -899,6 +919,29 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       });
       try {
         const modelToInstall = getModel(id);
+        // Sidecar models need their runtime first: uv, the interpreter and the
+        // model's own environment. The main process installs whatever is missing.
+        const runtime = runtimeFor(id);
+        if (!runtime.ready && runtime.packId) {
+          if (!runtime.available) {
+            toast(`${modelToInstall.shortName} cannot be installed yet.`, 'info', runtime.reason || undefined);
+            return false;
+          }
+          setRuntimeBusyId(runtime.packId);
+          try {
+            const built = await window.studio.runtimes.download(runtime.packId);
+            if (!built.ok) {
+              if (!/cancel/i.test(built.error || '')) {
+                toast(`The ${modelToInstall.shortName} runtime could not be installed.`, 'error', built.error);
+              }
+              await refreshModels();
+              return false;
+            }
+          } finally {
+            setRuntimeBusyId(null);
+          }
+          await refreshModels();
+        }
         const result = await window.studio.models.download({
           id,
           quality: quality || modelToInstall.defaults.quality,
@@ -923,7 +966,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         setModelBusyId(null);
       }
     },
-    [refreshModel, refreshModels, refreshStorage, toast, updateSettings],
+    [refreshModel, refreshModels, refreshStorage, runtimeFor, toast, updateSettings],
   );
 
   const verifyModel = useCallback(
@@ -1481,8 +1524,41 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       ? loadedRuntime !== runtimeKey(effectiveSettingsFor(activeModel, activeInstall, settings), activeModel.id)
       : false;
 
+  const [hfToken, setHfToken] = useState<{ hasToken: boolean; encrypted: boolean } | null>(null);
+  useEffect(() => {
+    window.studio?.huggingface
+      ?.tokenStatus()
+      .then(setHfToken)
+      .catch(() => setHfToken(null));
+  }, []);
+
+  const saveHfToken = useCallback(
+    async (token: string) => {
+      try {
+        const result = await window.studio.huggingface.setToken(token);
+        setHfToken({ hasToken: result.hasToken, encrypted: result.encrypted });
+        if (!result.ok) {
+          toast('The Hugging Face token was not saved.', 'error', result.error);
+          return false;
+        }
+        toast(
+          token.trim() ? 'Hugging Face token saved.' : 'Hugging Face token removed.',
+          'success',
+          result.user ? `Signed in as ${result.user}.` : undefined,
+        );
+        return true;
+      } catch (error) {
+        toast('The Hugging Face token was not saved.', 'error', errorMessage(error));
+        return false;
+      }
+    },
+    [toast],
+  );
+
   const modelsValue: ModelManager = useMemo(
     () => ({
+      hfToken,
+      saveHfToken,
       snapshot,
       activeModel,
       install: activeInstall,
@@ -1527,9 +1603,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       downloadModelById,
       downloadRuntime,
       hardware,
+      hfToken,
       importModelFolder,
       importRuntime,
       loadSidecarLogs,
+      saveHfToken,
       modelBusyId,
       modelProgress,
       openModelFolder,
@@ -1592,6 +1670,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         stage: engineStage,
         runtimeDirty,
         busy: activeRequests > 0,
+        voices: modelVoicesVersion >= 0 ? engineRef.current?.voices || [] : [],
         reload,
         ensureVoice,
         synthesize,
@@ -1639,6 +1718,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       info,
       model,
       modelsValue,
+      modelVoicesVersion,
       openClone,
       page,
       patchHistory,

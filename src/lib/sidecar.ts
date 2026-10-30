@@ -1,19 +1,20 @@
 import type { SpeechStats } from '../types';
 import { concatPcm, decodeAudioFile } from './audio';
-import type { SidecarStatus } from '../models/types';
+import type { SidecarStatus, SidecarVoice } from '../models/types';
 
 /**
- * Generic HTTP client for the loopback sidecar supervisor. The supervisor is
- * already token-gated; this module never accepts a remote URL. It is dormant
- * until a model ships a sidecar runtime pack, but the request/response contract
- * and cancellation path are ready for one.
+ * HTTP client for the loopback sidecar servers (electron/sidecars). Requests
+ * carry the per-session token and this module never accepts a remote URL.
+ * Servers return mono float32 PCM already resampled to 24 kHz.
  */
 export interface SidecarSynthesisOptions {
   baseUrl: string;
   token: string;
   text: string;
-  voiceId: string;
+  /** The model's own voice id, or null for its default voice. */
+  voiceId: string | null;
   language?: string;
+  variety?: string;
   temperature?: number;
   seed?: string;
   signal?: AbortSignal;
@@ -58,12 +59,22 @@ export function assertLocalSidecar(status: SidecarStatus): string {
   return status.url.replace(/\/$/, '');
 }
 
+export async function listSidecarVoices(baseUrl: string, token: string): Promise<{ voices: SidecarVoice[]; default: string }> {
+  const response = await fetch(`${baseUrl}/voices`, { headers: { authorization: `Bearer ${token}` } });
+  const body = (await response.json().catch(() => null)) as { voices?: SidecarVoice[]; default?: string; error?: string } | null;
+  if (!response.ok || !body || !Array.isArray(body.voices)) {
+    throw new Error(`The model did not list its voices: ${body?.error || response.status}`);
+  }
+  return { voices: body.voices, default: body.default || body.voices[0]?.id || 'default' };
+}
+
 export async function synthesizeWithSidecar({
   baseUrl,
   token,
   text,
   voiceId,
   language,
+  variety,
   temperature = 0.3,
   seed,
   signal,
@@ -80,6 +91,7 @@ export async function synthesizeWithSidecar({
       text,
       voice: voiceId,
       language: language || undefined,
+      variety: variety || undefined,
       temperature,
       seed: seed || undefined,
       format: 'f32',

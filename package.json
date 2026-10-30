@@ -56,6 +56,9 @@
       "package.json"
     ],
     "asar": true,
+    "asarUnpack": [
+      "electron/sidecars/**"
+    ],
     "win": {
       "target": [
         {

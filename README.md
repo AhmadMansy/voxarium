@@ -31,11 +31,12 @@ folder on first launch, so models, voices, settings and history carry over.
 - **Studio** — write a script, pick a voice, tune temperature and seed, and generate
   speech with live streaming playback.
 - **Model registry** - 15 curated TTS models with license, capability, hardware-fit
-  and quality scores. Phonon 31M is installable today; every other model stays
-  visible and explains its runtime or license gate instead of disappearing.
+  and quality scores. Every model installs with one click: Phonon runs in the app,
+  and the others run in a local Python sidecar whose environment (uv, CPython,
+  CUDA or CPU PyTorch) is built on this computer from a pinned recipe.
 - **First-run model chooser** - the setup assistant lists every model, shows fit,
   license and runtime status, and installs the chosen engine with verified downloads.
-  Missing runtime packs stay clearly marked instead of pretending to install.
+  Gated models (Phonon 40M, OpenAudio) need a Hugging Face token in Settings.
 - **103 voices** — 102 downloadable voices plus the built-in default, with search,
   accent/gender filters, favorites, previews, and one-click casting into the studio.
   Voices are grouped by model compatibility so unsupported files cannot be used.

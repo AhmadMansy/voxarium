@@ -58,10 +58,12 @@ export function licenseSummary(model: ModelManifest): string {
 export function canInstallModel(
   model: ModelManifest,
   acks: Record<string, LicenseAck> | null | undefined,
-  readiness?: { ready: boolean; reason?: string | null } | null,
+  readiness?: { ready: boolean; available?: boolean; reason?: string | null } | null,
 ): { ok: boolean; reason?: string } {
   const runtimeReady = readiness ? readiness.ready : model.runtimePack.available;
-  if (!runtimeReady) {
+  // A runtime that can be downloaded or built is installed together with the model.
+  const runtimeInstallable = Boolean(readiness?.available);
+  if (!runtimeReady && !runtimeInstallable) {
     return {
       ok: false,
       reason:

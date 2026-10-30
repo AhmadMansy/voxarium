@@ -51,13 +51,18 @@ export function runtimeReadiness(
     };
   }
 
+  const installable = Boolean(pack.available && (pack.archive || pack.buildable));
   return {
     ready: Boolean(pack.installed),
-    available: Boolean(pack.available || pack.installed),
+    available: Boolean(installable || pack.installed),
     packId: pack.id,
     reason: pack.installed
       ? null
-      : pack.error || pack.reason || declared.reason || `${pack.name} is not installed yet.`,
+      : pack.error
+        ? `The last runtime install failed: ${pack.error}`
+        : installable
+          ? `Install sets up ${pack.name} first (${pack.buildable ? 'an isolated Python environment built on this computer' : 'a verified download'}), then downloads the model.`
+          : pack.reason || declared.reason || `${pack.name} is not installed yet.`,
     pack,
   };
 }

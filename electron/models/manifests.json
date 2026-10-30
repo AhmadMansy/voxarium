@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T22:13:53.412Z",
+  "generatedAt": "2026-10-30T21:21:04.297Z",
   "defaultModelId": "phonon-31m-en",
   "voiceCatalog": {
     "repo": "gradium/phonon-voices",
@@ -250,14 +250,52 @@
       ],
       "available": true,
       "id": "phonon-40m-multilingual",
-      "files": [],
-      "filesVerified": false,
+      "files": [
+        {
+          "name": "config.json",
+          "size": 4674,
+          "sha256": "",
+          "gitSha1": "5ddd955511e851a1f8c744ac23b69eb6000565d5",
+          "required": true
+        },
+        {
+          "name": "tokenizer.json",
+          "size": 277749,
+          "sha256": "",
+          "gitSha1": "e2d7bebf27916234f26883ad8e55c5219d0ae148",
+          "required": true
+        },
+        {
+          "name": "model.q8.gguf",
+          "size": 74553568,
+          "sha256": "",
+          "lfsPointerSha1": "a1ba95bd7fac66d3b22b3320e9a618669ae35c3a",
+          "required": false,
+          "quality": "q8"
+        },
+        {
+          "name": "model.safetensors",
+          "size": 121713400,
+          "sha256": "",
+          "lfsPointerSha1": "fa40b36b8f9881486a8e716577b360786a36fa4b",
+          "required": false,
+          "quality": "f32"
+        },
+        {
+          "name": "default-voice.safetensors",
+          "size": 256136,
+          "sha256": "",
+          "lfsPointerSha1": "18530f8b2ed9b5252490ba0df8ee67304af86718",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
+      "gated": true,
       "runtimePack": {
-        "available": false,
-        "reason": "The official Phonon 40M repository is gated on Hugging Face, so its files cannot be pinned and verified automatically. Accept the license on the model page and install the files manually; the Phonon adapter and voice catalog are already wired for it."
+        "available": true
       },
       "order": 1,
-      "downloadBytes": 200000000
+      "downloadBytes": 75092127
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -267,10 +305,10 @@
       "shortName": "Kokoro",
       "family": "Kokoro",
       "description": "82M ONNX model with 54 fixed voices across eight languages. Outstanding quality per byte and the best tiny browser-native narrator.",
-      "runtime": "onnx-web",
-      "runtimeLabel": "ONNX Runtime Web · WASM / WebGPU",
+      "runtime": "sidecar",
+      "runtimeLabel": "Local sidecar · Python (kokoro + misaki)",
       "repo": "hexgrad/Kokoro-82M",
-      "revision": null,
+      "revision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
       "rating": 8,
       "ratingNotes": "Excellent quality per byte; some non-English voices are thin (French has one).",
       "license": {
@@ -376,15 +414,15 @@
         ]
       },
       "hardware": {
-        "backend": "onnx-web",
+        "backend": "sidecar",
         "minRamGb": 4,
         "recRamGb": 8,
         "minVramGb": 0,
         "recVramGb": 0,
-        "diskGb": 0.2
+        "diskGb": 0.4
       },
       "defaults": {
-        "quality": "q8",
+        "quality": "f32",
         "device": "auto",
         "temperature": 0.3,
         "seed": "4242424242424242",
@@ -393,21 +431,360 @@
         "threads": "auto"
       },
       "tags": [
-        "browser-native",
         "english",
         "multilingual",
         "cpu-friendly",
         "commercial"
       ],
+      "files": [
+        {
+          "name": "config.json",
+          "size": 2351,
+          "sha256": "",
+          "gitSha1": "14a726edd3718279eac426630879ff743955b16a",
+          "required": true
+        },
+        {
+          "name": "kokoro-v1_0.pth",
+          "size": 327212226,
+          "sha256": "496dba118d1a58f5f3db2efc88dbdc216e0483fc89fe6e47ee1f2c53f18ad1e4",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "voices/af_alloy.pt",
+          "size": 523425,
+          "sha256": "6d877149dd8b348fbad12e5845b7e43d975390e9f3b68a811d1d86168bef5aa3",
+          "required": true
+        },
+        {
+          "name": "voices/af_aoede.pt",
+          "size": 523425,
+          "sha256": "c03bd1a4c3716c2d8eaa3d50022f62d5c31cfbd6e15933a00b17fefe13841cc4",
+          "required": true
+        },
+        {
+          "name": "voices/af_bella.pt",
+          "size": 523425,
+          "sha256": "8cb64e02fcc8de0327a8e13817e49c76c945ecf0052ceac97d3081480e8e48d6",
+          "required": true
+        },
+        {
+          "name": "voices/af_heart.pt",
+          "size": 523425,
+          "sha256": "0ab5709b8ffab19bfd849cd11d98f75b60af7733253ad0d67b12382a102cb4ff",
+          "required": true
+        },
+        {
+          "name": "voices/af_jessica.pt",
+          "size": 523435,
+          "sha256": "cdfdccb8cc975aa34ee6b89642963b0064237675de0e41a30ae64cc958dd4e87",
+          "required": true
+        },
+        {
+          "name": "voices/af_kore.pt",
+          "size": 523420,
+          "sha256": "8bfbc512321c3db49dff984ac675fa5ac7eaed5a96cc31104d3a9080e179d69d",
+          "required": true
+        },
+        {
+          "name": "voices/af_nicole.pt",
+          "size": 523430,
+          "sha256": "c5561808bcf5250fe8c5f5de32caf2d94f27e57e95befdb098c5c85991d4c5da",
+          "required": true
+        },
+        {
+          "name": "voices/af_nova.pt",
+          "size": 523420,
+          "sha256": "e0233676ddc21908c37a1f102f6b88a59e4e5c1bd764983616eb9eda629dbcd2",
+          "required": true
+        },
+        {
+          "name": "voices/af_river.pt",
+          "size": 523425,
+          "sha256": "e149459bd9c084416b74756b9bd3418256a8b839088abb07d463730c369dab8f",
+          "required": true
+        },
+        {
+          "name": "voices/af_sarah.pt",
+          "size": 523425,
+          "sha256": "49bd364ea3be9eb3e9685e8f9a15448c4883112a7c0ff7ab139fa4088b08cef9",
+          "required": true
+        },
+        {
+          "name": "voices/af_sky.pt",
+          "size": 523351,
+          "sha256": "c799548aed06e0cb0d655a85a01b48e7f10484d71663f9a3045a5b9362e8512c",
+          "required": true
+        },
+        {
+          "name": "voices/am_adam.pt",
+          "size": 523420,
+          "sha256": "ced7e284aba12472891be1da3ab34db84cc05cc02b5889535796dbf2d8b0cb34",
+          "required": true
+        },
+        {
+          "name": "voices/am_echo.pt",
+          "size": 523420,
+          "sha256": "8bcfdc852bc985fb45c396c561e571ffb9183930071f962f1b50df5c97b161e8",
+          "required": true
+        },
+        {
+          "name": "voices/am_eric.pt",
+          "size": 523420,
+          "sha256": "ada66f0eefff34ec921b1d7474d7ac8bec00cd863c170f1c534916e9b8212aae",
+          "required": true
+        },
+        {
+          "name": "voices/am_fenrir.pt",
+          "size": 523430,
+          "sha256": "98e507eca1db08230ae3b6232d59c10aec9630022d19accac4f5d12fcec3c37a",
+          "required": true
+        },
+        {
+          "name": "voices/am_liam.pt",
+          "size": 523420,
+          "sha256": "c82550757ddb31308b97f30040dda8c2d609a9e2de6135848d0a948368138518",
+          "required": true
+        },
+        {
+          "name": "voices/am_michael.pt",
+          "size": 523435,
+          "sha256": "9a443b79a4b22489a5b0ab7c651a0bcd1a30bef675c28333f06971abbd47bd37",
+          "required": true
+        },
+        {
+          "name": "voices/am_onyx.pt",
+          "size": 523420,
+          "sha256": "e8452be16cd0f6da7b4579eaf7b1e4506e92524882053d86d72b96b9a7fed584",
+          "required": true
+        },
+        {
+          "name": "voices/am_puck.pt",
+          "size": 523420,
+          "sha256": "dd1d8973f4ce4b7d8ae407c77a435f485dabc052081b80ea75c4f30b84f36223",
+          "required": true
+        },
+        {
+          "name": "voices/am_santa.pt",
+          "size": 523425,
+          "sha256": "7f2f7582fa2b1f160e90aafe6d0b442a685e773608b6667e545d743b073e97a7",
+          "required": true
+        },
+        {
+          "name": "voices/bf_alice.pt",
+          "size": 523425,
+          "sha256": "d292651b6af6c0d81705c2580dcb4463fccc0ff7b8d618a471dbb4e45655b3f3",
+          "required": true
+        },
+        {
+          "name": "voices/bf_emma.pt",
+          "size": 523420,
+          "sha256": "d0a423deabf4a52b4f49318c51742c54e21bb89bbbe9a12141e7758ddb5da701",
+          "required": true
+        },
+        {
+          "name": "voices/bf_isabella.pt",
+          "size": 523440,
+          "sha256": "cdd4c37003805104d1d08fb1e05855c8fb2c68de24ca6e71f264a30aaa59eefd",
+          "required": true
+        },
+        {
+          "name": "voices/bf_lily.pt",
+          "size": 523420,
+          "sha256": "6e09c2e481e2d53004d7e5ae7d3a325369e130a6f45c35a6002de75084be9285",
+          "required": true
+        },
+        {
+          "name": "voices/bm_daniel.pt",
+          "size": 523430,
+          "sha256": "fc3fce4e9c12ed4dbc8fa9680cfe51ee190a96444ce7c3ad647549a30823fc5d",
+          "required": true
+        },
+        {
+          "name": "voices/bm_fable.pt",
+          "size": 523425,
+          "sha256": "d44935f3135257a9064df99f007fc1342ff1aa767552b4a4fa4c3b2e6e59079c",
+          "required": true
+        },
+        {
+          "name": "voices/bm_george.pt",
+          "size": 523430,
+          "sha256": "f1bc812213dc59774769e5c80004b13eeb79bd78130b11b2d7f934542dab811b",
+          "required": true
+        },
+        {
+          "name": "voices/bm_lewis.pt",
+          "size": 523425,
+          "sha256": "b5204750dcba01029d2ac9cec17aec3b20a6d64073c579d694a23cb40effbd0e",
+          "required": true
+        },
+        {
+          "name": "voices/ef_dora.pt",
+          "size": 523420,
+          "sha256": "d9d69b0f8a2b87a345f269d89639f89dfbd1a6c9da0c498ae36dd34afcf35530",
+          "required": true
+        },
+        {
+          "name": "voices/em_alex.pt",
+          "size": 523420,
+          "sha256": "5eac53f767c3f31a081918ba531969aea850bed18fe56419b804d642c6973431",
+          "required": true
+        },
+        {
+          "name": "voices/em_santa.pt",
+          "size": 523430,
+          "sha256": "aa8620cb96cec705823efca0d956a63e158e09ad41aca934d354b7f0778f63cb",
+          "required": true
+        },
+        {
+          "name": "voices/ff_siwis.pt",
+          "size": 523425,
+          "sha256": "8073bf2d2c4b9543a90f2f0fd2144de4ed157e2d4b79ddeb0d5123066171fbc9",
+          "required": true
+        },
+        {
+          "name": "voices/hf_alpha.pt",
+          "size": 523425,
+          "sha256": "06906fe05746d13a79c5c01e21fd7233b05027221a933c9ada650f5aafc8f044",
+          "required": true
+        },
+        {
+          "name": "voices/hf_beta.pt",
+          "size": 523420,
+          "sha256": "63c0a1a6272e98d43f4511bba40e30dd9c8ceaf5f39af869509b9f51a71c503e",
+          "required": true
+        },
+        {
+          "name": "voices/hm_omega.pt",
+          "size": 523425,
+          "sha256": "b55f02a8e8483fffe0afa566e7d22ed8013acf47ad4f6bbee2795a840155703e",
+          "required": true
+        },
+        {
+          "name": "voices/hm_psi.pt",
+          "size": 523351,
+          "sha256": "2f0f055cea4f1083f4ef127ece48d71606347f6557dbb961c0ca5740a2da485b",
+          "required": true
+        },
+        {
+          "name": "voices/if_sara.pt",
+          "size": 523425,
+          "sha256": "6c0b253b955fe32f1a1a86006aebe83d050ea95afd0e7be15182f087deedbf55",
+          "required": true
+        },
+        {
+          "name": "voices/im_nicola.pt",
+          "size": 523341,
+          "sha256": "234ed06648649f9bd874b37508ea17560b9c993ef85b4ddb3e3a71e062bd2c12",
+          "required": true
+        },
+        {
+          "name": "voices/jf_alpha.pt",
+          "size": 523425,
+          "sha256": "1bf4c9dc69e45ee46183b071f4db766349aac5592acbcfeaf051018048a5d787",
+          "required": true
+        },
+        {
+          "name": "voices/jf_gongitsune.pt",
+          "size": 523351,
+          "sha256": "1b171917f18f351e65f2bf9657700cd6bfec4e65589c297525b9cf3c20105770",
+          "required": true
+        },
+        {
+          "name": "voices/jf_nezumi.pt",
+          "size": 523420,
+          "sha256": "d83f007a7f01783b77014561a7d493d327a0210e143440e91c9b697590d27661",
+          "required": true
+        },
+        {
+          "name": "voices/jf_tebukuro.pt",
+          "size": 523435,
+          "sha256": "0d6917904438aec85f73a6fa1f7ac2be6481aae47c697834936930a91796c576",
+          "required": true
+        },
+        {
+          "name": "voices/jm_kumo.pt",
+          "size": 523425,
+          "sha256": "98340afd68b1cee84fe0cd95528cfa6d4b39e416aa75a9df64049d52c8b55896",
+          "required": true
+        },
+        {
+          "name": "voices/pf_dora.pt",
+          "size": 523425,
+          "sha256": "07e4ff987c5d5a8c3995efd15cc4f0db7c4c15e881b198d8ab7f67ecf51f5eb7",
+          "required": true
+        },
+        {
+          "name": "voices/pm_alex.pt",
+          "size": 523425,
+          "sha256": "cf0ba8c573c2480fc54123683a35cf1e2ae130428e441eb91f9149bdb188a526",
+          "required": true
+        },
+        {
+          "name": "voices/pm_santa.pt",
+          "size": 523430,
+          "sha256": "d42103169c5c872abbafb9129133af7e942bb9d272c3cc3b95c203e7d7198c29",
+          "required": true
+        },
+        {
+          "name": "voices/zf_xiaobei.pt",
+          "size": 523435,
+          "sha256": "9b76be63dab4f4f96962030acc0126a9aee9728608fbbe115e2b58a2bd504df6",
+          "required": true
+        },
+        {
+          "name": "voices/zf_xiaoni.pt",
+          "size": 523430,
+          "sha256": "95b49f169bf1640f4f43c25e13daa39f7b98d15d00823e83ef5c14b3ced59e49",
+          "required": true
+        },
+        {
+          "name": "voices/zf_xiaoxiao.pt",
+          "size": 523440,
+          "sha256": "cfaf6f2ded1ee56f1ff94fcd2b0e6cdf32e5b794bdc05b44e7439d44aef5887c",
+          "required": true
+        },
+        {
+          "name": "voices/zf_xiaoyi.pt",
+          "size": 523430,
+          "sha256": "b5235dbaeef85a4c613bf78af9a88ff63c25bac5f26ba77e36186d8b7ebf05e2",
+          "required": true
+        },
+        {
+          "name": "voices/zm_yunjian.pt",
+          "size": 523435,
+          "sha256": "76cbf8bad35901d011d9628a2fdceb7b4f1f127e7a3269cb393b3941eb7fc417",
+          "required": true
+        },
+        {
+          "name": "voices/zm_yunxi.pt",
+          "size": 523425,
+          "sha256": "dbe6e1ce7c3dbaf2f5667432947b638b1c6831ccbe154c4610dbcc44f431e27b",
+          "required": true
+        },
+        {
+          "name": "voices/zm_yunxia.pt",
+          "size": 523430,
+          "sha256": "bb2b03b08e84d64e1214440ce3b624987fac177f2eeb5bab8571799a3d980acd",
+          "required": true
+        },
+        {
+          "name": "voices/zm_yunyang.pt",
+          "size": 523435,
+          "sha256": "5238ac22e0c7f8b6cdd2eddd6e444b8a700b73c4674d9a047d59a94ff96379a2",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "runtimePack": {
         "available": false,
-        "reason": "The Kokoro ONNX pipeline is not bundled in this build. The shared ONNX worker is installed and ready for the runtime pack."
+        "packId": "kokoro-82m-sidecar",
+        "reason": "Kokoro runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 90000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 355479286,
       "order": 2,
-      "downloadBytes": 90000000
+      "downloadBytes": 355479286
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -417,10 +794,10 @@
       "shortName": "Supertonic",
       "family": "Supertonic",
       "description": "31-language ONNX model that runs comfortably on CPU. Four small graphs, expression tags and full Arabic coverage.",
-      "runtime": "onnx-web",
-      "runtimeLabel": "ONNX Runtime Web · WASM / WebGPU",
+      "runtime": "sidecar",
+      "runtimeLabel": "Local sidecar · ONNX Runtime (CPU)",
       "repo": "Supertone/supertonic-3",
-      "revision": null,
+      "revision": "3cadd1ee6394adea1bd021217a0e650ede09a323",
       "rating": 8,
       "ratingNotes": "Best CPU multilingual model; no zero-shot cloning, voices are style presets.",
       "license": {
@@ -651,16 +1028,16 @@
         ]
       },
       "hardware": {
-        "backend": "onnx-web",
-        "minRamGb": 6,
-        "recRamGb": 12,
+        "backend": "sidecar",
+        "minRamGb": 4,
+        "recRamGb": 8,
         "minVramGb": 0,
         "recVramGb": 0,
-        "diskGb": 0.45
+        "diskGb": 0.5
       },
       "defaults": {
-        "quality": "q8",
-        "device": "auto",
+        "quality": "f32",
+        "device": "cpu",
         "temperature": 0.3,
         "seed": "4242424242424242",
         "language": "en",
@@ -668,21 +1045,138 @@
         "threads": "auto"
       },
       "tags": [
-        "browser-native",
         "multilingual",
         "arabic",
         "cpu-friendly",
         "commercial"
       ],
+      "files": [
+        {
+          "name": "config.json",
+          "size": 174,
+          "sha256": "",
+          "gitSha1": "19c2e8b0aa701c1017ca22a22cd519354854e4b1",
+          "required": true
+        },
+        {
+          "name": "onnx/duration_predictor.onnx",
+          "size": 3700147,
+          "sha256": "c3eb91414d5ff8a7a239b7fe9e34e7e2bf8a8140d8375ffb14718b1c639325db",
+          "required": true
+        },
+        {
+          "name": "onnx/text_encoder.onnx",
+          "size": 36416150,
+          "sha256": "c7befd5ea8c3119769e8a6c1486c4edc6a3bc8365c67621c881bbb774b9902ff",
+          "required": true
+        },
+        {
+          "name": "onnx/tts.json",
+          "size": 8253,
+          "sha256": "",
+          "gitSha1": "28575b0793c92607a0f0a292550df9bd17709a79",
+          "required": true
+        },
+        {
+          "name": "onnx/unicode_indexer.json",
+          "size": 277676,
+          "sha256": "",
+          "gitSha1": "3aaf4d33024aff0be455633c24b3636b3a810150",
+          "required": true
+        },
+        {
+          "name": "onnx/vector_estimator.onnx",
+          "size": 256534781,
+          "sha256": "883ac868ea0275ef0e991524dc64f16b3c0376efd7c320af6b53f5b780d7c61c",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "onnx/vocoder.onnx",
+          "size": 101424195,
+          "sha256": "085de76dd8e8d5836d6ca66826601f615939218f90e519f70ee8a36ed2a4c4ba",
+          "required": true
+        },
+        {
+          "name": "voice_styles/F1.json",
+          "size": 292046,
+          "sha256": "",
+          "gitSha1": "421365f307ed1535d8da16845031d0e9fa3e60c5",
+          "required": true
+        },
+        {
+          "name": "voice_styles/F2.json",
+          "size": 292423,
+          "sha256": "",
+          "gitSha1": "b09a3a433df8a4856d1d7d64736a56ddf37a4ea3",
+          "required": true
+        },
+        {
+          "name": "voice_styles/F3.json",
+          "size": 290794,
+          "sha256": "",
+          "gitSha1": "a366f94c77c4b440404071f1a52bed3ccf83a5ff",
+          "required": true
+        },
+        {
+          "name": "voice_styles/F4.json",
+          "size": 291808,
+          "sha256": "",
+          "gitSha1": "39c78a52795320c6101b7eaf984c0e2352fbdc18",
+          "required": true
+        },
+        {
+          "name": "voice_styles/F5.json",
+          "size": 291479,
+          "sha256": "",
+          "gitSha1": "06983f8816ad00a8eeb7efd37a33d457587e16f8",
+          "required": true
+        },
+        {
+          "name": "voice_styles/M1.json",
+          "size": 291748,
+          "sha256": "",
+          "gitSha1": "bddfff85a7c4c140c11620bd7005d86681dccdac",
+          "required": true
+        },
+        {
+          "name": "voice_styles/M2.json",
+          "size": 292055,
+          "sha256": "",
+          "gitSha1": "602ff6c4d6d48cdb71c37461f7c175d71fe8b34b",
+          "required": true
+        },
+        {
+          "name": "voice_styles/M3.json",
+          "size": 290198,
+          "sha256": "",
+          "gitSha1": "000b60436b77619b933fdc33628ad737595e6794",
+          "required": true
+        },
+        {
+          "name": "voice_styles/M4.json",
+          "size": 291522,
+          "sha256": "",
+          "gitSha1": "aae253ae81185fa06a6469c3f1cdff04ed121ddf",
+          "required": true
+        },
+        {
+          "name": "voice_styles/M5.json",
+          "size": 291469,
+          "sha256": "",
+          "gitSha1": "0536b252698830f8536c077edcb94e1ce4768ab6",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "runtimePack": {
         "available": false,
-        "reason": "The Supertonic 3 ONNX graphs are not bundled in this build. The shared ONNX worker is installed and ready for the runtime pack."
+        "packId": "supertonic-3-sidecar",
+        "reason": "Supertonic runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 420000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 401276918,
       "order": 3,
-      "downloadBytes": 420000000
+      "downloadBytes": 401276918
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -695,7 +1189,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "silma-ai/silma-tts",
-      "revision": null,
+      "revision": "226dd7a65cadf51f9a6dbe3953fc89003b3844d5",
       "rating": 7,
       "ratingNotes": "Arabic-first and very small; quality trails the flagships outside Arabic.",
       "license": {
@@ -753,7 +1247,7 @@
         "recRamGb": 16,
         "minVramGb": 0,
         "recVramGb": 4,
-        "diskGb": 0.4
+        "diskGb": 2.7
       },
       "defaults": {
         "quality": "f32",
@@ -772,14 +1266,36 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The SILMA sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "silma-tts-sidecar"
+        "packId": "silma-tts-sidecar",
+        "reason": "SILMA runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 320000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 2603246705,
+      "files": [
+        {
+          "name": "config.yaml",
+          "size": 1076,
+          "sha256": "",
+          "gitSha1": "94e755827bb588ee44ea540aee9c6c21177cd365",
+          "required": true
+        },
+        {
+          "name": "model.pt",
+          "size": 2603209272,
+          "sha256": "f43256d0b78b8803c638aed0875da5a4b372b4a784690a0156e5baff14f7336c",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "vocab.txt",
+          "size": 36357,
+          "sha256": "",
+          "gitSha1": "b678d831888af2e3c662b94bc248fa6845bebf61",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "order": 4,
-      "downloadBytes": 320000000
+      "downloadBytes": 2603246705
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -792,7 +1308,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "ResembleAI/chatterbox",
-      "revision": null,
+      "revision": "5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18",
       "rating": 8,
       "ratingNotes": "Strong cloning and emotion for its size; watermark and a heavier runtime are the trade-offs.",
       "license": {
@@ -970,7 +1486,7 @@
         "recRamGb": 24,
         "minVramGb": 4,
         "recVramGb": 8,
-        "diskGb": 3.4
+        "diskGb": 3.3
       },
       "defaults": {
         "quality": "f32",
@@ -991,14 +1507,54 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The Chatterbox sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "chatterbox-sidecar"
+        "packId": "chatterbox-sidecar",
+        "reason": "Chatterbox runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 3400000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 3208951748,
+      "files": [
+        {
+          "name": "ve.pt",
+          "size": 5698626,
+          "sha256": "4b16d836bc598509860f6fa068165a8bb5e9ac84f05582dfcf278a5a372879f1",
+          "required": true
+        },
+        {
+          "name": "t3_mtl23ls_v2.safetensors",
+          "size": 2143989752,
+          "sha256": "b1237586127ce98e7800a68e49938eb5092846862aabcb6e17b2fda7889a6c75",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "s3gen.pt",
+          "size": 1057165844,
+          "sha256": "9b9ff07e60b20c136e2b1b3d7563a24604e8d2c4c267888d1ee929dd0151d2a3",
+          "required": true
+        },
+        {
+          "name": "grapheme_mtl_merged_expanded_v1.json",
+          "size": 69989,
+          "sha256": "",
+          "gitSha1": "d27fb3f2fd38ca39b7bbfbf83a13b3c617e551df",
+          "required": true
+        },
+        {
+          "name": "conds.pt",
+          "size": 107374,
+          "sha256": "6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e",
+          "required": true
+        },
+        {
+          "name": "Cangjie5_TC.json",
+          "size": 1920163,
+          "sha256": "",
+          "gitSha1": "d77891f84ca1db0d6f7058a4ee081d4bb0bfe88e",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "order": 5,
-      "downloadBytes": 3400000000
+      "downloadBytes": 3208951748
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -1011,7 +1567,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "fishaudio/openaudio-s1-mini",
-      "revision": null,
+      "revision": "f4b445029346701e082b60bb63fcc2d1bb17a0e2",
       "rating": 8,
       "ratingNotes": "Expressive and compact; the non-commercial share-alike license limits use.",
       "license": {
@@ -1128,7 +1684,7 @@
         "recRamGb": 24,
         "minVramGb": 4,
         "recVramGb": 8,
-        "diskGb": 1.2
+        "diskGb": 3.7
       },
       "defaults": {
         "quality": "f32",
@@ -1148,14 +1704,52 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The OpenAudio sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "openaudio-s1-mini-sidecar"
+        "packId": "openaudio-s1-mini-sidecar",
+        "reason": "OpenAudio runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 1200000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 3608911039,
+      "files": [
+        {
+          "name": "codec.pth",
+          "size": 1871099728,
+          "sha256": "",
+          "lfsPointerSha1": "720d65abd6e6d80a6e4e2b87f8248450615107af",
+          "required": true
+        },
+        {
+          "name": "config.json",
+          "size": 844,
+          "sha256": "",
+          "gitSha1": "53320aac97d86ee9a5017e8b321024c879c7d9c7",
+          "required": true
+        },
+        {
+          "name": "model.pth",
+          "size": 1735122974,
+          "sha256": "",
+          "lfsPointerSha1": "ef14811bef1077249fed11fef6816cb7fb9153b3",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "special_tokens.json",
+          "size": 126275,
+          "sha256": "",
+          "gitSha1": "954449504ac94d1a89b31aa1bc914f07f898b6bb",
+          "required": true
+        },
+        {
+          "name": "tokenizer.tiktoken",
+          "size": 2561218,
+          "sha256": "",
+          "gitSha1": "9b9b0e0416d84d7c88333eb261c77e5fe2d7f7be",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
+      "gated": true,
       "order": 6,
-      "downloadBytes": 1200000000
+      "downloadBytes": 3608911039
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -1168,7 +1762,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
-      "revision": null,
+      "revision": "fd4b254389122332181a7c3db7f27e918eec64e3",
       "rating": 9,
       "ratingNotes": "Near state of the art; Apache-2.0 weights make it the strongest commercial-safe flagship.",
       "license": {
@@ -1266,10 +1860,10 @@
         "recRamGb": 32,
         "minVramGb": 6,
         "recVramGb": 12,
-        "diskGb": 3.8
+        "diskGb": 4.6
       },
       "defaults": {
-        "quality": "q8",
+        "quality": "f32",
         "device": "auto",
         "temperature": 0.7,
         "seed": "4242424242424242",
@@ -1286,14 +1880,91 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The Qwen3-TTS sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "qwen3-tts-sidecar"
+        "packId": "qwen3-tts-sidecar",
+        "reason": "Qwen3-TTS runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 3500000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 4544170364,
+      "files": [
+        {
+          "name": "config.json",
+          "size": 4494,
+          "sha256": "",
+          "gitSha1": "81b57e8e790c07e8fa7f82d8bdfd7574d485c396",
+          "required": true
+        },
+        {
+          "name": "generation_config.json",
+          "size": 245,
+          "sha256": "",
+          "gitSha1": "1872b16d4535564abf2db5d6debe6cddd82b7f2e",
+          "required": true
+        },
+        {
+          "name": "merges.txt",
+          "size": 1671839,
+          "sha256": "",
+          "gitSha1": "20024bfe7c83998e9aeaf98a0cd6a2ce6306c2f0",
+          "required": true
+        },
+        {
+          "name": "model.safetensors",
+          "size": 3857413744,
+          "sha256": "38fc7fc51c5e776e840414b6fd443962e9411b9654888fd7913e4da643cb857c",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "preprocessor_config.json",
+          "size": 127,
+          "sha256": "",
+          "gitSha1": "0525dd953bb9241912f7147666f0d535165d5d4f",
+          "required": true
+        },
+        {
+          "name": "speech_tokenizer/config.json",
+          "size": 2336,
+          "sha256": "",
+          "gitSha1": "06cc8dc4c5ec8a1929086b71b98c313020d9268b",
+          "required": true
+        },
+        {
+          "name": "speech_tokenizer/configuration.json",
+          "size": 76,
+          "sha256": "",
+          "gitSha1": "ab58e2eaf53cd14a1a2a7527d9261ceea93a24cd",
+          "required": true
+        },
+        {
+          "name": "speech_tokenizer/model.safetensors",
+          "size": 682293092,
+          "sha256": "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258",
+          "required": true
+        },
+        {
+          "name": "speech_tokenizer/preprocessor_config.json",
+          "size": 234,
+          "sha256": "",
+          "gitSha1": "ba40914f4f49ab98a8ca545d4892ef7291a39592",
+          "required": true
+        },
+        {
+          "name": "tokenizer_config.json",
+          "size": 7344,
+          "sha256": "",
+          "gitSha1": "6ff9fd60cc623bb54bbd603cbd418c97a11528d7",
+          "required": true
+        },
+        {
+          "name": "vocab.json",
+          "size": 2776833,
+          "sha256": "",
+          "gitSha1": "4783fe10ac3adce15ac8f358ef5462739852c569",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "order": 7,
-      "downloadBytes": 3500000000
+      "downloadBytes": 4544170364
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -1306,7 +1977,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "k2-fsa/OmniVoice",
-      "revision": null,
+      "revision": "c5fdb5ccb189668d56333f77ba2629f4cd7535f4",
       "rating": 8,
       "ratingNotes": "Unmatched language breadth and Arabic variety coverage; quality is uneven outside major languages. The inference code is Apache-2.0, but the published model weights are CC-BY-NC.",
       "license": {
@@ -1556,7 +2227,7 @@
         "recRamGb": 24,
         "minVramGb": 4,
         "recVramGb": 8,
-        "diskGb": 1.4
+        "diskGb": 3.3
       },
       "defaults": {
         "quality": "f32",
@@ -1576,14 +2247,76 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The OmniVoice sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "omnivoice-sidecar"
+        "packId": "omnivoice-sidecar",
+        "reason": "OmniVoice runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 1300000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 3267452573,
+      "files": [
+        {
+          "name": "audio_tokenizer/LICENSE",
+          "size": 9171,
+          "sha256": "",
+          "gitSha1": "000139f87ffdc03106fc422a3bd3cebebb9808b3",
+          "required": true
+        },
+        {
+          "name": "audio_tokenizer/config.json",
+          "size": 2531,
+          "sha256": "",
+          "gitSha1": "3f9e5ee43d2134dfdc1e38055fbcb24a18af1635",
+          "required": true
+        },
+        {
+          "name": "audio_tokenizer/model.safetensors",
+          "size": 805665628,
+          "sha256": "fe7c5e8785e0a05833e1bfc3e002ec7f55af21e306b2e7154a448c1f54ccfb0d",
+          "required": true
+        },
+        {
+          "name": "audio_tokenizer/preprocessor_config.json",
+          "size": 206,
+          "sha256": "",
+          "gitSha1": "aa7431e986f9e13157c60e04be8f52501b718254",
+          "required": true
+        },
+        {
+          "name": "chat_template.jinja",
+          "size": 4168,
+          "sha256": "",
+          "gitSha1": "01be9b307daa2d425f7c168c9fb145a286e0afb4",
+          "required": true
+        },
+        {
+          "name": "config.json",
+          "size": 2238,
+          "sha256": "",
+          "gitSha1": "dd518e816a5c4c8eba90820bb7efa49ceafbe223",
+          "required": true
+        },
+        {
+          "name": "model.safetensors",
+          "size": 2450344112,
+          "sha256": "730839316de585f4c8298ec0e1712efc10fb19c6fa4e36eb741cb8d51ebcf6aa",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "tokenizer.json",
+          "size": 11423986,
+          "sha256": "408f669b7e2b045fdf54201d815bd364e6667dbd845115da81239c40bc6dcfd1",
+          "required": true
+        },
+        {
+          "name": "tokenizer_config.json",
+          "size": 533,
+          "sha256": "",
+          "gitSha1": "a7fb6f8558cce2a23d4cbb186a4a740bd2d9d481",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "order": 8,
-      "downloadBytes": 1300000000
+      "downloadBytes": 3267452573
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -1596,7 +2329,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "openbmb/VoxCPM2",
-      "revision": null,
+      "revision": "32279effe8c19989596f05d353d1447f51d9e915",
       "rating": 9,
       "ratingNotes": "48 kHz output and strong multilingual naturalness; a heavy local runtime.",
       "license": {
@@ -1843,14 +2576,63 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The VoxCPM2 sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "voxcpm2-sidecar"
+        "packId": "voxcpm2-sidecar",
+        "reason": "VoxCPM2 runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 4600000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 4960722408,
+      "files": [
+        {
+          "name": "audiovae.pth",
+          "size": 376951122,
+          "sha256": "94b5d51e107e0507d4acc976cfdadb64edd6fd06d1f751dadbf2fd1594274bf1",
+          "required": true
+        },
+        {
+          "name": "config.json",
+          "size": 4336,
+          "sha256": "",
+          "gitSha1": "792f1c223ed607f9e508c0a0deb15dd9532483be",
+          "required": true
+        },
+        {
+          "name": "model.safetensors",
+          "size": 4580080592,
+          "sha256": "f7f964cfa9da23653baec6e6f7750719977ad944ed9f95fe52fe3a620506891d",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "special_tokens_map.json",
+          "size": 1632,
+          "sha256": "",
+          "gitSha1": "8619dda6f3eb6d60d0a1bb274820054e46f41699",
+          "required": true
+        },
+        {
+          "name": "tokenization_voxcpm2.py",
+          "size": 2895,
+          "sha256": "",
+          "gitSha1": "e7d768677298d058fa6ef8b160e3ca4430997fad",
+          "required": true
+        },
+        {
+          "name": "tokenizer.json",
+          "size": 3676772,
+          "sha256": "",
+          "gitSha1": "41a5c2a8dba4058dd1ad73fb898abf5e4f64f0f9",
+          "required": true
+        },
+        {
+          "name": "tokenizer_config.json",
+          "size": 5059,
+          "sha256": "",
+          "gitSha1": "fecf4cdae73b57053cac2ad34c67febbe4e4f08b",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "order": 9,
-      "downloadBytes": 4600000000
+      "downloadBytes": 4960722408
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -1863,7 +2645,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "OpenMOSS-Team/MOSS-TTS-v1.5",
-      "revision": null,
+      "revision": "cdd3b911b1585e3f2dbc7775ef10f9926f58850a",
       "rating": 9,
       "ratingNotes": "Flagship quality and Arabic support; 17 GB of weights put it out of reach for most machines.",
       "license": {
@@ -2091,7 +2873,7 @@
         "diskGb": 17
       },
       "defaults": {
-        "quality": "q4",
+        "quality": "f32",
         "device": "auto",
         "temperature": 0.7,
         "seed": "4242424242424242",
@@ -2109,14 +2891,151 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The MOSS-TTS sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "moss-tts-sidecar"
+        "packId": "moss-tts-sidecar",
+        "reason": "MOSS-TTS runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 17000000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 16995746554,
+      "files": [
+        {
+          "name": "__init__.py",
+          "size": 0,
+          "sha256": "",
+          "gitSha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "required": true
+        },
+        {
+          "name": "added_tokens.json",
+          "size": 704,
+          "sha256": "",
+          "gitSha1": "82da7c72d0a900d520bfe3ef5e2b3bb95bf87f6d",
+          "required": true
+        },
+        {
+          "name": "chat_template.jinja",
+          "size": 352,
+          "sha256": "",
+          "gitSha1": "92909f8edadc3842c289ccfd7cd5de6a9ac655e4",
+          "required": true
+        },
+        {
+          "name": "config.json",
+          "size": 2275,
+          "sha256": "",
+          "gitSha1": "ddfae7149e06a804f5afbcae068fa77ac4ed103e",
+          "required": true
+        },
+        {
+          "name": "configuration_moss_tts.py",
+          "size": 5584,
+          "sha256": "",
+          "gitSha1": "f7e91c65f7f30c35d309b4ebc50453cf5c89eebf",
+          "required": true
+        },
+        {
+          "name": "inference_utils.py",
+          "size": 5092,
+          "sha256": "",
+          "gitSha1": "b2175d852af5469e3e9dd7688b2c8798d1a1cea8",
+          "required": true
+        },
+        {
+          "name": "merges.txt",
+          "size": 1671853,
+          "sha256": "",
+          "gitSha1": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+          "required": true
+        },
+        {
+          "name": "model-00001-of-00004.safetensors",
+          "size": 4932667368,
+          "sha256": "749b82d07cebea77dd15af365e2efeb1dc0dd54537f7010795fdf42f520743a9",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "model-00002-of-00004.safetensors",
+          "size": 4915961640,
+          "sha256": "4d891c8adb8bf9c135e8a44cd9f003f1dbf8b09278ced48d5af1fe7d989efb39",
+          "required": true
+        },
+        {
+          "name": "model-00003-of-00004.safetensors",
+          "size": 4983069760,
+          "sha256": "111013e05174e67748443eafdd4d64c051292d0e5fce2cac23a16988b661eea1",
+          "required": true
+        },
+        {
+          "name": "model-00004-of-00004.safetensors",
+          "size": 2148040304,
+          "sha256": "951ee88cf85996ee5c39441ace6e50f52894adad5da42ad2314b9a9db7f940b8",
+          "required": true
+        },
+        {
+          "name": "model.safetensors.index.json",
+          "size": 40416,
+          "sha256": "",
+          "gitSha1": "ae07ffbcefc80e9f53c0c1d786836dbc295c1f6e",
+          "required": true
+        },
+        {
+          "name": "modeling_moss_tts.py",
+          "size": 25330,
+          "sha256": "",
+          "gitSha1": "b3941bc66dd2b46ee695825c50d034dd22285dc3",
+          "required": true
+        },
+        {
+          "name": "processing_moss_tts.py",
+          "size": 35531,
+          "sha256": "",
+          "gitSha1": "a84f65c9757729479d750e8e7729c2995d204d1e",
+          "required": true
+        },
+        {
+          "name": "processor_config.json",
+          "size": 145,
+          "sha256": "",
+          "gitSha1": "b5df3b949f047d5949fafa7d42b9cf8693fcbb94",
+          "required": true
+        },
+        {
+          "name": "special_tokens_map.json",
+          "size": 631,
+          "sha256": "",
+          "gitSha1": "f1e356a4bfa4ead1419a3116957555c1cbfeb26a",
+          "required": true
+        },
+        {
+          "name": "tokenizer.json",
+          "size": 11422691,
+          "sha256": "cb3c8fa82993d515469c2800cc455bff4aaa3c4fed9da1f2b0c0668c304f335a",
+          "required": true
+        },
+        {
+          "name": "tokenizer_config.json",
+          "size": 5501,
+          "sha256": "",
+          "gitSha1": "c75c008749bc999e4749eafb407512f428b01acc",
+          "required": true
+        },
+        {
+          "name": "tts_robust_normalizer_single_script.py",
+          "size": 14544,
+          "sha256": "",
+          "gitSha1": "d7f6a66698582a84420f5268672fcac3d0100306",
+          "required": true
+        },
+        {
+          "name": "vocab.json",
+          "size": 2776833,
+          "sha256": "",
+          "gitSha1": "4783fe10ac3adce15ac8f358ef5462739852c569",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "order": 10,
-      "downloadBytes": 17000000000
+      "downloadBytes": 16995746554
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -2129,7 +3048,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "BreezeBlue/Breeze-TTS-2",
-      "revision": null,
+      "revision": "3e28c5151381a722f1d8661b4118c298caa77aa4",
       "rating": 10,
       "ratingNotes": "Reference quality in English and Chinese; non-commercial and no Arabic.",
       "license": {
@@ -2179,7 +3098,7 @@
         "recRamGb": 32,
         "minVramGb": 8,
         "recVramGb": 12,
-        "diskGb": 7.5
+        "diskGb": 7.7
       },
       "defaults": {
         "quality": "f32",
@@ -2198,14 +3117,103 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The Breeze TTS 2 sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "breeze-tts2-sidecar"
+        "packId": "breeze-tts2-sidecar",
+        "reason": "Breeze runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 7400000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 7683536706,
+      "files": [
+        {
+          "name": "LICENSE",
+          "size": 18719,
+          "sha256": "",
+          "gitSha1": "91765f274e37e08a9fced19a6167ca9d0e52f799",
+          "required": true
+        },
+        {
+          "name": "audio_tokenizer/config.json",
+          "size": 2336,
+          "sha256": "",
+          "gitSha1": "06cc8dc4c5ec8a1929086b71b98c313020d9268b",
+          "required": true
+        },
+        {
+          "name": "audio_tokenizer/configuration.json",
+          "size": 76,
+          "sha256": "",
+          "gitSha1": "ab58e2eaf53cd14a1a2a7527d9261ceea93a24cd",
+          "required": true
+        },
+        {
+          "name": "audio_tokenizer/model.safetensors",
+          "size": 682293092,
+          "sha256": "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258",
+          "required": true
+        },
+        {
+          "name": "audio_tokenizer/preprocessor_config.json",
+          "size": 234,
+          "sha256": "",
+          "gitSha1": "ba40914f4f49ab98a8ca545d4892ef7291a39592",
+          "required": true
+        },
+        {
+          "name": "config.json",
+          "size": 10161,
+          "sha256": "",
+          "gitSha1": "4b44ed4d6189c57b780cd73915579de059b3ba18",
+          "required": true
+        },
+        {
+          "name": "generation_config.json",
+          "size": 251,
+          "sha256": "",
+          "gitSha1": "da03eee098c41e30790890d4c998325ddc1bd0b9",
+          "required": true
+        },
+        {
+          "name": "model-00001-of-00002.safetensors",
+          "size": 4961989890,
+          "sha256": "abf813781256e10cbe81f2dbb415f897556225d4dfa0282d67aa8ea164e114a9",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "model-00002-of-00002.safetensors",
+          "size": 2004567152,
+          "sha256": "36aa73b1a11361e1774db90d9c63c63303b294c022de112aa51904d940edcef1",
+          "required": true
+        },
+        {
+          "name": "model.safetensors.index.json",
+          "size": 109004,
+          "sha256": "",
+          "gitSha1": "b4467c038557531368ea999361e726fe61668ecf",
+          "required": true
+        },
+        {
+          "name": "special_tokens_map.json",
+          "size": 886,
+          "sha256": "",
+          "gitSha1": "1556c52ad39a242591f2dd6ed0401bd3582ba005",
+          "required": true
+        },
+        {
+          "name": "tokenizer.json",
+          "size": 33386945,
+          "sha256": "d3ec9ac3eb2392389b9f5112e85d8b43316494addb587ba7b7a9d61eac23af96",
+          "required": true
+        },
+        {
+          "name": "tokenizer_config.json",
+          "size": 1157960,
+          "sha256": "",
+          "gitSha1": "466af463b97cdd1e912320df115ce3bdd54d1a85",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "order": 11,
-      "downloadBytes": 7400000000
+      "downloadBytes": 7683536706
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -2218,7 +3226,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "Edge0/Audio8-TTS-Preview-0.6b",
-      "revision": null,
+      "revision": "20e519d6e2c485ea1544f95f1fcaa6de6712bfc2",
       "rating": 8,
       "ratingNotes": "High sample rate and compact cloning model; mid-tier naturalness.",
       "license": {
@@ -2322,7 +3330,7 @@
         "recRamGb": 24,
         "minVramGb": 4,
         "recVramGb": 8,
-        "diskGb": 1.4
+        "diskGb": 2.6
       },
       "defaults": {
         "quality": "f32",
@@ -2341,14 +3349,104 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The Audio8 TTS sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "audio8-tts-sidecar"
+        "packId": "audio8-tts-sidecar",
+        "reason": "Audio8 runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 1400000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 2565453079,
+      "files": [
+        {
+          "name": "codec.pth",
+          "size": 1349857559,
+          "sha256": "c310505aa11fe2f6cc63b8d3130dc7e77e73227774f5c62575769b1f47a8d048",
+          "required": true
+        },
+        {
+          "name": "config.json",
+          "size": 1459,
+          "sha256": "",
+          "gitSha1": "12362c207d5a1b7ab6cc978a07b9cc0dd4d4d314",
+          "required": true
+        },
+        {
+          "name": "configuration_arktts.py",
+          "size": 4554,
+          "sha256": "",
+          "gitSha1": "a9031bd043e3d09aef8ef1838311df2e8a970ec6",
+          "required": true
+        },
+        {
+          "name": "generation_config.json",
+          "size": 190,
+          "sha256": "",
+          "gitSha1": "ddcc7976a7af8f326f0a52012008f77dbcc9a8cc",
+          "required": true
+        },
+        {
+          "name": "model.safetensors",
+          "size": 1202342528,
+          "sha256": "62dcff0adf6c2535b3260467a7c1d482b556da57266c96a444518b76e140d2c3",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "modeling_arktts.py",
+          "size": 34737,
+          "sha256": "",
+          "gitSha1": "6984cf9a34bc7b0bf0d169e9ed4aadc2021d3c7b",
+          "required": true
+        },
+        {
+          "name": "modeling_arktts_codec.py",
+          "size": 19838,
+          "sha256": "",
+          "gitSha1": "75396925d66940fe69f6e2b951704dfc8e54cf61",
+          "required": true
+        },
+        {
+          "name": "preprocessor_config.json",
+          "size": 254,
+          "sha256": "",
+          "gitSha1": "f6db6846cbf250d8bdc8c039df1e2a9561280ab2",
+          "required": true
+        },
+        {
+          "name": "processing_arktts.py",
+          "size": 11185,
+          "sha256": "",
+          "gitSha1": "82ed19f3acd76c14c94f89b31f8bac66abb8036d",
+          "required": true
+        },
+        {
+          "name": "processor_config.json",
+          "size": 207,
+          "sha256": "",
+          "gitSha1": "475305e3308203abc3c14b5ef207ef5b79a008c3",
+          "required": true
+        },
+        {
+          "name": "special_tokens_map.json",
+          "size": 101864,
+          "sha256": "",
+          "gitSha1": "7989e2cfbbfec23cfe75e17cb5494c2354a1769e",
+          "required": true
+        },
+        {
+          "name": "tokenizer.json",
+          "size": 12217872,
+          "sha256": "f24e08099d45a8adf3f52f5f0b03276e433bb9d689bb15fcbcc48ce58744588b",
+          "required": true
+        },
+        {
+          "name": "tokenizer_config.json",
+          "size": 860832,
+          "sha256": "",
+          "gitSha1": "47a7c4ee0e88f50904020eec33f723cec6933c61",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "order": 12,
-      "downloadBytes": 1400000000
+      "downloadBytes": 2565453079
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -2361,7 +3459,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "IndexTeam/IndexTTS-2",
-      "revision": null,
+      "revision": "740dcaff396282ffb241903d150ac011cd4b1ede",
       "rating": 9,
       "ratingNotes": "Excellent control and cloning; licensing is unresolved for shipping.",
       "license": {
@@ -2412,7 +3510,7 @@
         "recRamGb": 32,
         "minVramGb": 8,
         "recVramGb": 12,
-        "diskGb": 6.5
+        "diskGb": 4.7
       },
       "defaults": {
         "quality": "f32",
@@ -2430,14 +3528,59 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The IndexTTS2 sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "indextts2-sidecar"
+        "packId": "indextts2-sidecar",
+        "reason": "IndexTTS2 runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 6500000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 4687781560,
+      "files": [
+        {
+          "name": "bpe.model",
+          "size": 475997,
+          "sha256": "b2a5ce8090d32da3642cc4f81fdc996376bc6dd3f4cd5e3d165f71120d9f2bc8",
+          "required": true
+        },
+        {
+          "name": "config.yaml",
+          "size": 2882,
+          "sha256": "",
+          "gitSha1": "98d16c3892bd2321e7da71a379ecc8e1fa4dd84e",
+          "required": true
+        },
+        {
+          "name": "feat1.pt",
+          "size": 57170,
+          "sha256": "f219cb447d80216ba615666da2ff8d63ac544eee26657f3a7b278692bf7a67c4",
+          "required": true
+        },
+        {
+          "name": "feat2.pt",
+          "size": 374866,
+          "sha256": "9c4292e96dee535aea9a6206e9a0c856dd578dde9212acdb16dd3ada4d12bf80",
+          "required": true
+        },
+        {
+          "name": "gpt.pth",
+          "size": 3484663079,
+          "sha256": "baaaeb8b56328da81731dc540a85a7dee32eca9da28f174b05757cb651c602a4",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "s2mel.pth",
+          "size": 1202198223,
+          "sha256": "aae1bb12017cbb47e7a5ce537fc82f40b6b1deb71acdb9b8f25686f32714b636",
+          "required": true
+        },
+        {
+          "name": "wav2vec2bert_stats.pt",
+          "size": 9343,
+          "sha256": "c9c176c2b8850ab2e3ba828bbfa969deaf4566ce55db5f2687b8430b87526ad2",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "order": 13,
-      "downloadBytes": 6500000000
+      "downloadBytes": 4687781560
     },
     {
       "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
@@ -2450,7 +3593,7 @@
       "runtime": "sidecar",
       "runtimeLabel": "Local sidecar · Python",
       "repo": "coqui/XTTS-v2",
-      "revision": null,
+      "revision": "6c2b0d75eae4b7047358e3b6bd9325f857d43f77",
       "rating": 6,
       "ratingNotes": "Legacy quality but very broad tooling support; non-commercial CPML.",
       "license": {
@@ -2611,14 +3754,54 @@
       ],
       "runtimePack": {
         "available": false,
-        "reason": "The XTTS-v2 sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.",
-        "packId": "xtts-v2-sidecar"
+        "packId": "xtts-v2-sidecar",
+        "reason": "XTTS runs in its own Python environment, which is built on this computer when you install the model."
       },
-      "estimatedBytes": 2000000000,
-      "files": [],
-      "filesVerified": false,
+      "estimatedBytes": 2086564978,
+      "files": [
+        {
+          "name": "config.json",
+          "size": 4368,
+          "sha256": "",
+          "gitSha1": "3224e97bddc5facc012f8c7668b47c8f2dc30065",
+          "required": true
+        },
+        {
+          "name": "dvae.pth",
+          "size": 210514388,
+          "sha256": "b29bc227d410d4991e0a8c09b858f77415013eeb9fba9650258e96095557d97a",
+          "required": true
+        },
+        {
+          "name": "mel_stats.pth",
+          "size": 1067,
+          "sha256": "1f69422a8a8f344c4fca2f0c6b8d41d2151d6615b7321e48e6bb15ae949b119c",
+          "required": true
+        },
+        {
+          "name": "model.pth",
+          "size": 1867929118,
+          "sha256": "c7ea20001c6a0a841c77e252d8409f6a74fb423e79b3206a0771ba5989776187",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "speakers_xtts.pth",
+          "size": 7754818,
+          "sha256": "f0f6137c19a4eab0cbbe4c99b5babacf68b1746e50da90807708c10e645b943b",
+          "required": true
+        },
+        {
+          "name": "vocab.json",
+          "size": 361219,
+          "sha256": "",
+          "gitSha1": "77b4748525aad284e548729ef7af162b929b0fff",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
       "order": 14,
-      "downloadBytes": 2000000000
+      "downloadBytes": 2086564978
     }
   ]
 }

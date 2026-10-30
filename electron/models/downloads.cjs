@@ -24,6 +24,42 @@ function sha256File(filePath) {
   });
 }
 
+/** Git blob SHA-1, which Hugging Face publishes for files that are not stored in LFS. */
+function gitSha1File(filePath, size) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha1');
+    hash.update(`blob ${size}\0`);
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', reject);
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
+
+/**
+ * The pinned digest for a file: SHA-256 for LFS files, git SHA-1 for small git
+ * files, or the git id of the LFS pointer when a gated repo hides the SHA-256.
+ */
+function pinOf(file) {
+  if (file.sha256) return file.sha256;
+  if (file.gitSha1) return `git:${file.gitSha1}`;
+  if (file.lfsPointerSha1) return `lfs-pointer:${file.lfsPointerSha1}`;
+  return '';
+}
+
+/** Rebuilds the Git LFS pointer for a file and returns its git blob SHA-1. */
+function lfsPointerSha1(sha256, size) {
+  const pointer = `version https://git-lfs.github.com/spec/v1\noid sha256:${sha256}\nsize ${size}\n`;
+  return crypto.createHash('sha1').update(`blob ${Buffer.byteLength(pointer)}\0`).update(pointer).digest('hex');
+}
+
+async function hashMatches(file, filePath) {
+  if (file.sha256) return (await sha256File(filePath)) === file.sha256;
+  if (file.gitSha1) return (await gitSha1File(filePath, file.size)) === file.gitSha1;
+  if (file.lfsPointerSha1) return lfsPointerSha1(await sha256File(filePath), file.size) === file.lfsPointerSha1;
+  return false;
+}
+
 async function moveAtomic(from, to) {
   await fsp.mkdir(path.dirname(to), { recursive: true });
   try {
@@ -38,7 +74,7 @@ async function moveAtomic(from, to) {
   }
 }
 
-function createModelManager({ dirs, appVersion, state, broadcast, log = console.log }) {
+function createModelManager({ dirs, appVersion, state, broadcast, getToken = () => '', log = console.log }) {
   let activeDownload = null;
 
   const emit = (payload) => {
@@ -55,9 +91,10 @@ function createModelManager({ dirs, appVersion, state, broadcast, log = console.
   function inspectFile(model, modelId, file, { verifiedOnly = false } = {}) {
     const finalPath = path.join(modelDir(dirs, modelId), file.name);
     const bytes = sizeOf(finalPath);
-    const exists = bytes === Number(file.size);
+    // Some repos ship empty files (e.g. __init__.py), so a size of 0 alone is not proof.
+    const exists = bytes === Number(file.size) && (bytes > 0 || fs.existsSync(finalPath));
     const cached = cachedFile(modelId, file.name);
-    const verified = Boolean(exists && cached && cached.bytes === bytes && cached.sha256 === file.sha256);
+    const verified = Boolean(exists && cached && cached.bytes === bytes && cached.sha256 === pinOf(file));
     return {
       ...file,
       exists,
@@ -103,22 +140,23 @@ function createModelManager({ dirs, appVersion, state, broadcast, log = console.
 
   function sourceUrl(model, name) {
     if (!model.revision) throw new Error(`${model.shortName} has no pinned revision.`);
-    return `${HF}/${model.repo}/resolve/${model.revision}/${encodeURIComponent(name)}`;
+    const encoded = name.split('/').map(encodeURIComponent).join('/');
+    return `${HF}/${model.repo}/resolve/${model.revision}/${encoded}`;
   }
 
   async function downloadOne(model, file, quality, index, count, signal) {
     const finalPath = path.join(modelDir(dirs, model.id), file.name);
     const stage = stagingDir(dirs, model.id);
     const partPath = path.join(stage, `${file.name}.part`);
-    await fsp.mkdir(stage, { recursive: true });
+    await fsp.mkdir(path.dirname(partPath), { recursive: true });
 
     if (fs.existsSync(finalPath) && sizeOf(finalPath) === file.size) {
       const cached = cachedFile(model.id, file.name);
-      if (cached && cached.sha256 === file.sha256 && cached.bytes === file.size) {
+      if (cached && cached.sha256 === pinOf(file) && cached.bytes === file.size) {
         emit({ kind: 'model', modelId: model.id, file: file.name, loaded: file.size, total: file.size, percent: 100, index, count, stage: 'installed', quality, cached: true, at: Date.now() });
         return { cached: true };
       }
-      const ok = await sha256File(finalPath).then((hash) => hash === file.sha256).catch(() => false);
+      const ok = await hashMatches(file, finalPath).catch(() => false);
       if (ok) {
         emit({ kind: 'model', modelId: model.id, file: file.name, loaded: file.size, total: file.size, percent: 100, index, count, stage: 'verifying', quality, cached: true, at: Date.now() });
         return { cached: true, verified: true };
@@ -136,9 +174,8 @@ function createModelManager({ dirs, appVersion, state, broadcast, log = console.
         await fsp.rm(partPath, { force: true });
         offset = 0;
       }
-      if (offset === file.size) {
-        const hash = await sha256File(partPath);
-        if (hash === file.sha256) {
+      if (offset === file.size && fs.existsSync(partPath)) {
+        if (await hashMatches(file, partPath)) {
           await moveAtomic(partPath, finalPath);
           return { cached: false, verified: true };
         }
@@ -149,10 +186,17 @@ function createModelManager({ dirs, appVersion, state, broadcast, log = console.
       emit({ kind: 'model', modelId: model.id, file: file.name, loaded: offset, total: file.size, percent: file.size ? (offset / file.size) * 100 : null, index, count, stage: 'downloading', quality, at: Date.now() });
       const headers = { ...baseHeaders };
       if (offset > 0) headers.range = `bytes=${offset}-`;
+      // Only sent to huggingface.co; fetch drops it on the cross-origin CDN redirect.
+      const token = String(getToken() || '').trim();
+      if (token) headers.authorization = `Bearer ${token}`;
       const response = await fetch(sourceUrl(model, file.name), { headers, signal });
       if (!response.ok || !response.body) {
         if (response.status === 401 || response.status === 403) {
-          throw new Error(`${model.shortName} is gated on Hugging Face. Accept its license on the model page before downloading.`);
+          throw new Error(
+            token
+              ? `Hugging Face refused the download (HTTP ${response.status}). Open ${HF}/${model.repo}, accept the license with the account that owns your token, then try again.`
+              : `${model.shortName} is gated on Hugging Face. Accept its license at ${HF}/${model.repo}, then add a Hugging Face access token in Settings › Models and try again.`,
+          );
         }
         throw new Error(`Download failed (${response.status} ${response.statusText}) for ${file.name}`);
       }
@@ -192,14 +236,13 @@ function createModelManager({ dirs, appVersion, state, broadcast, log = console.
       }
 
       emit({ kind: 'model', modelId: model.id, file: file.name, loaded: actual, total: file.size, percent: 100, index, count, stage: 'verifying', quality, at: Date.now() });
-      const hash = await sha256File(partPath);
-      if (hash !== file.sha256) {
+      if (!(await hashMatches(file, partPath))) {
         await fsp.rm(partPath, { force: true });
         if (attempt < 2) {
-          log(`[voxarium] ${model.id}/${file.name} failed SHA-256; downloading again`);
+          log(`[voxarium] ${model.id}/${file.name} failed hash verification; downloading again`);
           continue;
         }
-        throw new Error(`${file.name} failed SHA-256 verification twice. The download may be corrupted or the mirror changed.`);
+        throw new Error(`${file.name} failed hash verification twice. The download may be corrupted or the mirror changed.`);
       }
       await moveAtomic(partPath, finalPath);
       return { cached: false, verified: true };
@@ -224,7 +267,7 @@ function createModelManager({ dirs, appVersion, state, broadcast, log = console.
       for (let index = 0; index < wanted.length; index += 1) {
         const file = wanted[index];
         const result = await downloadOne(model, file, quality, index, wanted.length, controller.signal);
-        verified[file.name] = { bytes: file.size, sha256: file.sha256, verified: true, ...result };
+        verified[file.name] = { bytes: file.size, sha256: pinOf(file), verified: true, ...result };
       }
       const previous = state.read().installs?.[model.id] || {};
       await state.recordInstall(model.id, {
@@ -274,9 +317,8 @@ function createModelManager({ dirs, appVersion, state, broadcast, log = console.
         continue;
       }
       emit({ kind: 'model', modelId: model.id, file: file.name, loaded: size, total: size, percent: 100, index: 0, count: model.files.length, stage: 'verifying', at: Date.now() });
-      const hash = await sha256File(filePath);
-      if (hash !== file.sha256) mismatched.push(file.name);
-      else entries[file.name] = { bytes: size, sha256: hash, verified: true };
+      if (!(await hashMatches(file, filePath))) mismatched.push(file.name);
+      else entries[file.name] = { bytes: size, sha256: pinOf(file), verified: true };
     }
     if (!mismatched.length) {
       const previous = state.read().installs?.[model.id] || {};
@@ -298,16 +340,16 @@ function createModelManager({ dirs, appVersion, state, broadcast, log = console.
         const from = path.join(folder, file.name);
         if (!fs.existsSync(from)) continue;
         const to = path.join(stage, file.name);
+        await fsp.mkdir(path.dirname(to), { recursive: true });
         await fsp.copyFile(from, to);
         const bytes = sizeOf(to);
         if (bytes !== file.size) {
           throw new Error(`${file.name} has ${bytes} bytes; ${file.size} are expected.`);
         }
         emit({ kind: 'model', modelId: model.id, file: file.name, loaded: bytes, total: bytes, percent: 100, index: found.length, count: model.files.length, stage: 'verifying', at: Date.now() });
-        const hash = await sha256File(to);
-        if (hash !== file.sha256) throw new Error(`${file.name} does not match its pinned SHA-256.`);
+        if (!(await hashMatches(file, to))) throw new Error(`${file.name} does not match its pinned hash.`);
         found.push(file.name);
-        verified[file.name] = { bytes, sha256: hash, verified: true };
+        verified[file.name] = { bytes, sha256: pinOf(file), verified: true };
       }
       if (!found.length) throw new Error('That folder does not contain any of the pinned model files.');
       const baseNames = model.files.filter((file) => file.required).map((file) => file.name);
@@ -347,4 +389,4 @@ function createModelManager({ dirs, appVersion, state, broadcast, log = console.
   return { status, statusAll, download, cancel, uninstall, verify, importFolder, resolveFile, active, sha256File };
 }
 
-module.exports = { createModelManager, sha256File, sizeOf };
+module.exports = { createModelManager, sha256File, gitSha1File, hashMatches, lfsPointerSha1, pinOf, sizeOf };

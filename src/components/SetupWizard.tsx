@@ -21,6 +21,11 @@ interface SetupWizardProps {
 
 type WizardStep = 'choose' | 'configure';
 
+/** A runtime that is installed, or that Install can download or build first. */
+function runtimeInstallable(readiness: { ready: boolean; available: boolean }): boolean {
+  return readiness.ready || readiness.available;
+}
+
 function runtimeReady(model: ModelManifest, ready: boolean): boolean {
   return ready && model.files.length > 0;
 }
@@ -69,7 +74,7 @@ export function SetupWizard({ open, onClose }: SetupWizardProps) {
   const busy = models.busyId === selectedModel.id;
   const ack = licenseAcknowledged(selectedModel, models.acks);
   const selectedRuntime = models.runtimeFor(selectedModel.id);
-  const canInstallRuntime = runtimeReady(selectedModel, selectedRuntime.ready);
+  const canInstallRuntime = runtimeReady(selectedModel, runtimeInstallable(selectedRuntime));
   const fit = assessFit(selectedModel, models.hardware);
   const rating = modelRating(selectedModel);
   const badge = licenseBadge(selectedModel.license);
@@ -300,7 +305,7 @@ export function SetupWizard({ open, onClose }: SetupWizardProps) {
                   const entryBadge = licenseBadge(entry.license);
                   const selected = entry.id === selectedModel.id;
                   const active = entry.id === models.activeModel.id;
-                  const label = runtimeLabel(entry, status.installed, models.runtimeFor(entry.id).ready);
+                  const label = runtimeLabel(entry, status.installed, runtimeInstallable(models.runtimeFor(entry.id)));
                   return (
                     <button
                       key={entry.id}
@@ -311,7 +316,7 @@ export function SetupWizard({ open, onClose }: SetupWizardProps) {
                         'setup-model-option',
                         selected && 'is-selected',
                         active && 'is-active',
-                        !runtimeReady(entry, models.runtimeFor(entry.id).ready) && !status.installed && 'is-gated',
+                        !runtimeReady(entry, runtimeInstallable(models.runtimeFor(entry.id))) && !status.installed && 'is-gated',
                       )}
                       onClick={() => choose(entry.id)}
                       data-model-id={entry.id}
@@ -326,7 +331,7 @@ export function SetupWizard({ open, onClose }: SetupWizardProps) {
                         <span className="setup-model-option__title">
                           <strong>{entry.shortName}</strong>
                           {active && <em className="tag tag--accent">Active</em>}
-                          <em className={classNames('tag', `tag--${runtimeTone(entry, status.installed, models.runtimeFor(entry.id).ready)}`)}>
+                          <em className={classNames('tag', `tag--${runtimeTone(entry, status.installed, runtimeInstallable(models.runtimeFor(entry.id)))}`)}>
                             {label}
                           </em>
                           {!entry.license.commercial && <em className="tag tag--warn">Non-commercial</em>}

@@ -173,10 +173,10 @@ const models = [
     family: 'Kokoro',
     description:
       '82M ONNX model with 54 fixed voices across eight languages. Outstanding quality per byte and the best tiny browser-native narrator.',
-    runtime: 'onnx-web',
-    runtimeLabel: 'ONNX Runtime Web · WASM / WebGPU',
+    runtime: 'sidecar',
+    runtimeLabel: 'Local sidecar · Python (kokoro + misaki)',
     repo: 'hexgrad/Kokoro-82M',
-    revision: null,
+    revision: 'f3ff3571791e39611d31c381e3a41a3af07b4987',
     rating: 8,
     ratingNotes: 'Excellent quality per byte; some non-English voices are thin (French has one).',
     license: { id: 'Apache-2.0', name: 'Apache License 2.0', commercial: true, restricted: false, url: 'https://www.apache.org/licenses/LICENSE-2.0' },
@@ -193,11 +193,9 @@ const models = [
     ),
     capabilities: caps({ streaming: true, normalization: true, speed: true, seed: true }),
     voices: { format: 'kokoro-voice-pack', note: '54 built-in voice packs grouped by locale.', compatibleLocales: ['en-us', 'en-gb', 'ja-jp', 'zh-cn', 'es-es', 'fr-fr', 'hi-in', 'it-it', 'pt-br'] },
-    hardware: { backend: 'onnx-web', minRamGb: 4, recRamGb: 8, minVramGb: 0, recVramGb: 0, diskGb: 0.2 },
-    defaults: { quality: 'q8', device: 'auto', temperature: 0.3, seed: '4242424242424242', language: 'en', rewrites: 'default', threads: 'auto' },
-    tags: ['browser-native', 'english', 'multilingual', 'cpu-friendly', 'commercial'],
-    runtimePack: unavailable('The Kokoro ONNX pipeline is not bundled in this build. The shared ONNX worker is installed and ready for the runtime pack.'),
-    estimatedBytes: 90000000,
+    hardware: { backend: 'sidecar', minRamGb: 4, recRamGb: 8, minVramGb: 0, recVramGb: 0, diskGb: 0.4 },
+    defaults: { quality: 'f32', device: 'auto', temperature: 0.3, seed: '4242424242424242', language: 'en', rewrites: 'default', threads: 'auto' },
+    tags: ['english', 'multilingual', 'cpu-friendly', 'commercial'],
   },
   {
     id: 'supertonic-3',
@@ -206,10 +204,10 @@ const models = [
     family: 'Supertonic',
     description:
       '31-language ONNX model that runs comfortably on CPU. Four small graphs, expression tags and full Arabic coverage.',
-    runtime: 'onnx-web',
-    runtimeLabel: 'ONNX Runtime Web · WASM / WebGPU',
+    runtime: 'sidecar',
+    runtimeLabel: 'Local sidecar · ONNX Runtime (CPU)',
     repo: 'Supertone/supertonic-3',
-    revision: null,
+    revision: '3cadd1ee6394adea1bd021217a0e650ede09a323',
     rating: 8,
     ratingNotes: 'Best CPU multilingual model; no zero-shot cloning, voices are style presets.',
     license: { id: 'OpenRAIL-M', name: 'OpenRAIL-M', commercial: true, restricted: false, url: 'https://huggingface.co/Supertone/supertonic-3' },
@@ -226,11 +224,9 @@ const models = [
     ),
     capabilities: caps({ streaming: true, emotion: true, normalization: true, seed: true }),
     voices: { format: 'supertonic-style', note: 'Style presets instead of speaker embeddings.', compatibleLocales: ['ar-sa', 'en-us'] },
-    hardware: { backend: 'onnx-web', minRamGb: 6, recRamGb: 12, minVramGb: 0, recVramGb: 0, diskGb: 0.45 },
-    defaults: { quality: 'q8', device: 'auto', temperature: 0.3, seed: '4242424242424242', language: 'en', rewrites: 'default', threads: 'auto' },
-    tags: ['browser-native', 'multilingual', 'arabic', 'cpu-friendly', 'commercial'],
-    runtimePack: unavailable('The Supertonic 3 ONNX graphs are not bundled in this build. The shared ONNX worker is installed and ready for the runtime pack.'),
-    estimatedBytes: 420000000,
+    hardware: { backend: 'sidecar', minRamGb: 4, recRamGb: 8, minVramGb: 0, recVramGb: 0, diskGb: 0.45 },
+    defaults: { quality: 'f32', device: 'cpu', temperature: 0.3, seed: '4242424242424242', language: 'en', rewrites: 'default', threads: 'auto' },
+    tags: ['multilingual', 'arabic', 'cpu-friendly', 'commercial'],
   },
   {
     id: 'silma-tts',
@@ -552,17 +548,91 @@ async function sha256OfRemote(repo, revision, name) {
   return { sha256: crypto.createHash('sha256').update(buffer).digest('hex'), bytes: buffer.length };
 }
 
+// Files each model's adapter needs, pinned to an exact Hugging Face revision.
+// `weight` marks the file that represents the model's (single) quality option.
+// Gated repos (Phonon 40M, OpenAudio) are pinned from tree metadata, which is
+// public: LFS files carry their SHA-256 and small files their git blob SHA-1.
+const ALL = /./;
+const pins = {
+  'phonon-40m-multilingual': { files: phononFiles['phonon-40m-multilingual'].map(([name]) => name) },
+  'kokoro-82m': { include: [/^config\.json$/, /^kokoro-v1_0\.pth$/, /^voices\/.+\.pt$/], weight: 'kokoro-v1_0.pth' },
+  'supertonic-3': { include: [/^config\.json$/, /^onnx\//, /^voice_styles\//], weight: 'onnx/vector_estimator.onnx' },
+  'silma-tts': { revision: '226dd7a65cadf51f9a6dbe3953fc89003b3844d5', include: [/^model\.pt$/, /^vocab\.txt$/, /^config\.yaml$/], weight: 'model.pt' },
+  chatterbox: {
+    revision: '5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18',
+    files: ['ve.pt', 't3_mtl23ls_v2.safetensors', 's3gen.pt', 'grapheme_mtl_merged_expanded_v1.json', 'conds.pt', 'Cangjie5_TC.json'],
+    weight: 't3_mtl23ls_v2.safetensors',
+  },
+  'openaudio-s1-mini': { revision: 'f4b445029346701e082b60bb63fcc2d1bb17a0e2', include: [ALL], weight: 'model.pth' },
+  'qwen3-tts': { revision: 'fd4b254389122332181a7c3db7f27e918eec64e3', include: [ALL], weight: 'model.safetensors' },
+  omnivoice: { revision: 'c5fdb5ccb189668d56333f77ba2629f4cd7535f4', include: [ALL], weight: 'model.safetensors' },
+  voxcpm2: { revision: '32279effe8c19989596f05d353d1447f51d9e915', include: [ALL], weight: 'model.safetensors' },
+  'moss-tts': { revision: 'cdd3b911b1585e3f2dbc7775ef10f9926f58850a', include: [ALL], weight: 'model-00001-of-00004.safetensors' },
+  'breeze-tts2': { revision: '3e28c5151381a722f1d8661b4118c298caa77aa4', include: [ALL], exclude: [/^assets\//], weight: 'model-00001-of-00002.safetensors' },
+  'audio8-tts': { revision: '20e519d6e2c485ea1544f95f1fcaa6de6712bfc2', include: [ALL], exclude: [/\.jpe?g$/], weight: 'model.safetensors' },
+  // The Qwen emotion-text model is optional and disabled in the adapter.
+  indextts2: { revision: '740dcaff396282ffb241903d150ac011cd4b1ede', include: [ALL], exclude: [/^qwen0\.6bemo4-merge\//, /^LICENSE/], weight: 'gpt.pth' },
+  'xtts-v2': {
+    revision: '6c2b0d75eae4b7047358e3b6bd9325f857d43f77',
+    files: ['config.json', 'dvae.pth', 'mel_stats.pth', 'model.pth', 'speakers_xtts.pth', 'vocab.json'],
+    weight: 'model.pth',
+  },
+};
+const ALWAYS_SKIP = [/(^|\/)README\.md$/i, /(^|\/)\.gitattributes$/, /\.(png|jpe?g|svg|gif)$/i, /^samples\//, /^audio_samples\//, /^img\//, /^eval\//];
+
+async function pinFiles(model) {
+  const spec = pins[model.id];
+  if (!spec) throw new Error(`No pin specification for ${model.id}`);
+  const revision = spec.revision || model.revision;
+  const tree = (await fetchTree(model.repo, revision)).filter((entry) => entry.type === 'file');
+  const byPath = new Map(tree.map((entry) => [entry.path, entry]));
+  const selected = spec.files
+    ? spec.files.map((name) => {
+        const entry = byPath.get(name);
+        if (!entry) throw new Error(`${model.repo}@${revision} is missing ${name}`);
+        return entry;
+      })
+    : tree.filter(
+        (entry) =>
+          spec.include.some((pattern) => pattern.test(entry.path)) &&
+          !(spec.exclude || []).some((pattern) => pattern.test(entry.path)) &&
+          !ALWAYS_SKIP.some((pattern) => pattern.test(entry.path)),
+      );
+  const files = selected.map((entry) => {
+    if (!/^[0-9a-f]{40}$/.test(entry.oid || '')) throw new Error(`${model.id}/${entry.path} has no verifiable hash`);
+    const isLfs = Boolean(entry.lfs);
+    // Gated repos redact the LFS SHA-256 for anonymous callers, but the git id of
+    // the LFS pointer is public and binds the content SHA-256 and size.
+    const lfs = isLfs && /^[0-9a-f]{64}$/.test(entry.lfs.oid || '') ? entry.lfs.oid : '';
+    const pin = lfs ? { sha256: lfs } : isLfs ? { sha256: '', lfsPointerSha1: entry.oid } : { sha256: '', gitSha1: entry.oid };
+    return {
+      name: entry.path,
+      size: Number(entry.size),
+      ...pin,
+      required: true,
+      ...(entry.path === spec.weight ? { quality: 'f32' } : {}),
+    };
+  });
+  if (spec.weight && !files.some((file) => file.quality)) throw new Error(`${model.id}: weight file ${spec.weight} was not selected`);
+  const total = files.reduce((sum, file) => sum + file.size, 0);
+  console.log(`  ${model.id}: pinned ${files.length} files, ${(total / 1e9).toFixed(2)} GB @ ${revision.slice(0, 10)}`);
+  return { revision, files, total };
+}
+
 async function pinPhonon(model) {
   if (model.id === 'phonon-40m-multilingual') {
-    // The official repository is gated on Hugging Face and the only community
-    // mirror does not match the official LFS hashes, so nothing can be pinned
-    // honestly yet. Keep the card, manifest and adapter path, but disable
-    // automatic installs.
-    model.files = [];
-    model.filesVerified = false;
-    model.runtimePack = unavailable(
-      'The official Phonon 40M repository is gated on Hugging Face, so its files cannot be pinned and verified automatically. Accept the license on the model page and install the files manually; the Phonon adapter and voice catalog are already wired for it.',
-    );
+    // Gated on Hugging Face: the file hashes are public, the bytes need the
+    // user's token after they accept the license on the model page.
+    const { files } = await pinFiles(model);
+    const quality = Object.fromEntries(phononFiles[model.id].map(([name, , kind]) => [name, kind]));
+    model.files = files.map((file) => {
+      const kind = quality[file.name];
+      const { quality: _ignored, ...rest } = file;
+      return { ...rest, required: !kind || kind === 'voice', ...(kind === 'q8' || kind === 'f32' ? { quality: kind } : {}) };
+    });
+    model.filesVerified = true;
+    model.gated = true;
+    model.runtimePack = { available: true };
     return model;
   }
   const tree = await fetchTree(model.repo, model.revision);
@@ -594,19 +664,33 @@ async function pinPhonon(model) {
   return model;
 }
 
+const GATED = new Set(['phonon-40m-multilingual', 'openaudio-s1-mini']);
+
 const built = [];
 for (const model of models) {
   if (model.id.startsWith('phonon-')) {
     built.push(await pinPhonon(model));
-  } else {
-    // Sidecar models point at a separately installed runtime pack. The pack
-    // catalog lives in runtimes.json; no pack is bundled with the installer.
-    const runtimePack =
-      model.runtime === 'sidecar'
-        ? { ...model.runtimePack, packId: `${model.id}-sidecar` }
-        : model.runtimePack;
-    built.push({ ...model, files: [], filesVerified: false, runtimePack });
+    continue;
   }
+  // Sidecar models: the runtime pack is built on the user's machine from the
+  // recipe in runtimes.json, and the weights below are downloaded and verified.
+  const { revision, files, total } = await pinFiles(model);
+  const weightsGb = Math.ceil((total / 1e9) * 10) / 10;
+  built.push({
+    ...model,
+    revision,
+    files,
+    filesVerified: true,
+    ...(GATED.has(model.id) ? { gated: true } : {}),
+    defaults: { ...model.defaults, quality: 'f32' },
+    hardware: { ...model.hardware, diskGb: weightsGb },
+    runtimePack: {
+      available: false,
+      packId: `${model.id}-sidecar`,
+      reason: `${model.shortName} runs in its own Python environment, which is built on this computer when you install the model.`,
+    },
+    estimatedBytes: total,
+  });
 }
 
 const document = {

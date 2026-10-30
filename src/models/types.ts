@@ -70,7 +70,12 @@ export interface ModelDefaults {
 export interface ModelFile {
   name: string;
   size: number;
+  /** SHA-256 for LFS files; empty when the file is pinned another way. */
   sha256: string;
+  /** Git blob SHA-1 of a small, non-LFS file. */
+  gitSha1?: string;
+  /** Git blob SHA-1 of the LFS pointer (gated repos hide the SHA-256 itself). */
+  lfsPointerSha1?: string;
   required: boolean;
   quality?: Quality;
 }
@@ -107,6 +112,8 @@ export interface ModelManifest {
   available: boolean;
   files: ModelFile[];
   filesVerified: boolean;
+  /** The Hugging Face repo is gated: downloads need the user's access token. */
+  gated?: boolean;
   runtimePack: RuntimePack;
   order: number;
   downloadBytes: number;
@@ -178,6 +185,20 @@ export interface SidecarStatus {
   pid: number | null;
   error?: string;
   startedAt?: number;
+  /** Human-readable loading step while state is 'starting'. */
+  stage?: string;
+  device?: string;
+  /** The model finished its first (online) load and now runs offline. */
+  prepared?: boolean;
+}
+
+export interface SidecarVoice {
+  id: string;
+  name: string;
+  language?: string;
+  gender?: string | null;
+  description?: string;
+  kind?: 'design' | 'reference';
 }
 
 export interface ModelsSnapshot {
@@ -190,7 +211,7 @@ export interface ModelsSnapshot {
   runtimes: RuntimePackState[];
 }
 
-export type RuntimePackKind = 'python' | 'sidecar';
+export type RuntimePackKind = 'tool' | 'python' | 'sidecar';
 export type RuntimePackLifecycle = 'installed' | 'not-installed' | 'not-published' | 'error';
 
 export interface RuntimePackArchive {
@@ -213,10 +234,14 @@ export interface RuntimePackState {
   available: boolean;
   importable: boolean;
   reason: string | null;
-  entry: { python?: string; server?: string };
+  entry: { python?: string; server?: string; uv?: string };
   requires: string[];
   provides: string[];
   archive: RuntimePackArchive | null;
+  /** Built on this machine from a pinned recipe instead of downloaded as an archive. */
+  buildable?: boolean;
+  /** PyTorch build used by an installed sidecar pack: a CUDA tag, 'cpu', or 'none'. */
+  variant?: string | null;
   sizeBytes: number;
   installedBytes: number;
   lifecycle: RuntimePackLifecycle;
@@ -224,7 +249,7 @@ export interface RuntimePackState {
   bytes: number;
   installedAt: number | null;
   verifiedAt: number | null;
-  source: 'download' | 'import' | null;
+  source: 'download' | 'import' | 'build' | null;
   error?: string;
 }
 

@@ -1,7 +1,7 @@
 import type { Quality } from '../types';
 import type { ModelCapabilities, ModelLanguage, ModelManifest } from './types';
-import { qualitiesFor } from './registry';
-import { DEFAULT_VOICE_ID, VOICES } from '../data/catalog';
+import { getModel, qualitiesFor } from './registry';
+import { DEFAULT_VOICE_ID, VOICES, getModelVoices } from '../data/catalog';
 import type { VoiceInfo } from '../types';
 
 /** All Arabic varieties named in the expansion plan, MSA first. */
@@ -116,6 +116,7 @@ export function capabilityReason(model: ModelManifest, capability: keyof ModelCa
 }
 
 export function voiceCompatibleWithModel(model: ModelManifest, voice: VoiceInfo): boolean {
+  if (voice.source === 'model') return voice.modelId === model.id;
   if (model.voices.format !== 'phonon-safetensors') return false;
   if (voice.id === DEFAULT_VOICE_ID) return true;
   if (voice.source === 'custom') {
@@ -136,10 +137,11 @@ export interface ModelVoiceGroup {
 /** Groups the catalog by compatibility with the active model. */
 export function voicesForModel(model: ModelManifest, customVoices: VoiceInfo[] = []): ModelVoiceGroup {
   if (model.voices.format !== 'phonon-safetensors') {
+    const voices = getModelVoices(model.id);
     return {
       model,
-      voices: [],
-      reason: model.voices.note || `${model.shortName} brings its own voice pack, which is not installed yet.`,
+      voices,
+      reason: voices.length ? undefined : `${model.shortName} lists its voices once the model has started.`,
     };
   }
   const voices = [...customVoices, ...VOICES].filter((voice) => voiceCompatibleWithModel(model, voice));
@@ -148,6 +150,7 @@ export function voicesForModel(model: ModelManifest, customVoices: VoiceInfo[] =
 
 export function voiceCompatibilityNote(model: ModelManifest, voice: VoiceInfo): string | null {
   if (voiceCompatibleWithModel(model, voice)) return null;
+  if (voice.source === 'model') return `${voice.name} is a ${getModel(voice.modelId || '').shortName} voice.`;
   if (model.voices.format !== 'phonon-safetensors') {
     return `${voice.name} is a Phonon voice and cannot be used with ${model.shortName}.`;
   }

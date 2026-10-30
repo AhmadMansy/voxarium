@@ -53,8 +53,13 @@ export interface VoiceInfo {
   description: string;
   file: string;
   isDefault: boolean;
-  /** Catalog voices come from Gradium; custom ones are cloned or imported locally. */
-  source?: 'catalog' | 'custom';
+  /**
+   * Catalog voices come from Gradium; custom ones are cloned or imported locally;
+   * model voices are reported by a sidecar model and only work with that model.
+   */
+  source?: 'catalog' | 'custom' | 'model';
+  /** For model voices: the model that provides them. */
+  modelId?: string;
   customKind?: 'clone' | 'import';
   createdAt?: number;
   bytes?: number;
@@ -323,8 +328,9 @@ export interface StudioApi {
       status?: ModelInstallState;
     }>;
     openFolder: (id: string, target?: 'model' | 'staging') => Promise<boolean>;
+    openReferences: () => Promise<boolean>;
     sidecar: {
-      start: (id: string) => Promise<{ ok: boolean; status?: SidecarStatus; error?: string }>;
+      start: (id: string, device?: 'cpu' | 'auto') => Promise<{ ok: boolean; status?: SidecarStatus; error?: string }>;
       stop: (id: string) => Promise<{ ok: boolean }>;
       status: (id: string) => Promise<SidecarStatus>;
       logs: (id: string) => Promise<SidecarLogEvent[]>;
@@ -354,6 +360,10 @@ export interface StudioApi {
     }>;
     renameCustom: (id: string, name: string) => Promise<{ ok: boolean; error?: string; voice?: CustomVoiceRecord | null }>;
     deleteCustom: (id: string) => Promise<{ ok: boolean; voices: CustomVoiceRecord[] }>;
+  };
+  huggingface: {
+    tokenStatus: () => Promise<{ hasToken: boolean; encrypted: boolean }>;
+    setToken: (token: string) => Promise<{ ok: boolean; hasToken: boolean; encrypted: boolean; user?: string | null; error?: string }>;
   };
   clone: {
     keyStatus: () => Promise<CloneKeyStatus>;

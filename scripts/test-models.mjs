@@ -4,11 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 
 const require = createRequire(import.meta.url);
 const { extractArchive, safePath } = require('../electron/models/archive.cjs');
 const runtimeCatalog = require('../electron/models/runtimes.json');
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function tarHeader(name, size, type = '0') {
   const header = Buffer.alloc(512, 0);
@@ -135,37 +137,48 @@ try {
     assert.equal(getModel('does-not-exist').id, 'phonon-31m-en');
   });
 
-  await test('manifest files are pinned with 64-character SHA-256 hashes', () => {
+  await test('every manifest file is pinned by size and a verifiable hash', () => {
     for (const model of MODELS) {
+      assert.ok(model.files.length > 0, `${model.id} has no files`);
+      assert.ok(model.filesVerified, `${model.id} files are not verified`);
+      assert.match(model.revision || '', /^[a-f0-9]{40}$/, `${model.id} revision`);
       for (const file of model.files) {
-        assert.match(file.sha256, /^[a-f0-9]{64}$/, `${model.id}/${file.name}`);
-        assert.ok(file.size > 0, `${model.id}/${file.name} size`);
+        // LFS files carry SHA-256 (or, in gated repos, the git id of their pointer);
+        // small git files carry their blob SHA-1.
+        if (file.sha256) assert.match(file.sha256, /^[a-f0-9]{64}$/, `${model.id}/${file.name}`);
+        else assert.match(file.gitSha1 || file.lfsPointerSha1 || '', /^[a-f0-9]{40}$/, `${model.id}/${file.name}`);
+        assert.ok(Number.isInteger(file.size) && file.size >= 0, `${model.id}/${file.name} size`);
+        assert.ok(!file.name.includes('..') && !file.name.startsWith('/'), `${model.id}/${file.name} path`);
       }
     }
   });
 
-  await test('Phonon 31M is the only fully installable runtime in the shipped set', () => {
-    const installable = MODELS.filter((model) => model.runtimePack.available);
-    assert.deepEqual(installable.map((model) => model.id), ['phonon-31m-en']);
-    assert.equal(installable[0].files.length, 5);
-    assert.ok(installable[0].filesVerified);
+  await test('every model is installable: Phonon in-app, the rest through a buildable sidecar pack', () => {
+    const inApp = MODELS.filter((model) => model.runtimePack.available).map((model) => model.id);
+    assert.deepEqual(inApp.sort(), ['phonon-31m-en', 'phonon-40m-multilingual']);
+    for (const model of MODELS.filter((item) => !item.runtimePack.available)) {
+      assert.equal(model.runtime, 'sidecar', model.id);
+      const pack = runtimeCatalog.packs.find((entry) => entry.id === model.runtimePack.packId);
+      assert.ok(pack?.available && pack.build, `${model.id} has no buildable pack`);
+      assert.ok(model.files.some((file) => file.quality), `${model.id} has no weight file`);
+    }
   });
 
-  await test('gated 40M stays visible but has no unverified files', () => {
-    const model = getModel('phonon-40m-multilingual');
-    assert.equal(model.files.length, 0);
-    assert.equal(model.runtimePack.available, false);
-    assert.match(model.runtimePack.reason, /gate|manual|token|license/i);
-    assert.equal(model.license.restricted, true);
-    assert.equal(model.license.commercial, false);
+  await test('gated repositories are pinned and flagged for a token', () => {
+    const gated = MODELS.filter((model) => model.gated).map((model) => model.id).sort();
+    assert.deepEqual(gated, ['openaudio-s1-mini', 'phonon-40m-multilingual']);
+    const phonon40 = getModel('phonon-40m-multilingual');
+    assert.deepEqual(phonon40.files.map((file) => file.name), getModel('phonon-31m-en').files.map((file) => file.name));
+    assert.equal(phonon40.license.restricted, true);
+    assert.equal(phonon40.license.commercial, false);
   });
 
   await test('qualities come from manifest files', () => {
     const phonon = getModel('phonon-31m-en');
     assert.deepEqual(qualitiesFor(phonon).sort(), ['f32', 'q8']);
     assert.ok(['q8', 'f32'].includes(defaultQualityFor(phonon)));
-    assert.deepEqual(qualitiesFor(getModel('kokoro-82m')), []);
-    assert.equal(defaultQualityFor(getModel('kokoro-82m')), 'q8');
+    assert.deepEqual(qualitiesFor(getModel('kokoro-82m')), ['f32']);
+    assert.equal(defaultQualityFor(getModel('kokoro-82m')), 'f32');
   });
 
   await test('fit scoring meets or misses RAM and disk requirements', () => {
@@ -200,14 +213,15 @@ try {
     assert.match(licenseSummary(model), /Non-commercial/i);
   });
 
-  await test('install gate blocks missing runtimes, unpinned files and unacknowledged licenses', () => {
+  await test('install gate blocks unavailable runtimes and unacknowledged licenses', () => {
     const phonon = getModel('phonon-31m-en');
     const ack = { [phonon.id]: { id: phonon.id, acknowledgedAt: 1, licenseId: phonon.license.id } };
     assert.equal(canInstallModel(phonon, ack).ok, true);
+    // Without readiness information a sidecar model cannot claim its runtime.
     assert.equal(canInstallModel(getModel('kokoro-82m'), {}).ok, false);
     const gated = getModel('phonon-40m-multilingual');
     assert.equal(canInstallModel(gated, {}).ok, false);
-    assert.match(canInstallModel(gated, {}).reason, /gated|manual/i);
+    assert.match(canInstallModel(gated, {}).reason, /Acknowledge/i);
     const restricted = {
       ...phonon,
       id: 'phonon-test-restricted',
@@ -217,10 +231,15 @@ try {
     assert.match(canInstallModel(restricted, {}).reason, /Acknowledge/i);
   });
 
-  await test('runtime catalog pins the Python base and keeps sidecar packs unpublished', () => {
+  await test('runtime catalog pins uv and Python, and every sidecar pack is a pinned recipe', () => {
     const packs = runtimeCatalog.packs;
-    assert.equal(packs.length, 12);
+    assert.equal(packs.length, 15);
     assert.equal(new Set(packs.map((pack) => pack.id)).size, packs.length);
+
+    const uv = packs.find((pack) => pack.kind === 'tool');
+    assert.equal(uv.id, 'uv-win-x64');
+    assert.match(uv.archive.sha256, /^[a-f0-9]{64}$/);
+    assert.match(uv.archive.url, /^https:\/\/github\.com\/astral-sh\/uv\/releases\/download\//);
 
     const python = packs.find((pack) => pack.kind === 'python');
     assert.equal(python.id, 'python-3.12-win-x64');
@@ -231,26 +250,45 @@ try {
     assert.match(python.archive.url, /^https:\/\/github\.com\/astral-sh\/python-build-standalone\//);
 
     const sidecars = packs.filter((pack) => pack.kind === 'sidecar');
-    assert.equal(sidecars.length, 11);
+    assert.equal(sidecars.length, 13);
     for (const pack of sidecars) {
-      assert.equal(pack.available, false, pack.id);
+      assert.equal(pack.available, true, pack.id);
       assert.equal(pack.importable, true, pack.id);
       assert.equal(pack.entry.server, 'start.py', pack.id);
-      assert.ok(pack.requires.includes(python.id), pack.id);
-      assert.match(pack.reason, /not been published/i, pack.id);
+      assert.equal(pack.entry.python, 'venv/Scripts/python.exe', pack.id);
+      assert.ok(pack.requires.includes(uv.id), pack.id);
       assert.ok(pack.license?.id, pack.id);
+      const build = pack.build;
+      assert.ok(build, `${pack.id} has no recipe`);
+      assert.match(build.python, /^3\.1[12]$/, pack.id);
+      if (build.python === '3.12') assert.ok(pack.requires.includes(python.id), pack.id);
+      // Requirements are pinned to a version or to an immutable commit/release URL.
+      for (const requirement of build.requirements) {
+        if (/^(soxr|soundfile|numpy|jaconv|mojimoji|imageio-ffmpeg|cachetools|safetensors|pydub|ormsgpack|silero-vad|descript-audio(codec|tools)|descript-audio-codec|descript-audiotools|accelerate)$/.test(requirement)) continue;
+        assert.match(requirement, /==|>=|<=|<|@ https:\/\/github\.com\/[^ ]+\/(archive\/[a-f0-9]{40}\.zip|releases\/download\/)/, `${pack.id}: ${requirement}`);
+      }
+      if (build.torch) assert.match(build.torch.packages.torch, /^\d+\.\d+\.\d+$/, pack.id);
+      for (const source of build.sources || []) {
+        assert.match(source.url, /\/archive\/[a-f0-9]{40}\.zip$/, `${pack.id}: ${source.name}`);
+        assert.match(source.sha256, /^[a-f0-9]{64}$/, `${pack.id}: ${source.name}`);
+      }
     }
   });
 
-  await test('every sidecar model points at a catalog pack that provides it', () => {
+  await test('every sidecar model points at a catalog pack whose adapter ships with the app', () => {
     const packs = runtimeCatalog.packs;
     const sidecars = MODELS.filter((model) => model.runtime === 'sidecar');
-    assert.equal(sidecars.length, 11);
+    assert.equal(sidecars.length, 13);
     for (const model of sidecars) {
       assert.match(model.runtimePack.packId || '', /-sidecar$/, model.id);
       const pack = packs.find((entry) => entry.id === model.runtimePack.packId);
       assert.ok(pack, `${model.id} has no catalog pack`);
       assert.ok(pack.provides.includes(model.id), `${pack.id} does not list ${model.id}`);
+      const adapter = path.join(projectRoot, 'electron', 'sidecars', 'adapters', `${pack.build.adapter}.py`);
+      assert.ok(fs.existsSync(adapter), `${pack.id} adapter ${pack.build.adapter}.py is missing`);
+      for (const shim of pack.build.shims || []) {
+        assert.ok(fs.existsSync(path.join(projectRoot, 'electron', 'sidecars', 'shims', shim)), `${pack.id} shim ${shim}`);
+      }
     }
   });
 
@@ -260,20 +298,27 @@ try {
 
     const kokoro = runtimeReadiness(getModel('kokoro-82m'), empty);
     assert.equal(kokoro.ready, false);
-    assert.equal(kokoro.packId, null);
+    assert.equal(kokoro.packId, 'kokoro-82m-sidecar');
 
     const silma = getModel('silma-tts');
     const missing = runtimeReadiness(silma, empty);
     assert.equal(missing.ready, false);
+    assert.equal(missing.available, false);
     assert.equal(missing.packId, 'silma-tts-sidecar');
-    assert.match(missing.reason, /not been published|not installed/i);
+
+    const buildable = runtimeReadiness(silma, {
+      'silma-tts-sidecar': { id: 'silma-tts-sidecar', name: 'SILMA runtime', installed: false, available: true, buildable: true, reason: null, error: undefined },
+    });
+    assert.equal(buildable.ready, false);
+    assert.equal(buildable.available, true);
+    assert.match(buildable.reason, /Install sets up/i);
 
     const installed = {
       'silma-tts-sidecar': {
         id: 'silma-tts-sidecar',
         name: 'SILMA sidecar runtime',
         installed: true,
-        available: false,
+        available: true,
         reason: null,
         error: undefined,
       },
@@ -292,13 +337,15 @@ try {
 
   await test('license gate accepts dynamic runtime readiness', () => {
     const silma = getModel('silma-tts');
-    const blocked = canInstallModel(silma, {}, { ready: false, reason: 'Install the SILMA runtime pack first.' });
+    const blocked = canInstallModel(silma, {}, { ready: false, available: false, reason: 'Install the SILMA runtime pack first.' });
     assert.equal(blocked.ok, false);
     assert.match(blocked.reason, /SILMA runtime pack/);
 
-    const ready = canInstallModel(silma, {}, { ready: true });
-    assert.equal(ready.ok, false);
-    assert.match(ready.reason, /No verified files/i);
+    // A buildable runtime is installed together with the model.
+    assert.equal(canInstallModel(silma, {}, { ready: false, available: true }).ok, true);
+    assert.equal(canInstallModel(silma, {}, { ready: true }).ok, true);
+    const xtts = getModel('xtts-v2');
+    assert.match(canInstallModel(xtts, {}, { ready: true }).reason, /Acknowledge/i);
   });
 
   await test('OmniVoice weights are CC-BY-NC and require acknowledgment', () => {

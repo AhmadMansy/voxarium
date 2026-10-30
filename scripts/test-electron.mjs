@@ -125,21 +125,17 @@ try {
   const gatedOption = page.locator('.setup-model-option', { hasText: gated.shortName }).first();
   await gatedOption.waitFor();
   assert.match(await gatedOption.innerText(), /CC-BY-NC-4\.0/);
-  assert.match(await gatedOption.innerText(), /Runtime pack missing/);
+  assert.match(await gatedOption.innerText(), /Ready to install/);
 
-  step('inspecting a model whose runtime pack is missing');
+  step('inspecting a gated, license-restricted model');
   await gatedOption.click();
   await page.getByRole('button', { name: /^Continue$/ }).click();
   await page.waitForSelector('.setup-model-config');
   const gatedConfig = await page.locator('.setup-model-config').innerText();
   assert.match(gatedConfig, /Phonon 40M/);
-  assert.match(gatedConfig, /Runtime pack missing|cannot be installed/i);
   assert.match(gatedConfig, /CC-BY-NC-4\.0/);
-  assert.equal(
-    await page.getByRole('button', { name: /Download & install/ }).isDisabled(),
-    true,
-    'gated models never pretend to be installable',
-  );
+  assert.equal(gated.gated, true, 'the gated repository is flagged for a Hugging Face token');
+  assert.ok(gated.files.length > 0 && gated.filesVerified, 'gated files are pinned like any other model');
 
   step('choosing Phonon 31M and installing it from setup');
   await page.getByRole('button', { name: /Back to model list/ }).click();
@@ -157,7 +153,7 @@ try {
   );
   const install = snapshot.models.find((model) => model.id === phonon.id);
   assert.equal(install.lifecycle, 'installed');
-  assert.equal(snapshot.runtimes.length, 12, 'the runtime catalog ships with 12 packs');
+  assert.equal(snapshot.runtimes.length, 15, 'the runtime catalog ships with 15 packs');
   await page.waitForSelector('.setup-done', { timeout: 180000 });
   await page.getByRole('button', { name: /Start creating/ }).click();
   await page.waitForSelector('.wizard', { state: 'detached' });
@@ -174,19 +170,19 @@ try {
   assert.match(await phononCard.innerText(), /Installed/);
   assert.match(await phononCard.innerText(), /Active/);
   assert.match(await gatedCard.innerText(), /CC-BY-NC-4\.0/);
-  assert.match(await gatedCard.innerText(), /No verified files|Manual|gated/i);
+  assert.match(await gatedCard.innerText(), /gated on Hugging Face/i);
 
   step('browsing the runtime pack catalog');
   const runtimePanel = page.locator('.runtimes-panel');
   await runtimePanel.waitFor();
-  assert.equal(await runtimePanel.locator('.runtime-card').count(), 12, 'every runtime pack stays visible');
+  assert.equal(await runtimePanel.locator('.runtime-card').count(), 15, 'every runtime pack stays visible');
   const pythonRuntime = runtimePanel.locator('.runtime-card', { hasText: 'Python 3.12 runtime' }).first();
   await pythonRuntime.waitFor();
   assert.match(await pythonRuntime.innerText(), /PSF-2\.0/);
   assert.match(await pythonRuntime.innerText(), /Not installed/);
   assert.match(await pythonRuntime.innerText(), /Download/);
-  const silmaRuntime = runtimePanel.locator('.runtime-card', { hasText: 'SILMA sidecar runtime' }).first();
-  assert.match(await silmaRuntime.innerText(), /Not published/);
+  const silmaRuntime = runtimePanel.locator('.runtime-card', { hasText: 'SILMA runtime' }).first();
+  assert.match(await silmaRuntime.innerText(), /Build/);
   assert.match(await silmaRuntime.innerText(), /Import folder/);
 
   step('verifying every installed file');
@@ -229,7 +225,7 @@ try {
   assert.ok(about.includes(phonon.name), 'Settings reports the active model');
   assert.ok(about.includes(phonon.runtimeLabel.split(' · ')[0]), 'Settings reports the active runtime');
 
-  step('refusing a switch to a model whose runtime pack is absent');
+  step('refusing a switch to a model that is not installed');
   await page.locator('.nav-item', { hasText: 'Models' }).click();
   const refused = await page.evaluate((id) => window.studio.models.activate(id), gated.id);
   assert.equal(refused.ok, false);

@@ -24,8 +24,38 @@ export function allVoices(): VoiceInfo[] {
   return customVoices.length ? [...customVoices, ...VOICES] : VOICES;
 }
 
+/**
+ * Voices reported by sidecar models (built-in speakers, voice-design presets and
+ * the user's reference clips), keyed `<modelId>:<voice>` so they never collide
+ * with catalog ids.
+ */
+let modelVoices: VoiceInfo[] = [];
+
+export function setModelVoices(modelId: string, list: VoiceInfo[]) {
+  modelVoices = [...modelVoices.filter((voice) => voice.modelId !== modelId), ...list];
+}
+
+export function getModelVoices(modelId: string): VoiceInfo[] {
+  return modelVoices.filter((voice) => voice.modelId === modelId);
+}
+
+export function modelVoiceId(modelId: string, nativeId: string): string {
+  return `${modelId}:${nativeId}`;
+}
+
+/** The id a sidecar understands, or null when the voice belongs to another model. */
+export function nativeVoiceId(modelId: string, voiceId: string | undefined): string | null {
+  const prefix = `${modelId}:`;
+  return voiceId && voiceId.startsWith(prefix) ? voiceId.slice(prefix.length) : null;
+}
+
 export function getVoice(id: string | undefined): VoiceInfo {
-  return voiceById.get(id || '') || customVoices.find((voice) => voice.id === id) || VOICES[0];
+  return (
+    voiceById.get(id || '') ||
+    customVoices.find((voice) => voice.id === id) ||
+    modelVoices.find((voice) => voice.id === id) ||
+    VOICES[0]
+  );
 }
 
 export function isCustomVoice(id: string | undefined): boolean {

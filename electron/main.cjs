@@ -137,6 +137,7 @@ const WINDOW_FILE = () => path.join(DATA_DIR(), 'window.json');
 const CUSTOM_VOICES_FILE = () => path.join(DATA_DIR(), 'custom-voices.json');
 const CUSTOM_VOICES_DIR = () => path.join(DIRS().voices, 'custom');
 const CLONE_KEY_FILE = () => path.join(DATA_DIR(), 'gradium-key.json');
+const HF_TOKEN_FILE = () => path.join(DATA_DIR(), 'huggingface-token.json');
 
 const GRADIUM_API = 'https://api.gradium.ai/api';
 const CLONE_LANGUAGES = ['en', 'fr', 'de', 'es', 'pt'];
@@ -173,6 +174,7 @@ function initModelServices() {
     appVersion: app.getVersion(),
     state: modelState,
     broadcast: (payload) => send('models:progress', payload),
+    getToken: () => readHfToken(),
     log: (...args) => console.log(...args),
   });
   runtimeManager = createRuntimeManager({
@@ -183,7 +185,12 @@ function initModelServices() {
     broadcast: (payload) => send('models:progress', payload),
     log: (...args) => console.log(...args),
   });
-  sidecars = createSidecarSupervisor({ dirs: DIRS(), send, runtimes: runtimeManager });
+  sidecars = createSidecarSupervisor({
+    dirs: DIRS(),
+    send,
+    runtimes: runtimeManager,
+    getSettings: () => ({ ...getSettings(), hfToken: readHfToken() }),
+  });
   modelsInitialized = true;
 }
 
@@ -661,7 +668,16 @@ async function removeCustomVoice(id) {
 }
 
 function readCloneKey() {
-  const stored = readJson(CLONE_KEY_FILE(), null);
+  return readSecret(CLONE_KEY_FILE());
+}
+
+async function writeCloneKey(key) {
+  return writeSecret(CLONE_KEY_FILE(), key);
+}
+
+/** Secrets are encrypted with the OS keychain (DPAPI on Windows) when it is available. */
+function readSecret(file) {
+  const stored = readJson(file, null);
   if (!stored || typeof stored.data !== 'string') return '';
   try {
     const raw = Buffer.from(stored.data, 'base64');
@@ -675,18 +691,38 @@ function readCloneKey() {
   }
 }
 
-async function writeCloneKey(key) {
+async function writeSecret(file, key) {
   if (!key) {
-    await fsp.rm(CLONE_KEY_FILE(), { force: true });
+    await fsp.rm(file, { force: true });
     return;
   }
   const encrypted = safeStorage.isEncryptionAvailable();
   const data = encrypted ? safeStorage.encryptString(key) : Buffer.from(key, 'utf8');
-  await writeJsonAtomic(CLONE_KEY_FILE(), {
+  await writeJsonAtomic(file, {
     v: 1,
     encrypted,
     data: data.toString('base64'),
   });
+}
+
+/** Hugging Face access token, used only for gated model repositories. */
+function readHfToken() {
+  return readSecret(HF_TOKEN_FILE());
+}
+
+async function hfWhoami(token) {
+  const response = await fetch('https://huggingface.co/api/whoami-v2', {
+    headers: { authorization: `Bearer ${token}`, 'user-agent': `Voxarium/${app.getVersion()}` },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (response.status === 401) return { ok: false, error: 'Hugging Face rejected this token.' };
+  if (!response.ok) return { ok: false, error: `Hugging Face could not check the token (HTTP ${response.status}).` };
+  const body = await response.json().catch(() => ({}));
+  return { ok: true, user: typeof body?.name === 'string' ? body.name : null };
+}
+
+function hfTokenStatus() {
+  return { hasToken: Boolean(readHfToken()), encrypted: safeStorage.isEncryptionAvailable() };
 }
 
 function cloneKeyStatus() {
@@ -1273,9 +1309,16 @@ function registerIpc() {
     return true;
   });
 
-  ipcMain.handle('models:sidecar:start', async (event, { id } = {}) => {
+  ipcMain.handle('models:sidecar:start', async (event, { id, device } = {}) => {
     initModelServices();
-    return sidecars.start(getModel(id || activeModelId()).id);
+    return sidecars.start(getModel(id || activeModelId()).id, device === 'cpu' ? { device: 'cpu' } : {});
+  });
+  ipcMain.handle('models:openReferences', async () => {
+    // Reference clips (wav/flac/mp3 + optional .txt transcript) for local cloning models.
+    const dir = path.join(DIRS().voices, 'references');
+    fs.mkdirSync(dir, { recursive: true });
+    await shell.openPath(dir);
+    return true;
   });
   ipcMain.handle('models:sidecar:stop', async (event, { id } = {}) => {
     initModelServices();
@@ -1505,6 +1548,26 @@ function registerIpc() {
     return { ok, voices: listCustomVoices() };
   });
 
+  ipcMain.handle('hf:tokenStatus', async () => hfTokenStatus());
+  ipcMain.handle('hf:setToken', async (event, { token } = {}) => {
+    const clean = String(token || '').trim();
+    if (!clean) {
+      await writeSecret(HF_TOKEN_FILE(), '');
+      return { ok: true, ...hfTokenStatus() };
+    }
+    if (!/^hf_[A-Za-z0-9]{20,200}$/.test(clean)) {
+      return { ok: false, error: 'Hugging Face tokens start with "hf_". Create a read token at huggingface.co/settings/tokens.', ...hfTokenStatus() };
+    }
+    let check;
+    try {
+      check = await hfWhoami(clean);
+    } catch (error) {
+      return { ok: false, error: `Could not reach Hugging Face: ${error instanceof Error ? error.message : String(error)}`, ...hfTokenStatus() };
+    }
+    if (!check.ok) return { ...check, ...hfTokenStatus() };
+    await writeSecret(HF_TOKEN_FILE(), clean);
+    return { ok: true, user: check.user, ...hfTokenStatus() };
+  });
   ipcMain.handle('clone:keyStatus', async () => cloneKeyStatus());
   ipcMain.handle('clone:setKey', async (event, { key } = {}) => {
     const clean = String(key || '').trim();

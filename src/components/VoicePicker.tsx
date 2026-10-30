@@ -32,12 +32,15 @@ export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
 
   const installed = useMemo(() => new Set(['default', ...(model?.voiceIds || [])]), [model?.voiceIds]);
   const activeModel = models.activeModel;
+  // Sidecar models bring their own voices; Phonon models use the catalog.
+  const ownVoices = activeModel.voices.format !== 'phonon-safetensors';
   const catalogGroup = voicesForModel(activeModel, customVoices);
   const compatibleCount = catalogGroup.voices.length;
+  const total = ownVoices ? compatibleCount : VOICES.length + customVoices.length;
 
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return [...customVoices, ...VOICES]
+    return (ownVoices ? engine.voices : [...customVoices, ...VOICES])
       .filter((voice) => {
         if (locale !== 'all' && voice.locale !== locale) return false;
         if (!needle) return true;
@@ -54,7 +57,7 @@ export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
         if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
         return a.name.localeCompare(b.name);
       });
-  }, [query, locale, favorites, customVoices, isFavorite, activeModel]);
+  }, [query, locale, favorites, customVoices, isFavorite, activeModel, ownVoices, engine.voices]);
 
   const selected = settings?.lastVoice || 'default';
 
@@ -72,28 +75,44 @@ export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
       open={open}
       onClose={onClose}
       title="Choose a voice"
-      subtitle={`${activeModel.shortName} · ${compatibleCount} compatible voice${compatibleCount === 1 ? '' : 's'} of ${VOICES.length + customVoices.length}`}
+      subtitle={`${activeModel.shortName} · ${compatibleCount} compatible voice${compatibleCount === 1 ? '' : 's'} of ${total}`}
       size="lg"
       icon={<Icon name="voices" size={18} />}
       footer={
-        <>
-          <span className="modal__foot-note">
-            <Icon name="info" size={14} />
-            Voice files are tiny (256 KB).
-          </span>
-          <button
-            className="btn btn--subtle"
-            onClick={() => {
-              onClose();
-              openClone('record');
-            }}
-          >
-            <Icon name="mic" size={15} /> Add a voice
-          </button>
-          <button className="btn btn--subtle" onClick={onBrowse}>
-            <Icon name="grid" size={15} /> Browse all voices
-          </button>
-        </>
+        ownVoices ? (
+          <>
+            <span className="modal__foot-note">
+              <Icon name="info" size={14} />
+              {activeModel.capabilities.voiceClone
+                ? 'Drop a clean WAV (plus a .txt transcript) into the references folder to clone it locally, then reload the model.'
+                : `${activeModel.shortName} uses its built-in voices.`}
+            </span>
+            {activeModel.capabilities.voiceClone && (
+              <button className="btn btn--subtle" onClick={() => void window.studio.models.openReferences()}>
+                <Icon name="folderOpen" size={15} /> Reference clips
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <span className="modal__foot-note">
+              <Icon name="info" size={14} />
+              Voice files are tiny (256 KB).
+            </span>
+            <button
+              className="btn btn--subtle"
+              onClick={() => {
+                onClose();
+                openClone('record');
+              }}
+            >
+              <Icon name="mic" size={15} /> Add a voice
+            </button>
+            <button className="btn btn--subtle" onClick={onBrowse}>
+              <Icon name="grid" size={15} /> Browse all voices
+            </button>
+          </>
+        )
       }
     >
       <div className="picker">
@@ -112,14 +131,16 @@ export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
               </button>
             )}
           </label>
-          <select className="select select--compact" value={locale} onChange={(event) => setLocale(event.target.value)}>
-            <option value="all">All accents</option>
-            {englishLocales.map((value) => (
-              <option key={value} value={value}>
-                {localeFlags[value]} {localeLabel(value)}
-              </option>
-            ))}
-          </select>
+          {!ownVoices && (
+            <select className="select select--compact" value={locale} onChange={(event) => setLocale(event.target.value)}>
+              <option value="all">All accents</option>
+              {englishLocales.map((value) => (
+                <option key={value} value={value}>
+                  {localeFlags[value]} {localeLabel(value)}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="picker__list">

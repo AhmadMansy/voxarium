@@ -41,7 +41,7 @@ function lifecycleLabel(model: ModelManifest, installed: boolean, lifecycle: str
   if (lifecycle === 'verifying') return 'Verifying';
   if (lifecycle === 'update') return 'Update available';
   if (lifecycle === 'error') return 'Needs attention';
-  if (!runtimeReady) return 'Runtime pack missing';
+  if (!runtimeReady && model.runtime !== 'sidecar') return 'Runtime pack missing';
   if (!model.files.length) return 'Manual install';
   return 'Not installed';
 }
@@ -62,8 +62,11 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
   const badge = licenseBadge(pack.license);
   const status = pack.installed ? 'Installed' : pack.available ? 'Not installed' : 'Not published';
   const statusTone = pack.installed ? 'ok' : pack.available ? 'accent' : 'muted';
-  const canDownload = pack.available && Boolean(pack.archive);
+  const canDownload = pack.available && Boolean(pack.archive || pack.buildable);
   const size = pack.installed ? pack.bytes || pack.installedBytes : pack.sizeBytes;
+  const kindLabel = pack.kind === 'python' ? 'Base interpreter' : pack.kind === 'tool' ? 'Installer tool' : 'Model runtime';
+  const variantLabel =
+    pack.variant && pack.variant !== 'none' ? (pack.variant === 'cpu' ? 'PyTorch CPU' : `PyTorch ${pack.variant.toUpperCase()}`) : null;
 
   return (
     <article className={classNames('runtime-card', pack.installed && 'is-installed')}>
@@ -71,7 +74,7 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
         <div>
           <h3>{pack.name}</h3>
           <span className="runtime-card__meta">
-            {pack.kind === 'python' ? 'Base interpreter' : 'Model runtime'} · v{pack.version} · {pack.platform}/{pack.arch}
+            {kindLabel} · v{pack.version} · {pack.platform}/{pack.arch}
           </span>
         </div>
         <span className={classNames('tag', `tag--${statusTone}`)}>{status}</span>
@@ -83,7 +86,8 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
         <span className={classNames('tag', `tag--${badge.tone}`)} title={badge.title}>
           {badge.label}
         </span>
-        {size > 0 && <span className="tag tag--muted">{formatBytes(size)}</span>}
+        {size > 0 && <span className="tag tag--muted">{pack.installed ? '' : '~'}{formatBytes(size)}</span>}
+        {variantLabel && <span className="tag tag--muted">{variantLabel}</span>}
         {pack.provides.length > 0 && (
           <span className="tag tag--muted">
             {pack.provides.length} model{pack.provides.length === 1 ? '' : 's'}
@@ -94,7 +98,7 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
         )}
       </div>
 
-      {!pack.installed && (pack.error || pack.reason) && (
+      {!pack.installed && (pack.error || (!canDownload && pack.reason)) && (
         <div className="model-card__notice model-card__notice--warn">
           <Icon name="alert" size={14} />
           <span>{pack.error || pack.reason}</span>
@@ -104,11 +108,11 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
       {progress && !progress.done && (
         <div className="model-card__download">
           <div className="model-card__download-head">
-            <span>
+            <span className="model-card__download-label" title={progress.file || undefined}>
               {progress.stage === 'verifying'
                 ? 'Verifying SHA-256'
                 : progress.stage === 'installing'
-                  ? 'Installing'
+                  ? progress.file || 'Installing'
                   : `Downloading ${progress.file || ''}`}
             </span>
             <span>{percent != null ? `${Math.round(percent)}%` : formatBytes(progress.loaded || 0)}</span>
@@ -146,7 +150,13 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
               title={canDownload ? undefined : pack.reason || 'This pack has no published archive yet.'}
             >
               <Icon name={busy ? 'loader' : 'download'} size={14} className={busy ? 'spin' : undefined} />
-              {busy ? 'Installing…' : canDownload ? `Download · ${formatBytes(pack.sizeBytes)}` : 'Not published'}
+              {busy
+                ? 'Installing…'
+                : !canDownload
+                  ? 'Not published'
+                  : pack.buildable
+                    ? `Build · ~${formatBytes(pack.sizeBytes)}`
+                    : `Download · ${formatBytes(pack.sizeBytes)}`}
             </button>
             {pack.importable && (
               <button className="btn btn--ghost btn--sm" onClick={() => void models.importRuntime(pack.id)} disabled={busy}>
@@ -194,6 +204,16 @@ function ModelCard({ model }: { model: ModelManifest }) {
   const lifecycle = lifecycleLabel(model, status.installed, status.lifecycle, runtime.ready);
   const downloadBytes = model.downloadBytes || model.files.reduce((total, file) => total + file.size, 0);
   const percent = progress?.percent ?? (progress && progress.total ? (progress.loaded / progress.total) * 100 : null);
+  // While the runtime is being set up, show whichever pack (uv, Python, the model's
+  // environment) is currently installing.
+  const runtimePacks = runtime.pack ? [runtime.pack.id, ...runtime.pack.requires] : [];
+  const runtimeEvent = runtimePacks
+    .map((id) => models.runtimeProgress[id])
+    .filter((event) => event && !event.done)
+    .sort((a, b) => (b?.at || 0) - (a?.at || 0))[0];
+  const runtimeBusy = Boolean(models.runtimeBusyId && runtimePacks.includes(models.runtimeBusyId)) || (busy && Boolean(runtimeEvent));
+  const runtimeBytes = runtime.ready || !runtime.pack ? 0 : runtime.pack.sizeBytes;
+  const needsToken = Boolean(model.gated && !status.installed && !models.hfToken?.hasToken);
 
   const accept = async () => {
     const confirmed = await window.studio.ui.confirm({
@@ -316,16 +336,54 @@ function ModelCard({ model }: { model: ModelManifest }) {
         </div>
       )}
 
-      {!runtime.ready && (
+      {runtimeEvent && (
+        <div className="model-card__download">
+          <div className="model-card__download-head">
+            <span className="model-card__download-label" title={runtimeEvent.file || undefined}>
+              {runtimeEvent.stage === 'installing' ? runtimeEvent.file || 'Setting up the runtime' : `Downloading ${runtimeEvent.file || 'runtime'}`}
+            </span>
+            <span>{runtimeEvent.percent != null ? `${Math.round(runtimeEvent.percent)}%` : ''}</span>
+          </div>
+          {runtimeEvent.percent != null && <Percent value={runtimeEvent.percent} />}
+          <button className="btn btn--subtle btn--sm" onClick={() => void models.cancelRuntime()}>
+            <Icon name="x" size={13} /> Cancel
+          </button>
+        </div>
+      )}
+
+      {!runtime.ready && !status.installed && !runtimeEvent && (
+        <div className={classNames('model-card__notice', runtime.available ? 'model-card__notice--info' : 'model-card__notice--warn')}>
+          <Icon name={runtime.available ? 'info' : 'alert'} size={14} />
+          <span>{runtime.reason || 'This runtime pack is not installed yet.'}</span>
+        </div>
+      )}
+
+      {status.installed && !runtime.ready && !runtimeEvent && (
         <div className="model-card__notice model-card__notice--warn">
           <Icon name="alert" size={14} />
-          <span>{runtime.reason || 'This runtime pack is not installed yet.'}</span>
-          {!model.license.commercial && (
-            <span className="model-card__notice-hint">
-              These weights are non-commercial. Voxarium never redistributes them — download from the model's
-              official source under its license, then import the files or a runtime pack you built.
-            </span>
-          )}
+          <span>The weights are installed but the runtime is missing. Use Install runtime to rebuild it.</span>
+          <button className="btn btn--subtle btn--sm" onClick={() => runtime.packId && void models.downloadRuntime(runtime.packId)} disabled={runtimeBusy}>
+            Install runtime
+          </button>
+        </div>
+      )}
+
+      {needsToken && (
+        <div className="model-card__notice model-card__notice--license">
+          <Icon name="shield" size={14} />
+          <span>
+            This repository is gated on Hugging Face. Accept its terms on the model page, then add an access token in Settings.
+          </span>
+          <button className="btn btn--subtle btn--sm" onClick={() => setPage('settings')}>
+            Add token
+          </button>
+        </div>
+      )}
+
+      {model.runtime === 'sidecar' && sidecar?.state === 'starting' && sidecar.stage && (
+        <div className="model-card__notice model-card__notice--info">
+          <Icon name="loader" size={14} className="spin" />
+          <span>{sidecar.stage}</span>
         </div>
       )}
 
@@ -361,8 +419,12 @@ function ModelCard({ model }: { model: ModelManifest }) {
             disabled={busy || !installable.ok}
             title={installable.ok ? undefined : installable.reason}
           >
-            <Icon name={busy ? 'loader' : 'download'} size={14} className={busy ? 'spin' : undefined} />
-            {busy ? 'Installing…' : model.files.length ? `Install · ${formatBytes(downloadBytes)}` : 'No verified files'}
+            <Icon name={busy || runtimeBusy ? 'loader' : 'download'} size={14} className={busy || runtimeBusy ? 'spin' : undefined} />
+            {busy || runtimeBusy
+              ? 'Installing…'
+              : model.files.length
+                ? `Install · ${formatBytes(downloadBytes + runtimeBytes)}${runtimeBytes ? ' incl. runtime' : ''}`
+                : 'No verified files'}
           </button>
         )}
 

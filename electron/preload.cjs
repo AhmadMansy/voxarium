@@ -37,8 +37,9 @@ contextBridge.exposeInMainWorld('studio', {
     acknowledge: (id) => invoke('models:acknowledge', { id }),
     importFolder: (id) => invoke('models:import', { id }),
     openFolder: (id, target) => invoke('models:openFolder', { id, target }),
+    openReferences: () => invoke('models:openReferences'),
     sidecar: {
-      start: (id) => invoke('models:sidecar:start', { id }),
+      start: (id, device) => invoke('models:sidecar:start', { id, device }),
       stop: (id) => invoke('models:sidecar:stop', { id }),
       status: (id) => invoke('models:sidecar:status', { id }),
       logs: (id) => invoke('models:sidecar:logs', { id }),
@@ -63,6 +64,11 @@ contextBridge.exposeInMainWorld('studio', {
     importCustom: () => invoke('voices:importCustom'),
     renameCustom: (id, name) => invoke('voices:renameCustom', { id, name }),
     deleteCustom: (id) => invoke('voices:deleteCustom', { id }),
+  },
+
+  huggingface: {
+    tokenStatus: () => invoke('hf:tokenStatus'),
+    setToken: (token) => invoke('hf:setToken', { token }),
   },
 
   clone: {

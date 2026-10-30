@@ -1,10 +1,10 @@
 import type { Lang, PhononTTS, SpeechStats } from 'phonon-tts';
-import type { EngineInfo, Settings } from '../types';
-import type { ModelManifest } from '../models/types';
-import { VOICES, getVoice, isCustomVoice } from '../data/catalog';
+import type { EngineInfo, Settings, VoiceInfo } from '../types';
+import type { ModelManifest, SidecarStatus, SidecarVoice } from '../models/types';
+import { VOICES, getVoice, isCustomVoice, modelVoiceId, nativeVoiceId } from '../data/catalog';
 import { concatPcm } from './audio';
 import { toSeedValue } from './utils';
-import { assertLocalSidecar, synthesizeWithSidecar } from './sidecar';
+import { assertLocalSidecar, listSidecarVoices, synthesizeWithSidecar } from './sidecar';
 
 type PhononModule = typeof import('phonon-tts');
 
@@ -15,6 +15,9 @@ export interface LoadedEngine {
   modelId: string;
   runtime: ModelManifest['runtime'];
   sidecar?: { baseUrl: string; token: string };
+  /** Voices reported by a sidecar model. */
+  voices?: VoiceInfo[];
+  defaultVoiceId?: string;
 }
 
 export interface LoadEngineOptions {
@@ -61,6 +64,82 @@ export function runtimeGateError(manifest: ModelManifest, runtimeReady = manifes
   return `${manifest.shortName} has its ${manifest.runtimeLabel} runtime, but the generation adapter for this model is not wired up yet.`;
 }
 
+function sidecarVoiceInfo(manifest: ModelManifest, voice: SidecarVoice, defaultId: string): VoiceInfo {
+  const language = voice.language || manifest.defaults.language;
+  return {
+    id: modelVoiceId(manifest.id, voice.id),
+    name: voice.name,
+    language,
+    locale: language.toLowerCase(),
+    gender: voice.gender || null,
+    age: null,
+    description:
+      voice.description ||
+      (voice.kind === 'reference' ? 'Your reference clip, cloned locally.' : `A built-in ${manifest.shortName} voice.`),
+    file: '',
+    isDefault: voice.id === defaultId,
+    source: 'model',
+    modelId: manifest.id,
+  };
+}
+
+async function loadSidecarEngine({
+  settings,
+  manifest,
+  onStage,
+}: Omit<LoadEngineOptions, 'serverUrl'>): Promise<LoadedEngine> {
+  onStage?.(`Starting ${manifest.shortName}…`);
+  const startedAt = performance.now();
+  // The main process reports each loading step; first starts can take a while.
+  const unsubscribe = window.studio.onSidecarStatus?.((status) => {
+    if (status.modelId === manifest.id && status.state === 'starting' && status.stage) onStage?.(status.stage);
+  });
+  let status: SidecarStatus;
+  try {
+    const current = await window.studio.models.sidecar.status(manifest.id);
+    if (current.state === 'ready' && current.url && current.token) {
+      status = current;
+    } else {
+      const started = await window.studio.models.sidecar.start(manifest.id, settings.device === 'cpu' ? 'cpu' : 'auto');
+      if (!started.ok || !started.status?.url || !started.status?.token) {
+        throw new Error(started.error || `${manifest.shortName} failed to start.`);
+      }
+      status = started.status;
+    }
+  } finally {
+    unsubscribe?.();
+  }
+  const baseUrl = assertLocalSidecar(status);
+  const token = status.token as string;
+  const listed = await listSidecarVoices(baseUrl, token);
+  const voices = listed.voices.map((voice) => sidecarVoiceInfo(manifest, voice, listed.default));
+  const onGpu = status.device === 'cuda';
+  const info: EngineInfo = {
+    modelId: manifest.id,
+    sampleRate: 24000,
+    device: onGpu ? 'webgpu' : 'cpu',
+    deviceReason: onGpu
+      ? 'Runs on your NVIDIA GPU through CUDA PyTorch in a local Python sidecar.'
+      : 'Runs on the CPU in a local Python sidecar.',
+    threads: 1,
+    threadsReason: 'Managed by the sidecar.',
+    features: {},
+    languages: manifest.languages.map((lang) => lang.code),
+    crossOriginIsolated: typeof crossOriginIsolated === 'boolean' ? crossOriginIsolated : false,
+    loadMs: performance.now() - startedAt,
+  };
+  return {
+    tts: null,
+    module: null,
+    info,
+    modelId: manifest.id,
+    runtime: 'sidecar',
+    sidecar: { baseUrl, token },
+    voices,
+    defaultVoiceId: modelVoiceId(manifest.id, listed.default),
+  };
+}
+
 export async function loadEngine({
   settings,
   manifest,
@@ -70,58 +149,7 @@ export async function loadEngine({
   const gate = runtimeGateError(manifest);
   if (gate) throw new Error(gate);
 
-  if (manifest.runtime === 'sidecar') {
-    onStage?.('Starting sidecar…');
-    const status = await window.studio.models.sidecar.status(manifest.id);
-    if (status.state !== 'ready' || !status.url || !status.token) {
-      const started = await window.studio.models.sidecar.start(manifest.id);
-      if (!started.ok || !started.status?.url || !started.status?.token) {
-        throw new Error(started.error || 'The sidecar failed to start.');
-      }
-      assertLocalSidecar(started.status);
-      const info: EngineInfo = {
-        modelId: manifest.id,
-        sampleRate: 24000,
-        device: 'cpu',
-        deviceReason: 'Sidecar runs on the local Python runtime.',
-        threads: 1,
-        threadsReason: 'Managed by the sidecar.',
-        features: {},
-        languages: manifest.languages.map((lang) => lang.code),
-        crossOriginIsolated: typeof crossOriginIsolated === 'boolean' ? crossOriginIsolated : false,
-        loadMs: 0,
-      };
-      return {
-        tts: null,
-        module: null,
-        info,
-        modelId: manifest.id,
-        runtime: 'sidecar',
-        sidecar: { baseUrl: started.status.url.replace(/\/$/, ''), token: started.status.token },
-      };
-    }
-    assertLocalSidecar(status);
-    const info: EngineInfo = {
-      modelId: manifest.id,
-      sampleRate: 24000,
-      device: 'cpu',
-      deviceReason: 'Sidecar runs on the local Python runtime.',
-      threads: 1,
-      threadsReason: 'Managed by the sidecar.',
-      features: {},
-      languages: manifest.languages.map((lang) => lang.code),
-      crossOriginIsolated: typeof crossOriginIsolated === 'boolean' ? crossOriginIsolated : false,
-      loadMs: 0,
-    };
-    return {
-      tts: null,
-      module: null,
-      info,
-      modelId: manifest.id,
-      runtime: 'sidecar',
-      sidecar: { baseUrl: status.url.replace(/\/$/, ''), token: status.token },
-    };
-  }
+  if (manifest.runtime === 'sidecar') return loadSidecarEngine({ settings, manifest, onStage });
 
   if (manifest.runtime !== 'phonon') throw new Error(`${manifest.shortName} is not a Phonon runtime.`);
 
@@ -210,6 +238,8 @@ export interface SynthesizeOptions {
   manifest?: ModelManifest;
   sidecar?: { baseUrl: string; token: string };
   language?: string;
+  /** Arabic variety (ISO 639-3) for models that distinguish them. */
+  variety?: string;
 }
 
 export interface SynthesizeResult {
@@ -229,6 +259,7 @@ export async function synthesize({
   manifest,
   sidecar,
   language,
+  variety,
 }: SynthesizeOptions): Promise<SynthesizeResult> {
   if (!text.trim()) throw new Error('There is no text to speak.');
   if (manifest?.runtime === 'sidecar' && sidecar) {
@@ -236,8 +267,10 @@ export async function synthesize({
       baseUrl: sidecar.baseUrl,
       token: sidecar.token,
       text,
-      voiceId,
+      // Voices from other models fall back to this model's default voice.
+      voiceId: nativeVoiceId(manifest.id, voiceId),
       language,
+      variety,
       temperature,
       seed: seed == null ? undefined : String(seed),
       signal,

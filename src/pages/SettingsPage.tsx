@@ -81,6 +81,8 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
   const [verifying, setVerifying] = useState(false);
   const [clearing, setClearing] = useState<'model' | 'voices' | null>(null);
   const [keyDraft, setKeyDraft] = useState('');
+  const [hfDraft, setHfDraft] = useState('');
+  const [hfBusy, setHfBusy] = useState(false);
   const [keyBusy, setKeyBusy] = useState(false);
   const [gpuInfo, setGpuInfo] = useState<GpuInfoResult | null>(null);
   const [restarting, setRestarting] = useState(false);
@@ -235,6 +237,13 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
     const ok = await saveCloneKey(clean);
     setKeyBusy(false);
     if (ok) setKeyDraft('');
+  };
+
+  const saveHf = async (token: string) => {
+    setHfBusy(true);
+    const ok = await models.saveHfToken(token.trim());
+    setHfBusy(false);
+    if (ok) setHfDraft('');
   };
 
   const clearKey = async () => {
@@ -1006,6 +1015,81 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
                 Imported and cloned voices appear beside the catalog everywhere — in the studio, the voice picker, batch
                 renders and history. Importing works completely offline; only the initial clone sends a short clip to
                 Gradium.
+              </p>
+            </div>
+          </section>
+
+          <section className="card settings-card">
+            <header className="settings-card__head">
+              <span className="settings-card__icon">
+                <Icon name="downloadCloud" size={17} />
+              </span>
+              <div>
+                <h2>Model downloads</h2>
+                <p>Access for gated models and the folder for local reference voices.</p>
+              </div>
+              <span className={classNames('tag', models.hfToken?.hasToken ? 'tag--ok' : 'tag--muted')}>
+                {models.hfToken?.hasToken ? 'Token saved' : 'No token'}
+              </span>
+            </header>
+
+            <div className="settings-field">
+              <div className="settings-field__head">
+                <strong>Hugging Face access token</strong>
+                <span>
+                  {models.hfToken?.hasToken
+                    ? models.hfToken.encrypted
+                      ? 'Saved and encrypted on this device.'
+                      : 'Saved in the app data folder on this device.'
+                    : 'Only needed for gated models (Phonon 40M, OpenAudio S1-mini).'}
+                </span>
+              </div>
+              <div className="path-row">
+                <input
+                  className="input input--mono"
+                  type="password"
+                  value={hfDraft}
+                  onChange={(event) => setHfDraft(event.target.value)}
+                  placeholder={models.hfToken?.hasToken ? 'Paste a new token to replace the saved one' : 'hf_…'}
+                  spellCheck={false}
+                  disabled={hfBusy}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') void saveHf(hfDraft);
+                  }}
+                />
+                <button className="btn btn--subtle btn--sm" onClick={() => void saveHf(hfDraft)} disabled={!hfDraft.trim() || hfBusy}>
+                  {hfBusy ? 'Checking…' : 'Save token'}
+                </button>
+                {models.hfToken?.hasToken && (
+                  <button className="btn btn--subtle btn--sm" onClick={() => void saveHf('')} disabled={hfBusy}>
+                    Remove
+                  </button>
+                )}
+              </div>
+              <p className="field__hint">
+                Accept the model’s terms on its Hugging Face page, then create a read token at{' '}
+                <button className="link" onClick={() => void window.studio.openExternal('https://huggingface.co/settings/tokens')}>
+                  huggingface.co/settings/tokens <Icon name="external" size={11} />
+                </button>
+                . The token is checked once with Hugging Face and then only sent to huggingface.co when a gated model
+                downloads. It is never passed to a model after its first successful start.
+              </p>
+            </div>
+
+            <div className="settings-field">
+              <div className="settings-field__head">
+                <strong>Reference voices for local cloning</strong>
+                <span>Used by Qwen3-TTS, IndexTTS2, XTTS, Chatterbox and the other local cloning models.</span>
+              </div>
+              <div className="path-row">
+                <button className="btn btn--ghost btn--sm" onClick={() => void window.studio.models.openReferences()}>
+                  <Icon name="folderOpen" size={14} /> Open references folder
+                </button>
+              </div>
+              <p className="field__hint">
+                Add a clean 5–15 second recording (WAV, FLAC or MP3) and, ideally, a .txt file with the same name containing
+                its exact transcript. Reload the model and the clip appears in the voice picker. Only use voices you have
+                permission to clone; nothing leaves this computer.
               </p>
             </div>
           </section>

@@ -315,6 +315,19 @@
   color: var(--text-soft);
 }
 
+.model-card__notice--info {
+  background: var(--surface-2);
+  color: var(--text-soft);
+}
+
+/* Install output lines (uv, pip) can be long; keep the card layout stable. */
+.model-card__download-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .model-card__actions {
   display: flex;
   flex-wrap: wrap;

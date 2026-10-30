@@ -17,13 +17,11 @@ enforced, and how to extend the registry. The authoritative product spec lives i
   pinned to the current license ID. Failed loads and denied switches leave the
   previous model active.
 - **Honest runtime reporting.** Runtime readiness is computed from what is actually
-  installed on the machine, not from a static manifest flag. Only the Phonon family is
-  wired up for generation in this build. The ONNX and Python-sidecar runtimes install
-  as separate, hash-verified packs, but their per-model adapters are not published yet,
-  so nothing pretends those models can synthesize.
+  installed on the machine, not from a static manifest flag. A model only activates
+  once its runtime is installed and its files are verified.
 - **Small installer, separate downloads.** The app installer contains no Python
-  interpreter and no multi-gigabyte model weights. Runtime packs and per-model weights
-  are downloaded (or imported) on demand, verified against pinned SHA-256 values, and
+  interpreter and no multi-gigabyte model weights. Runtimes are downloaded or built on
+  demand from pinned recipes, weights are verified against pinned hashes, and both are
   installed atomically under the user's data folder.
 
 ## First-run setup
@@ -48,28 +46,51 @@ reappear on every launch; the Models page and sidebar setup button remain availa
 
 ## Shipped model matrix
 
-| Model | Runtime | License | Auto-install | Notes |
-| --- | --- | --- | --- | --- |
-| Phonon 31M English | Phonon WASM/WebGPU | Apache-2.0 | **Yes** | 5 pinned files; Q8 + F32; default model |
-| Phonon 40M Multilingual | Phonon WASM/WebGPU | CC-BY-NC-4.0 | No | HF-gated; no HF token available; community mirror failed SHA-256; manual install only |
-| Kokoro 82M | ONNX Runtime Web | Apache-2.0 | No | ONNX runtime present; per-model adapter not wired yet |
-| Supertonic 3 | ONNX Runtime Web | OpenRAIL-M | No | Declares `ar-sa`; Arabic UI is enabled from the language list |
-| SILMA TTS | Python sidecar | Apache-2.0 | No | Opt-in sidecar pack; Arabic |
-| Chatterbox | Python sidecar | MIT | No | Opt-in sidecar pack; Arabic; emotion |
-| OpenAudio S1 Mini | Python sidecar | CC-BY-NC-SA-4.0 | No | Restricted; acknowledgment required |
-| Qwen3-TTS | Python sidecar | Apache-2.0 | No | Opt-in sidecar pack |
-| OmniVoice | Python sidecar | CC-BY-NC-4.0 | No | Code is Apache-2.0 but weights are non-commercial; restricted; only model with the full Arabic variety list |
-| VoxCPM2 | Python sidecar | Apache-2.0 | No | Opt-in sidecar pack; Arabic |
-| MOSS-TTS | Python sidecar | Apache-2.0 | No | Highest memory floor in the set |
-| Breeze TTS2 | Python sidecar | BreezeBlue-NC | No | Restricted/non-commercial; no Arabic chip |
-| Audio8 TTS | Python sidecar | Apache-2.0 | No | Cantonese + Mandarin focus |
-| IndexTTS2 | Python sidecar | Bilibili-Model-License | No | Restricted; weights need legal review; no Arabic chip |
-| XTTS v2 | Python sidecar | Coqui CPML | No | Restricted; multi-speaker; Arabic |
+Every model in the registry can be downloaded and run. Phonon runs in the app's
+WASM/WebGPU worker; every other model runs in a local Python sidecar whose
+environment is built on the user's machine when the model is installed.
 
-“Auto-install” means the Models page can download, verify and activate the model
-without a manual step. Every other row stays visible in the registry and is explicitly
-gated by the dynamic runtime check (see [Runtime packs](#runtime-packs)), the pinned-file
-check, and, where applicable, the license gate.
+| Model | Runtime | Package / source | Python | PyTorch | License | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| Phonon 31M English | Phonon WASM/WebGPU | bundled `phonon-tts` | — | — | Apache-2.0 | Default model |
+| Phonon 40M Multilingual | Phonon WASM/WebGPU | bundled `phonon-tts` | — | — | CC-BY-NC-4.0 | HF-gated: needs an access token |
+| Kokoro 82M | Sidecar | `kokoro` 0.9.4 + misaki | 3.12 | 2.8.0 | Apache-2.0 | Japanese via `pyopenjtalk-plus` |
+| Supertonic 3 | Sidecar | `supertonic` 1.3.1 (ONNX Runtime) | 3.12 | none | OpenRAIL-M | CPU only, ~120 MB runtime |
+| SILMA TTS | Sidecar | `silma-tts` 1.0.5 | 3.12 | 2.8.0 | Apache-2.0 | NeMo normalizer shimmed (see below) |
+| Chatterbox | Sidecar | `chatterbox-tts` 0.1.7 | 3.12 | 2.6.0 | MIT | Perth watermark |
+| OpenAudio S1-mini | Sidecar | fish-speech source @ `3578e4e` | 3.12 | 2.8.0 | CC-BY-NC-SA-4.0 | HF-gated: needs an access token |
+| Qwen3-TTS | Sidecar | `qwen-tts` 0.1.1 | 3.12 | 2.8.0 | Apache-2.0 | Base checkpoint clones a reference |
+| OmniVoice | Sidecar | `omnivoice` 0.2.1 | 3.12 | 2.8.0 | CC-BY-NC-4.0 | Arabic varieties passed through |
+| VoxCPM2 | Sidecar | `voxcpm` 2.0.3 | 3.12 | 2.8.0 | Apache-2.0 | `torch.compile` off (no Triton on Windows) |
+| MOSS-TTS | Sidecar | MOSS-TTS @ `934d682` | 3.12 | 2.9.1 | Apache-2.0 | 17 GB; bfloat16 on CPU when VRAM is short |
+| Breeze TTS 2 | Sidecar | breeze-tts source @ `6eba901` | 3.12 | 2.9.1 | BreezeBlue-NC | Eager path only |
+| Audio8 TTS | Sidecar | Transformers remote code | 3.12 | 2.8.0 | Apache-2.0 | |
+| IndexTTS2 | Sidecar | index-tts @ `d9e41aa` | **3.11** | 2.8.0 | Bilibili (review) | Fetches auxiliary models on first start |
+| XTTS v2 | Sidecar | `coqui-tts` 0.28.0 | 3.12 | 2.8.0 | Coqui CPML | 58 studio speakers |
+
+The PyTorch column is the CPU/CUDA version; NVIDIA machines get the CUDA build
+(`cu126` for 2.6.0, `cu128` otherwise), everything else gets the CPU build. Every
+recipe resolves to binary wheels on Windows x64 except a handful of pure-Python
+source packages, so no compiler is needed.
+
+### Windows-specific workarounds
+
+- **Visual C++ runtime.** ONNX Runtime and PyTorch need `msvcp140.dll` /
+  `vcruntime140_1.dll`, which many machines lack. Every environment installs the
+  `msvc-runtime` wheel and `start.py` registers it with `os.add_dll_directory`, so
+  no admin installer is required.
+- **SILMA / `pynini`.** `nemo_text_processing` depends on `pynini`, which has no
+  Windows build. The recipe drops it with a uv override and ships a pass-through
+  `nemo_text_processing` shim (`electron/sidecars/shims`); number normalization is
+  disabled and SILMA's own `cached_path` is redirected to the verified local files.
+- **Japanese G2P.** misaki's default backend needs a UniDic dictionary that only
+  builds from source; the Kokoro adapter uses misaki's `pyopenjtalk` backend with
+  the `pyopenjtalk-plus` wheel instead.
+- **Python 3.11.** IndexTTS2 declares `<3.12`; uv provisions a managed 3.11.
+- **Long paths.** setuptools fails past 260 characters. When the default uv cache
+  path is long, the builder uses `<drive>\VoxariumCache\uv` instead.
+- **Process lifetime.** Servers watch `VOXARIUM_PARENT_PID` and exit with the app.
+  (A blocking read on a stdin pipe deadlocks DLL loading on Windows.)
 
 ## Download and install lifecycle
 
@@ -104,75 +125,61 @@ installed -> update (when a pinned file changes)
 
 ## Runtime packs
 
-Model weights and runtimes are separate downloads. `electron/models/runtimes.json`
-declares the packs, and `electron/models/runtimes.cjs` installs them under
-`userData/runtimes/<id>/` — never in the same folder as `userData/models/<id>/`.
+Model weights and runtimes are separate. `electron/models/runtimes.json` declares
+the packs and `electron/models/runtimes.cjs` installs them under
+`userData/runtimes/<id>/`.
 
-There are two pack kinds:
-
-| Kind | Purpose | Shipped today |
+| Kind | Purpose | Install |
 | --- | --- | --- |
-| `python` | Isolated CPython interpreter used by every Python sidecar | Python 3.12.16, downloadable |
-| `sidecar` | Per-model Python environment plus its loopback server (`start.py`) | 11 declared, none published |
+| `tool` | uv 0.13.6, which builds every model environment | Pinned zip (size + SHA-256) |
+| `python` | CPython 3.12.16 from python-build-standalone | Pinned tar.gz (size + SHA-256) |
+| `sidecar` | One isolated venv per model + the Voxarium adapter | Built from a pinned recipe |
 
-### Python base pack
+Installing a sidecar model installs whatever is missing in order: uv → Python →
+the model's environment → the model's weights. The Models page shows each step.
 
-- CPython **3.12.16** x64 from `astral-sh/python-build-standalone`
-  (`cpython-3.12.16+20261026-x86_64-pc-windows-msvc-install_only.tar.gz`).
-- Archive pinned at **47,113,364 bytes** with SHA-256
-  `590dfcbe3a34c07301e6332e13e2188b98655cd072b08afa45a7998dc4c22bc5`.
-- Extracts to about 152.5 MB and exposes `python/python.exe`.
-- Sidecars always use this managed interpreter. They never invoke
-  `python.exe` from `PATH`, so a broken or missing system Python cannot affect
-  generation.
+### Building a sidecar pack
 
-### Sidecar packs
+1. `uv venv --relocatable` with the managed interpreter (or a uv-managed Python
+   for recipes that need another version).
+2. `uv pip install` of the recipe's requirements, plus `torch==X+<variant>` from
+   the matching PyTorch index and `msvc-runtime`. The uv cache is shared and hard
+   linked, so PyTorch is stored once even when several models use it.
+3. Pinned source archives (`sources`) are downloaded, checked against their
+   SHA-256 and extracted to `src/<name>` (put on `sys.path` by `start.py`).
+4. `electron/sidecars/voxarium_sidecar.py`, the model's adapter, assets and any
+   shims are copied to `app/`, and `start.py` is generated.
+5. `start.py --check` imports the adapter's dependencies. Only then is the tree
+   given its marker and swapped into place atomically.
 
-Each sidecar pack owns the model's Python dependencies **and** its adapter/server,
-because installing libraries alone is not a runtime. A pack must contain the entry
-point declared in the catalog (`start.py`), and the catalog records the models it
-`provides` and the packs it `requires`.
+Uninstalling uv or Python is refused while a model environment still uses it.
 
-None of the 11 sidecar packs are published yet. They remain visible as
-**not-published**, explain why, and offer **Import folder** for a locally built pack.
-Importing validates the entry point before the pack is marked installed; it does not
-falsely claim a download exists.
+### Sidecar protocol
 
-### Install lifecycle
+The supervisor (`electron/models/sidecar.cjs`) starts
+`venv/Scripts/python.exe start.py --host 127.0.0.1 --port 0 --model-dir <dir>`
+with a random 32-byte token. The server prints `VOXARIUM_READY {"port": N}` as
+soon as it listens, then loads the model in the background. `GET /health` reports
+`{ready, stage, error, device}`; `GET /voices` lists the model's voices plus the
+user's reference clips; `POST /synthesize` returns base64 float32 PCM resampled
+to 24 kHz. Every request needs the bearer token.
 
-```
-not-installed -> downloading -> verifying -> installing -> installed
-                       |            |
-                       +--> error <--+
-not-published -> (import folder) -> installed
-installed -> verify / uninstall
-```
+The first start of a model runs with `--prepare`: auxiliary assets (vocoders,
+codecs, G2P dictionaries) may be fetched, a test sentence is generated, and a
+`.voxarium-prepared` marker is written. Every later start sets `HF_HUB_OFFLINE`,
+`TRANSFORMERS_OFFLINE` and `HF_DATASETS_OFFLINE`. All caches (`HF_HOME`,
+`TORCH_HOME`, `MODELSCOPE_CACHE`, …) live inside the model folder, so removing a
+model removes them too.
 
-- Downloads stream to `runtimes/.staging/<id>/<archive>.part`, resume with a
-  `Range` request, and can be cancelled.
-- The archive is checked against its pinned size and SHA-256 before extraction.
-- Extraction uses `electron/models/archive.cjs`, which supports `.zip` and `.tar.gz`,
-  rejects absolute paths, drive letters, `..` traversal, links and ZIP64, and caps
-  `.tar.gz` expansion at 1.5 GB.
-- The new tree is staged, given a `.voxarium-runtime.json` marker, and swapped into
-  place atomically. The previous tree is removed only after the swap succeeds.
-- `verify` re-checks the entry point and refreshes the marker; `uninstall` removes
-  only that pack's directory and state record.
+### Voices and reference clips
 
-### Dynamic readiness
-
-The manifest's `runtimePack` now names a `packId` instead of hard-coding
-`available: true`. Readiness is derived from the installed packs in two places that
-share the same rules:
-
-- Main process: `runtimeManager.modelRuntime(model)`.
-- Renderer: `src/models/runtime.ts` (`runtimeReadiness`, `visibleRuntimePacks`).
-
-A model is runnable only when its declared pack is installed. The license gate,
-activation, the Models page and the first-run wizard all consume that dynamic result,
-so installing a pack can unlock a model without a rebuild and uninstalling it locks the
-model again. The Models page shows every pack with its status, license badge, size,
-dependencies and Install / Verify / Import / Remove actions.
+Sidecar models report their own voices (built-in speakers, voice-design presets,
+or a synthetic reference for clone-only models). They are registered in the
+catalog as `<modelId>:<voice>` and are only compatible with that model.
+Clone-only models default to `electron/sidecars/assets/reference-en.wav`,
+Kokoro's Apache-2.0 synthetic `af_heart_0.wav` sample (verified against its git
+blob hash). Users can add their own clips to `userData/voices/references`
+(audio plus an optional `.txt` transcript); they appear after the model reloads.
 
 ## Hardware fit
 
@@ -245,27 +252,6 @@ archived in `settings.modelSettings[id]`:
 - Switching is rolled back if loading or activation fails; the previous model stays
   selected and its settings remain intact.
 
-## ONNX and sidecar contracts
-
-- `src/workers/ort.worker.ts` is a shared ONNX Runtime Web worker with WASM
-  (optional WebGPU), FLOAT32/INT32/INT64 tensor support, run cancellation and
-  disposal. `src/lib/onnx.ts` adds a memory guard and exposes the `/ort/` assets.
-  `scripts/sync-ort.mjs` copies the pinned runtime into `public/ort/` during
-  `postinstall`.
-- `electron/models/sidecar.cjs` is a generic supervisor. It resolves Python and the
-  server through `runtimeManager.sidecarRuntime()`, spawns an installed pack on
-  `127.0.0.1` with port `0`, injects a random 32-byte per-session token, waits for a
-  `VOXARIUM_READY` line, polls `/health`, keeps a bounded log ring, and guarantees
-  shutdown on app quit. Requests carry the bearer token. Packs run with the
-  interpreter from the installed Python runtime pack, never the user's system Python.
-- `src/lib/sidecar.ts` rejects non-loopback URLs before making a request and supports
-  JSON, NDJSON and WAV responses with cancellation.
-- **Limitation:** the supervisor itself makes only loopback requests, but it does not
-  sandbox an external Python pack. Packs are not bundled, are opt-in, and their
-  network behavior is the pack's responsibility. No native binary or second
-  JavaScript runtime was added for this work. A model only starts when its runtime
-  pack and adapter exist and pass verification.
-
 ## Testing
 
 ```powershell
@@ -278,15 +264,17 @@ npm.cmd run test:e2e    # Electron lifecycle smoke test
 `scripts/test-models.mjs` loads the TypeScript modules through Vite's SSR loader
 (no second test runtime). It covers:
 
-- Registry integrity, unique IDs, default fallback, and pinned 64-character hashes.
-- Phonon 31M as the only fully installable runtime; gated 40M with no unverified
-  files.
+- Registry integrity, unique IDs, default fallback, and pinned revisions; every file
+  pinned by SHA-256, git blob SHA-1 or LFS-pointer id.
+- Every model installable: Phonon in-app, the rest through a buildable sidecar pack;
+  gated repos flagged for a token.
 - Quality discovery from manifest files.
 - Fit levels and reasons for RAM, disk and sidecar VRAM.
 - License acknowledgment freshness, badges, and install gates.
 - **OmniVoice** weights marked CC-BY-NC with acknowledgment required.
-- **Runtime catalog**: pinned Python 3.12.16 pack with size/SHA-256, 11 unpublished
-  sidecar packs with `start.py` entries, `requires`/`provides`, and importability.
+- **Runtime catalog**: pinned uv and Python 3.12.16 archives, 13 sidecar recipes with
+  pinned requirements, PyTorch versions and source archives, and an adapter (plus any
+  shims) that ships with the app for every sidecar model.
 - **Dynamic runtime readiness** derived from installed packs; license gate accepts
   readiness; archive path traversal rejected; safe `.tar.gz` extraction.
 - Arabic inference from declared languages, MSA defaults, and varieties.
@@ -303,46 +291,53 @@ first-run chooser -> inspect gated model -> setup install -> verify -> activate 
 ```
 
 It also asserts that the chooser lists all 15 models, that a gated model exposes its
-license and runtime reason with a disabled install button, that the **Runtime packs**
-panel lists all 12 packs (the downloadable Python pack and 11 unpublished sidecars
-that remain importable), that a fresh profile can install and activate Phonon 31M
+license and the Hugging Face gate, that the **Runtime packs** panel lists all 15 packs
+(uv, Python and 13 buildable sidecars), that a fresh profile can install and activate Phonon 31M
 from setup, that a refused switch leaves the previous model active, that Settings
 reports the active model and runtime, and that the renderer reports no console or
 page errors while visiting the studio, models, voices, history, batch and settings
 pages. The fixture source defaults to `%APPDATA%\Voxarium\models`;
 override it with `VOXARIUM_E2E_MODEL_DIR`.
 
-A separate one-off proof (`verify-runtime.cjs`) downloads and verifies the pinned
-Python pack, runs `python --version`, imports a fake sidecar pack, resolves it
-through the installed Python, launches it via the supervisor on loopback with a
-token, passes `/health`, stops it, and uninstalls both packs.
+Sidecar builds were proven on Windows by building packs with the real runtime manager,
+downloading weights with the real model manager, and starting them through the real
+supervisor: first-run prepare, a `401` without the token, voice listing, synthesis,
+and an offline restart.
 
 ## Extending a model
 
 1. Add or update its entry in `scripts/build-manifests.mjs` and regenerate
    `electron/models/manifests.json`.
-2. Pin every file's exact size and SHA-256. Never ship `files: []` as if it were
-   installable.
-3. Set `runtimePack.available: true` only when the runtime and adapter actually work
-   end to end. Otherwise provide a truthful `runtimePack.reason`.
+2. Add a `pins` entry (revision + file selection). The builder pins every file's size
+   and hash from the Hugging Face tree. Never ship `files: []` as if it were installable.
+3. For a sidecar model, add a recipe to `runtimes.json` and an adapter in
+   `electron/sidecars/adapters` exposing `load(ctx)`, `voices()` and `synthesize()`.
+   Check the recipe resolves for Windows with `uv pip compile --python-platform
+   x86_64-pc-windows-msvc`.
 4. Keep restricted licenses flagged so the acknowledgment gate and badge remain.
-5. When adding a sidecar, publish a runtime pack with its adapter/server (`start.py`) and
-   pin its dependencies. A sidecar pack must be installable through the runtime manager
-   and pass supervisor resolution before marking the model runnable.
+5. Build the pack, install the model and synthesize through the supervisor before
+   shipping it.
 6. Add unit coverage for any new language, voice format, capability or fit rule.
 7. Run all four test commands above before shipping.
 
 ## Current limitations
 
-- Phonon 40M cannot be downloaded automatically without accepting its HF gate and
-  obtaining a token; the manifest therefore exposes a manual-install reason.
-- ONNX and sidecar models are registered, fit-checked and license-gated, but their
-  runtime packs are absent or unpublished, so activation is refused with an
-  explanation. Only Phonon 31M has a verified generation path in this build.
-- The Python base pack is downloadable and verified, and a sidecar can run with an
-  installed pack + adapter, but **no published per-model sidecar adapters exist yet**.
-  Kokoro/Supertonic need ONNX adapters, and the remaining 9 sidecars need published
-  runtime packs before they can generate audio.
-- A true UI switch between two runnable models cannot be exercised in E2E yet because
-  only `phonon-31m-en` is installable. The test instead proves that an unsupported
-  switch is refused without disturbing the active model.
+- **Gated models need a token.** Phonon 40M and OpenAudio S1-mini are gated on
+  Hugging Face. Accept the terms on the model page and add a read token in
+  Settings › Model downloads. Their files are pinned by the git id of each LFS
+  pointer (Hugging Face hides the SHA-256 from anonymous callers); the pointer
+  binds the content SHA-256 and size, so the check is just as strict.
+- **First start needs the network.** Some libraries fetch auxiliary assets the
+  first time they load (SILMA's Vocos vocoder and tashkeel model, IndexTTS2's
+  w2v-BERT/MaskGCT/CAMPPlus/BigVGAN, MOSS's audio tokenizer). After the first
+  successful start every model runs offline.
+- **Heavy models on small GPUs.** Each adapter declares the VRAM it needs and
+  falls back to the CPU when the GPU is smaller. That works, but MOSS-TTS (8.5B),
+  Breeze TTS 2 and VoxCPM2 are slow on CPU, and MOSS needs about 20 GB of free RAM.
+- **Disk.** A CUDA environment is 4–6 GB before weights. uv hard-links PyTorch
+  from its cache, so additional models that share a PyTorch version cost much less.
+- **Linux/macOS.** Recipes target Windows x64 (`win32`/`x64` packs only).
+- **Verification depth.** Every recipe is checked to resolve on Windows x64 with
+  binary wheels (or pure-Python sources). Supertonic and Kokoro were built,
+  downloaded and synthesized end to end on Windows; the larger models share the
+  same build and server path but were not each run end to end during this change.
