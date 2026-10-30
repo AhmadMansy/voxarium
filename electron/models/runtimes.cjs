@@ -123,8 +123,30 @@ function getPack(id) {
   return getCatalog().byId.get(id) || null;
 }
 
+/**
+ * Python resolves imports with plain Win32 paths, so a model environment fails
+ * once venv\Lib\site-packages\<deep package file> passes 260 characters (deep
+ * transformers modules are ~125 characters on their own). Built environments
+ * stay next to the other runtimes when that folder is short and move to a short
+ * folder at the drive root otherwise.
+ */
+const MAX_ENV_BASE = 60;
+function envBase(runtimesDir) {
+  if (process.env.VOXARIUM_ENV_ROOT) return process.env.VOXARIUM_ENV_ROOT;
+  if (process.platform !== 'win32' || path.resolve(runtimesDir).length <= MAX_ENV_BASE) return runtimesDir;
+  return path.join(path.parse(path.resolve(runtimesDir)).root, 'VoxariumCache', 'envs');
+}
+
 function runtimeDir(dirs, id) {
-  return path.join(dirs.runtimes, id);
+  const standard = path.join(dirs.runtimes, id);
+  if (!getPack(id)?.build) return standard;
+  const preferred = path.join(envBase(dirs.runtimes), id);
+  // An environment that is already installed stays where it was built (for
+  // example before the short-path rule applied); new builds use `preferred`.
+  if (preferred !== standard && !fs.existsSync(path.join(preferred, MARKER)) && fs.existsSync(path.join(standard, MARKER))) {
+    return standard;
+  }
+  return preferred;
 }
 
 function stagingDir(dirs, id) {
@@ -542,9 +564,12 @@ function createRuntimeManager({
     const uv = uvExe();
     if (!uv) throw new Error('The uv package manager is not installed.');
     const stage = stagingDir(dirs, pack.id);
-    const tree = path.join(stage, 'tree');
+    // Built beside its final folder (not under .staging) to keep paths short; the
+    // venv is relocatable, so the finished tree is renamed into place.
+    const tree = `${runtimeDir(dirs, pack.id)}.build`;
     await fsp.rm(tree, { recursive: true, force: true });
     await fsp.mkdir(tree, { recursive: true });
+    await fsp.mkdir(stage, { recursive: true });
 
     const variant = await torchVariant(pack);
     const steps = 4 + (build.sources || []).length;
@@ -705,6 +730,8 @@ function createRuntimeManager({
       const message = error instanceof Error ? error.message : String(error);
       const aborted = controller.signal.aborted || (error && error.name === 'AbortError');
       if (!aborted) await recordInstall(current.id, { error: message }).catch(() => {});
+      // A failed build can leave gigabytes behind; the next attempt rebuilds anyway.
+      if (current.build) await fsp.rm(`${runtimeDir(dirs, current.id)}.build`, { recursive: true, force: true }).catch(() => {});
       log(`[voxarium] runtime ${current.id} failed: ${message}`);
       emit({ kind: 'runtime', runtimeId: current.id, file: '', loaded: 0, total: 0, percent: null, index: 0, count: 0, stage: 'error', error: aborted ? 'Install cancelled' : message, done: true, at: Date.now() });
       if (current.id !== pack.id) {

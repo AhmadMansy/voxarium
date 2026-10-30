@@ -22,7 +22,7 @@ const { createModelState, adoptLegacyFiles } = require('./models/state.cjs');
 const { createModelManager } = require('./models/downloads.cjs');
 const { probeHardware } = require('./models/hardware.cjs');
 const { createSidecarSupervisor } = require('./models/sidecar.cjs');
-const { createRuntimeManager } = require('./models/runtimes.cjs');
+const { createRuntimeManager, runtimeDir } = require('./models/runtimes.cjs');
 const { loadManifests, getModel } = require('./models/registry.cjs');
 
 const IS_DEV = Boolean(process.env.VITE_DEV_SERVER_URL);
@@ -1399,7 +1399,7 @@ function registerIpc() {
     initModelServices();
     const pack = runtimeManager.getPack(id);
     if (!pack) return false;
-    const dir = path.join(DIRS().runtimes, pack.id);
+    const dir = runtimeDir(DIRS(), pack.id);
     fs.mkdirSync(dir, { recursive: true });
     await shell.openPath(dir);
     return true;
