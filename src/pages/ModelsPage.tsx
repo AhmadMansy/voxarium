@@ -320,6 +320,12 @@ function ModelCard({ model }: { model: ModelManifest }) {
         <div className="model-card__notice model-card__notice--warn">
           <Icon name="alert" size={14} />
           <span>{runtime.reason || 'This runtime pack is not installed yet.'}</span>
+          {!model.license.commercial && (
+            <span className="model-card__notice-hint">
+              These weights are non-commercial. Voxarium never redistributes them — download from the model's
+              official source under its license, then import the files or a runtime pack you built.
+            </span>
+          )}
         </div>
       )}
 
@@ -369,6 +375,20 @@ function ModelCard({ model }: { model: ModelManifest }) {
         <button className="btn btn--ghost btn--sm" onClick={() => void models.importFolder(model.id)} disabled={busy}>
           <Icon name="folderOpen" size={14} /> Import
         </button>
+
+        {model.repo && (
+          <a
+            className="btn btn--ghost btn--sm"
+            href={`https://huggingface.co/${model.repo}`}
+            title={`Open ${model.repo} on Hugging Face. Obtain the weights under their license, then import them.`}
+            onClick={(event) => {
+              event.preventDefault();
+              void window.studio.openExternal(`https://huggingface.co/${model.repo}`);
+            }}
+          >
+            <Icon name="external" size={14} /> Get from source
+          </a>
+        )}
 
         <button className="btn btn--ghost btn--sm" onClick={() => void models.openFolder(model.id)} disabled={busy}>
           <Icon name="folder" size={14} /> Files

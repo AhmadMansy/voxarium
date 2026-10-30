@@ -771,6 +771,14 @@
   margin-top: 2px;
 }
 
+.model-card__notice-hint {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .setup-options__gate {
   margin-bottom: 14px;
 }
