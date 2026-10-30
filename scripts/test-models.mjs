@@ -71,6 +71,7 @@ try {
   const catalog = await server.ssrLoadModule('/src/data/catalog.ts');
   const runtime = await server.ssrLoadModule('/src/models/runtime.ts');
 const bridge = await server.ssrLoadModule('/src/lib/engineBridge.ts');
+const expression = await server.ssrLoadModule('/src/models/expression.ts');
 
   const { MODELS, DEFAULT_MODEL_ID, getModel, qualitiesFor, defaultQualityFor } = registry;
   const { normalizePreferences, switchModelSettings, rememberPreferences } = preferences;
@@ -569,6 +570,59 @@ const bridge = await server.ssrLoadModule('/src/lib/engineBridge.ts');
     }
   });
 
+  await test('expression specs are well formed and drive the emotion/non-verbal flags', () => {
+    for (const model of MODELS) {
+      const spec = model.expression;
+      const tags = spec?.tags || [];
+      for (const item of tags) {
+        assert.ok(item.token && item.label, `${model.id} tag`);
+        assert.ok(['sound', 'emotion', 'pause'].includes(item.kind), `${model.id} tag kind`);
+      }
+      if (spec?.intensity) {
+        const { min, max, default: value, step } = spec.intensity;
+        assert.ok(min < max && value >= min && value <= max && step > 0, `${model.id} intensity range`);
+      }
+      if (spec?.instruction) assert.ok(spec.instruction.maxLength > 0 && spec.instruction.examples.length > 0, `${model.id} instruction`);
+      const emotion = Boolean(spec && (spec.instruction || spec.attributes || spec.intensity || tags.some((item) => item.kind === 'emotion')));
+      assert.equal(model.capabilities.emotion, emotion, `${model.id} emotion flag matches its Expression controls`);
+      assert.equal(model.capabilities.nonVerbal, tags.some((item) => item.kind === 'sound'), `${model.id} non-verbal flag`);
+    }
+    assert.deepEqual(getModel('supertonic-3').expression.tags.map((item) => item.token), ['<laugh>', '<breath>', '<sigh>']);
+    assert.equal(expression.hasExpression(getModel('kokoro-82m')), false);
+    assert.equal(expression.hasExpression(getModel('omnivoice')), true);
+  });
+
+  await test('expression values resolve to what each model receives', () => {
+    const omni = getModel('omnivoice');
+    assert.deepEqual(expression.resolveExpression(omni, { attributes: { gender: 'female', accent: 'british accent', age: '' } }), {
+      instruction: 'female, british accent',
+    });
+    const vox = getModel('voxcpm2');
+    assert.deepEqual(expression.resolveExpression(vox, { instruction: '  A calm narrator  ' }), { instruction: 'A calm narrator' });
+    assert.deepEqual(expression.resolveExpression(vox, { instruction: 'saved' }, { instruction: 'from the API' }), { instruction: 'from the API' });
+    assert.equal(expression.resolveExpression(vox, { instruction: 'x'.repeat(999) }).instruction.length, vox.expression.instruction.maxLength);
+    const chatter = getModel('chatterbox');
+    assert.deepEqual(expression.resolveExpression(chatter, undefined), { intensity: 0.5 });
+    assert.deepEqual(expression.resolveExpression(chatter, { intensity: 9 }), { intensity: 2 });
+    assert.deepEqual(expression.resolveExpression(getModel('kokoro-82m'), { instruction: 'ignored' }, { instruction: 'ignored' }), {});
+    assert.deepEqual(expression.resolveExpression(getModel('supertonic-3'), { instruction: 'tags only' }), {});
+  });
+
+  await test('tags are inserted at the cursor with natural spacing', () => {
+    assert.deepEqual(expression.insertTag('Hello world', 5, 5, '<laugh>'), { text: 'Hello <laugh> world', cursor: 13 });
+    assert.deepEqual(expression.insertTag('', 0, 0, '[pause 1.0s]'), { text: '[pause 1.0s]', cursor: 12 });
+    assert.equal(expression.insertTag('Wait.', 4, 4, '<sigh>').text, 'Wait <sigh>.');
+    assert.equal(expression.insertTag('Replace me', 0, 7, '(sigh)').text, '(sigh) me');
+  });
+
+  await test('API requests carry expression fields, including OpenAI "instructions"', () => {
+    const { speechRequest } = require('../electron/integrations/api-server.cjs');
+    assert.equal(speechRequest({ input: 'Hi', instructions: 'calm and slow' }, { openai: true }).instruction, 'calm and slow');
+    const native = speechRequest({ text: 'Hi', instruction: 'female, elderly', intensity: 1.2 }, { openai: false });
+    assert.deepEqual([native.instruction, native.intensity], ['female, elderly', 1.2]);
+    assert.throws(() => speechRequest({ text: 'Hi', instruction: 'x'.repeat(501) }, { openai: false }), /too long/);
+    assert.throws(() => speechRequest({ text: 'Hi', intensity: 9 }, { openai: false }), /intensity/);
+  });
   await test('rememberPreferences mirrors only model-scoped edits', () => {
     const phonon = getModel('phonon-31m-en');
     const base = makeSettings({ quality: 'q8', language: 'en' });

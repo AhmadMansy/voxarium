@@ -1175,6 +1175,26 @@
         "reason": "Supertonic runs in its own Python environment, which is built on this computer when you install the model."
       },
       "estimatedBytes": 401276918,
+      "expression": {
+        "note": "Supertonic reads expression tags inside the text. Its voice style comes from the preset voices.",
+        "tags": [
+          {
+            "token": "<laugh>",
+            "label": "Laugh",
+            "kind": "sound"
+          },
+          {
+            "token": "<breath>",
+            "label": "Breath",
+            "kind": "sound"
+          },
+          {
+            "token": "<sigh>",
+            "label": "Sigh",
+            "kind": "sound"
+          }
+        ]
+      },
       "order": 3,
       "downloadBytes": 401276918
     },
@@ -1553,6 +1573,17 @@
         }
       ],
       "filesVerified": true,
+      "expression": {
+        "note": "Exaggeration controls how expressive the delivery is.",
+        "intensity": {
+          "label": "Exaggeration",
+          "min": 0.25,
+          "max": 2,
+          "step": 0.05,
+          "default": 0.5,
+          "hint": "0.5 is neutral; higher is more dramatic."
+        }
+      },
       "order": 5,
       "downloadBytes": 3208951748
     },
@@ -1665,7 +1696,7 @@
         "cloneKind": "local",
         "multiSpeaker": false,
         "emotion": true,
-        "nonVerbal": false,
+        "nonVerbal": true,
         "streaming": true,
         "phonemes": false,
         "normalization": false,
@@ -1748,6 +1779,56 @@
       ],
       "filesVerified": true,
       "gated": true,
+      "expression": {
+        "note": "Emotion and tone markers go at the start of a sentence; sound markers anywhere. From the OpenAudio documentation.",
+        "tags": [
+          {
+            "token": "(excited)",
+            "label": "Excited",
+            "kind": "emotion"
+          },
+          {
+            "token": "(sad)",
+            "label": "Sad",
+            "kind": "emotion"
+          },
+          {
+            "token": "(angry)",
+            "label": "Angry",
+            "kind": "emotion"
+          },
+          {
+            "token": "(surprised)",
+            "label": "Surprised",
+            "kind": "emotion"
+          },
+          {
+            "token": "(whispering)",
+            "label": "Whispering",
+            "kind": "emotion"
+          },
+          {
+            "token": "(shouting)",
+            "label": "Shouting",
+            "kind": "emotion"
+          },
+          {
+            "token": "(laughing)",
+            "label": "Laughing",
+            "kind": "sound"
+          },
+          {
+            "token": "(sighing)",
+            "label": "Sighing",
+            "kind": "sound"
+          },
+          {
+            "token": "(sobbing)",
+            "label": "Sobbing",
+            "kind": "sound"
+          }
+        ]
+      },
       "order": 6,
       "downloadBytes": 3608911039
     },
@@ -1840,7 +1921,7 @@
         "voiceClone": true,
         "cloneKind": "local",
         "multiSpeaker": false,
-        "emotion": true,
+        "emotion": false,
         "nonVerbal": false,
         "streaming": true,
         "phonemes": false,
@@ -2208,7 +2289,7 @@
         "cloneKind": "local",
         "multiSpeaker": false,
         "emotion": true,
-        "nonVerbal": true,
+        "nonVerbal": false,
         "streaming": true,
         "phonemes": false,
         "normalization": false,
@@ -2315,6 +2396,64 @@
         }
       ],
       "filesVerified": true,
+      "expression": {
+        "note": "Pick voice attributes to design a voice. Accents apply to English.",
+        "attributes": [
+          {
+            "id": "gender",
+            "label": "Gender",
+            "options": [
+              "male",
+              "female"
+            ]
+          },
+          {
+            "id": "age",
+            "label": "Age",
+            "options": [
+              "child",
+              "teenager",
+              "young adult",
+              "middle-aged",
+              "elderly"
+            ]
+          },
+          {
+            "id": "pitch",
+            "label": "Pitch",
+            "options": [
+              "very low pitch",
+              "low pitch",
+              "moderate pitch",
+              "high pitch",
+              "very high pitch"
+            ]
+          },
+          {
+            "id": "style",
+            "label": "Style",
+            "options": [
+              "whisper"
+            ]
+          },
+          {
+            "id": "accent",
+            "label": "Accent",
+            "options": [
+              "american accent",
+              "british accent",
+              "australian accent",
+              "canadian accent",
+              "indian accent",
+              "chinese accent",
+              "japanese accent",
+              "korean accent",
+              "portuguese accent",
+              "russian accent"
+            ]
+          }
+        ]
+      },
       "order": 8,
       "downloadBytes": 3267452573
     },
@@ -2631,6 +2770,19 @@
         }
       ],
       "filesVerified": true,
+      "expression": {
+        "note": "Describe the voice to design it, or the delivery when you use a reference clip.",
+        "instruction": {
+          "label": "Voice description",
+          "placeholder": "A young woman, gentle and sweet voice",
+          "examples": [
+            "A young woman, gentle and sweet voice",
+            "A mature male narrator, calm and deep",
+            "Slightly faster, cheerful tone"
+          ],
+          "maxLength": 300
+        }
+      },
       "order": 9,
       "downloadBytes": 4960722408
     },
@@ -2850,8 +3002,8 @@
         "voiceClone": true,
         "cloneKind": "local",
         "multiSpeaker": false,
-        "emotion": true,
-        "nonVerbal": true,
+        "emotion": false,
+        "nonVerbal": false,
         "streaming": true,
         "phonemes": false,
         "normalization": false,
@@ -3034,6 +3186,26 @@
         }
       ],
       "filesVerified": true,
+      "expression": {
+        "note": "Insert explicit pauses anywhere in the text.",
+        "tags": [
+          {
+            "token": "[pause 0.5s]",
+            "label": "Pause 0.5s",
+            "kind": "pause"
+          },
+          {
+            "token": "[pause 1.0s]",
+            "label": "Pause 1s",
+            "kind": "pause"
+          },
+          {
+            "token": "[pause 2.5s]",
+            "label": "Pause 2.5s",
+            "kind": "pause"
+          }
+        ]
+      },
       "order": 10,
       "downloadBytes": 16995746554
     },
@@ -3212,6 +3384,40 @@
         }
       ],
       "filesVerified": true,
+      "expression": {
+        "note": "An instruction designs the voice, or directs the delivery of a reference clip. Vocal events go in the text.",
+        "instruction": {
+          "label": "Voice direction",
+          "placeholder": "A warm, thoughtful young woman with a clear voice and a calm, reflective delivery.",
+          "examples": [
+            "A warm, thoughtful young woman with a clear voice and a calm, reflective delivery.",
+            "Speak slowly with a restrained, serious tone."
+          ],
+          "maxLength": 400
+        },
+        "tags": [
+          {
+            "token": "(sigh)",
+            "label": "Sigh",
+            "kind": "sound"
+          },
+          {
+            "token": "(clears throat)",
+            "label": "Clear throat",
+            "kind": "sound"
+          },
+          {
+            "token": "[叹气]",
+            "label": "叹气 (sigh, Chinese)",
+            "kind": "sound"
+          },
+          {
+            "token": "[笑]",
+            "label": "笑 (laugh, Chinese)",
+            "kind": "sound"
+          }
+        ]
+      },
       "order": 11,
       "downloadBytes": 7683536706
     },
@@ -3490,7 +3696,7 @@
         "voiceClone": true,
         "cloneKind": "local",
         "multiSpeaker": false,
-        "emotion": true,
+        "emotion": false,
         "nonVerbal": false,
         "streaming": true,
         "phonemes": false,
@@ -3714,7 +3920,7 @@
         "voiceClone": true,
         "cloneKind": "local",
         "multiSpeaker": true,
-        "emotion": true,
+        "emotion": false,
         "nonVerbal": false,
         "streaming": true,
         "phonemes": false,

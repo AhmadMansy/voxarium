@@ -152,6 +152,14 @@ export interface Settings {
   closeToTray: boolean;
   /** Start hidden in the tray when the user signs in. */
   launchAtLogin: boolean;
+  /** Expression panel values per model (instruction, attributes, intensity). */
+  expression: Record<string, ExpressionSettings>;
+}
+
+export interface ExpressionSettings {
+  instruction?: string;
+  attributes?: Record<string, string>;
+  intensity?: number;
 }
 
 export interface ApiStatus {

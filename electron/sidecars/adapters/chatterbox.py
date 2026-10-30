@@ -40,7 +40,8 @@ class Chatterbox:
         language = (request.get("language") or "en").split("-")[0].lower()
         if language not in self.languages:
             language = "en"
-        exaggeration = float(request.get("exaggeration") or 0.5)
+        # The Expression panel's intensity slider is Chatterbox's exaggeration.
+        exaggeration = float(request.get("intensity") or request.get("exaggeration") or 0.5)
         self.tts.conds = self._conditionals(request.get("voice") or "default", exaggeration)
         wav = self.tts.generate(
             request["text"],

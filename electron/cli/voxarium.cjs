@@ -23,6 +23,8 @@ Options for "say":
       --save               Add the take to Voxarium's History
       --seed <n>           Reproducible seed
       --speed <x>          Speaking rate (models that support it)
+      --style <text>       Voice/delivery instruction (VoxCPM2, Breeze, OmniVoice)
+      --intensity <x>      Expressiveness (Chatterbox exaggeration)
       --json               Print the result as JSON
 
 Environment:
@@ -30,7 +32,7 @@ Environment:
 
 function parse(argv) {
   const args = { _: [] };
-  const valued = { m: 'model', model: 'model', v: 'voice', voice: 'voice', l: 'language', language: 'language', o: 'output', output: 'output', seed: 'seed', speed: 'speed' };
+  const valued = { m: 'model', model: 'model', v: 'voice', voice: 'voice', l: 'language', language: 'language', o: 'output', output: 'output', seed: 'seed', speed: 'speed', style: 'style', intensity: 'intensity' };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     const match = /^--?([a-z]+)(?:=(.*))?$/i.exec(arg);
@@ -112,6 +114,8 @@ async function main() {
         language: args.language,
         seed: args.seed,
         speed: args.speed == null ? undefined : Number(args.speed),
+        instruction: args.style,
+        intensity: args.intensity == null ? undefined : Number(args.intensity),
         format,
         save: Boolean(args.save),
         play: !output || Boolean(args.play),

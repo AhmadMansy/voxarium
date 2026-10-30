@@ -101,6 +101,9 @@ function speechRequest(body, { openai }) {
     language: text(body.language, 'language', { max: 16 }),
     temperature: number(body.temperature, 'temperature', 0, 2),
     speed: number(body.speed, 'speed', 0.25, 4),
+    // Expression: a style/voice instruction (OpenAI calls it "instructions") and an intensity.
+    instruction: text(openai ? body.instructions ?? body.instruction : body.instruction, 'instruction', { max: 500 }),
+    intensity: number(body.intensity, 'intensity', 0, 4),
     seed,
     format,
     save: Boolean(body.save),

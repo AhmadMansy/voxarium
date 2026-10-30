@@ -16,6 +16,8 @@ export interface SidecarSynthesisOptions {
   language?: string;
   variety?: string;
   speed?: number;
+  instruction?: string;
+  intensity?: number;
   temperature?: number;
   seed?: string;
   signal?: AbortSignal;
@@ -77,6 +79,8 @@ export async function synthesizeWithSidecar({
   language,
   variety,
   speed,
+  instruction,
+  intensity,
   temperature = 0.3,
   seed,
   signal,
@@ -95,6 +99,8 @@ export async function synthesizeWithSidecar({
       language: language || undefined,
       variety: variety || undefined,
       speed: speed || undefined,
+      instruction: instruction || undefined,
+      intensity: intensity ?? undefined,
       temperature,
       seed: seed || undefined,
       format: 'f32',

@@ -689,3 +689,48 @@
   color: var(--ok);
 }
 
+
+/* Expression panel: model-specific tags, instructions, attributes and intensity. */
+.expression-panel .side-card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.expression-panel__note {
+  margin: -2px 0 10px;
+}
+
+.expression-panel__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.expression-panel__tags .chip--emotion {
+  border-color: var(--accent-line);
+  color: var(--text);
+}
+
+.expression-panel__instruction {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.expression-panel__attributes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+}
+
+.expression-panel__attributes > .field__hint {
+  grid-column: 1 / -1;
+}
+
+.expression-panel__attributes .select {
+  width: 100%;
+}

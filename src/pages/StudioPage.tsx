@@ -29,7 +29,9 @@ import { useStudio } from '../state';
 import type { HistoryEntry, SpeechStats } from '../types';
 import { Icon } from '../components/Icons';
 import { ModelRequired, PageHeader } from '../components/PageHeader';
+import { ExpressionPanel } from '../components/ExpressionPanel';
 import { VoiceAvatar } from '../components/VoiceAvatar';
+import { insertTag } from '../models/expression';
 import { VoicePicker } from '../components/VoicePicker';
 import { LiveWaveform, Waveform } from '../components/Waveform';
 import { classNames } from '../lib/utils';
@@ -123,6 +125,7 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
   const [saving, setSaving] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
+  const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const liveRef = useRef<LivePlayer | null>(null);
   const startRef = useRef(0);
 
@@ -141,6 +144,20 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
     { key: 'streaming' as const, label: 'Streaming' },
     { key: 'arabic' as const, label: 'Arabic' },
   ];
+  /** Inserts an expression tag at the editor's cursor and keeps focus there. */
+  const insertExpressionTag = (token: string) => {
+    const area = editorRef.current;
+    const start = area?.selectionStart ?? studioText.length;
+    const end = area?.selectionEnd ?? studioText.length;
+    const next = insertTag(studioText, start, end, token);
+    if (next.text.length > 6000) return;
+    setStudioText(next.text);
+    requestAnimationFrame(() => {
+      area?.focus();
+      area?.setSelectionRange(next.cursor, next.cursor);
+    });
+  };
+
   const stats = useMemo(() => {
     const text = studioText;
     return {
@@ -567,6 +584,7 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
               </div>
             </div>
             <textarea
+              ref={editorRef}
               className="editor__area"
               value={studioText}
               maxLength={6000}
@@ -826,6 +844,13 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
               <span className="voice-panel__hint">24 kHz mono</span>
             </div>
           </section>
+
+          <ExpressionPanel
+            model={activeModel}
+            values={settings?.expression?.[activeModel.id]}
+            onChange={(next) => updateSettings({ expression: { ...(settings?.expression || {}), [activeModel.id]: next } })}
+            onInsertTag={insertExpressionTag}
+          />
 
           <section className="card side-card">
             <div className="side-card__head">

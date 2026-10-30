@@ -52,6 +52,7 @@ class Breeze:
         from breeze_infer.templates import get_template, prepare_inputs, select_template_name
 
         item = {"id": "voxarium", "text": request["text"], "speaker": "S0"}
+        instruction = (request.get("instruction") or "").strip()
         reference = self.ctx.reference_for(request.get("voice"))
         cfg = 1.0
         if reference:
@@ -59,8 +60,12 @@ class Breeze:
                 raise ValueError("Breeze needs the exact transcript of a reference clip. Save it as a .txt file next to the audio.")
             item["ref_audio_path"] = reference["audio"]
             item["ref_text"] = reference["text"]
+            if instruction:
+                # Voice direction: keep the cloned identity, change the delivery.
+                item["instruction"] = instruction
+                cfg = 4.0
         else:
-            item["instruction"] = self.presets.get(request.get("voice") or "", self.presets[self.default_voice])
+            item["instruction"] = instruction or self.presets.get(request.get("voice") or "", self.presets[self.default_voice])
             cfg = 4.0
         seed = request.get("seed") or 42
         set_all_seeds(seed)

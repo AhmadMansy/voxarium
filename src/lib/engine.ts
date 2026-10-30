@@ -244,6 +244,9 @@ export interface SynthesizeOptions {
   variety?: string;
   /** Speaking rate for sidecar models that support it (1 = normal). */
   speed?: number;
+  /** Expression panel: a voice/style instruction and an intensity value. */
+  instruction?: string;
+  intensity?: number;
 }
 
 export interface SynthesizeResult {
@@ -265,6 +268,8 @@ export async function synthesize({
   language,
   variety,
   speed,
+  instruction,
+  intensity,
 }: SynthesizeOptions): Promise<SynthesizeResult> {
   if (!text.trim()) throw new Error('There is no text to speak.');
   if (manifest?.runtime === 'sidecar' && sidecar) {
@@ -277,6 +282,8 @@ export async function synthesize({
       language,
       variety,
       speed,
+      instruction,
+      intensity,
       temperature,
       seed: seed == null ? undefined : String(seed),
       signal,

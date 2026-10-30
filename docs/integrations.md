@@ -82,7 +82,8 @@ client.audio.speech.create(model="kokoro-82m", voice="af_heart", input="Hello").
   "seed": 42, "speed": 1.0, "format": "wav", "save": true, "play": false, "return_audio": true }
 ```
 
-`save` adds the take to History (marked as coming from the API); `play` plays it
+`instruction` and `intensity` carry the Studio's **Expression** controls for models
+that accept them (see below). `save` adds the take to History (marked as coming from the API); `play` plays it
 on the computer's speakers; `return_audio: false` skips the audio bytes. The
 response includes `model`, `voice`, `license`, `commercial`, `duration`,
 `history_id`, `file` and `audio_base64`.
@@ -90,6 +91,25 @@ response includes `model`, `voice`, `license`, `commercial`, `duration`,
 Model and voice names are matched loosely: ids, short names and display names
 all work (`Kokoro`, `af_heart`, `Heart`). Errors use the OpenAI shape
 `{ "error": { "message", "type", "code" } }` with 400/401/403/404/409/503 statuses.
+
+## Expression
+
+Some models accept more than plain text. The Studio shows an **Expression** panel
+for them, and the same values apply to Batch and to API requests unless a request
+overrides them. `GET /v1/models` returns each model's `expression` spec.
+
+| Model | Control | How to send it |
+| --- | --- | --- |
+| Supertonic 3 | Tags `<laugh>` `<breath>` `<sigh>` | In the text |
+| VoxCPM2 | Voice description, or delivery when cloning | `instruction` |
+| Breeze TTS 2 | Voice design or direction; `(sigh)` `(clears throat)` tags | `instruction`; tags in the text |
+| OmniVoice | Attributes: gender, age, pitch, whisper, accent | `instruction`, e.g. `"female, young adult, british accent"` |
+| Chatterbox | Exaggeration 0.25–2 (0.5 neutral) | `intensity` |
+| MOSS-TTS | Pauses `[pause 1.0s]` | In the text |
+| OpenAudio S1-mini | Emotion/tone and sound markers, e.g. `(excited)` `(laughing)` | In the text |
+
+OpenAI clients can send `instructions` (the gpt-4o-mini-tts field); it maps to
+`instruction`. Models without these controls ignore them.
 
 ## MCP server (agents)
 
@@ -109,8 +129,10 @@ Add to your MCP client configuration (Settings shows the exact paths):
 
 It runs on Voxarium's own runtime, so Node.js is not required. Tools:
 
-- `speak`: text, optional model/voice/language. Plays on the speakers by default,
-  or writes `output_path` (.wav, .mp3, .pcm). `save_to_history` is optional.
+- `speak`: text, optional model/voice/language/`instruction`/`intensity`. Plays on
+  the speakers by default, or writes `output_path` (.wav, .mp3, .pcm).
+  `save_to_history` is optional. `list_models` tells the agent which tags and
+  instructions each model accepts.
 - `list_models`, `list_voices`, `status`.
 
 ## CLI

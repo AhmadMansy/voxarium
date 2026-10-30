@@ -241,6 +241,12 @@ const paths = {
       <path d="M12 17v5" />
     </>
   ),
+  wand: (
+    <>
+      <path d="m3 21 12-12M14 4l1.5 1.5M18.5 8.5 20 10M18 2v3M21 6h-3" />
+      <path d="m13 8 3 3" />
+    </>
+  ),
   speaker: (
     <>
       <path d="M11 5 6 9H3v6h3l5 4V5Z" />

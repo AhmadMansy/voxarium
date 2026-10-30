@@ -76,6 +76,8 @@ export function describeModel(
     },
     languages: model.languages.map((language) => language.code),
     capabilities: model.capabilities,
+    // What the model accepts beyond text: inline tags, an instruction, an intensity.
+    expression: model.expression || null,
   };
 }
 

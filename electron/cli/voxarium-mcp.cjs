@@ -31,6 +31,12 @@ const TOOLS = [
         save_to_history: { type: 'boolean', description: "Also add the take to Voxarium's History. Default false." },
         seed: { type: 'string', description: 'Seed for reproducible output.' },
         speed: { type: 'number', description: 'Speaking rate for models that support it (1 = normal).' },
+        instruction: {
+          type: 'string',
+          description:
+            'Voice or delivery instruction for models that accept one (VoxCPM2, Breeze TTS 2: free text such as "a calm, deep male narrator"; OmniVoice: comma-separated attributes such as "female, young adult, british accent"). Ignored by other models. Inline tags like <laugh> or [pause 1.0s] go in the text itself; see list_models.',
+        },
+        intensity: { type: 'number', description: 'Expressiveness for models with an intensity control (Chatterbox exaggeration, 0.25 to 2; 0.5 is neutral).' },
       },
       required: ['text'],
     },
@@ -55,6 +61,16 @@ const TOOLS = [
   },
 ];
 
+/** One line telling an agent what a model accepts beyond plain text. */
+function describeExpression(expression) {
+  const parts = [];
+  if (expression.tags?.length) parts.push(`inline tags ${expression.tags.map((tag) => tag.token).join(' ')}`);
+  if (expression.instruction) parts.push(`"instruction" (${expression.instruction.label.toLowerCase()})`);
+  if (expression.attributes) parts.push(`"instruction" from attributes: ${expression.attributes.map((group) => group.options.join('/')).join('; ')}`);
+  if (expression.intensity) parts.push(`"intensity" ${expression.intensity.min}-${expression.intensity.max}`);
+  return parts.join(', ');
+}
+
 const log = (message) => process.stderr.write(`[voxarium-mcp] ${message}\n`);
 const write = (message) => process.stdout.write(`${JSON.stringify(message)}\n`);
 const text = (value, isError = false) => ({ content: [{ type: 'text', text: value }], ...(isError ? { isError: true } : {}) });
@@ -70,7 +86,8 @@ async function runTool(name, input = {}) {
     const lines = data.map(
       (model) =>
         `- ${model.id} (${model.name}): ${model.active ? 'active' : model.runnable ? 'ready' : model.installed ? 'installed, not runnable yet' : 'not installed'}; ` +
-        `${model.languages.length} languages; license ${model.license.id}${model.license.commercial === false ? ' (non-commercial)' : ''}`,
+        `${model.languages.length} languages; license ${model.license.id}${model.license.commercial === false ? ' (non-commercial)' : ''}` +
+        (model.expression ? `; expression: ${describeExpression(model.expression)}` : ''),
     );
     return text(`Voxarium models:\n${lines.join('\n')}`);
   }
@@ -94,6 +111,8 @@ async function runTool(name, input = {}) {
         language: input.language,
         seed: input.seed,
         speed: input.speed,
+        instruction: input.instruction,
+        intensity: input.intensity,
         format,
         save: Boolean(input.save_to_history),
         play: input.play ?? !output,

@@ -45,7 +45,9 @@ class Omni:
                 raise ValueError("OmniVoice needs a transcript for reference clips. Save it next to the audio as a .txt file.")
             kwargs.update(ref_audio=reference["audio"], ref_text=reference["text"])
         else:
-            kwargs["instruct"] = self.presets.get(request.get("voice") or "", self.presets[self.default_voice])
+            # Attributes picked in the Expression panel arrive as one instruction.
+            instruction = (request.get("instruction") or "").strip()
+            kwargs["instruct"] = instruction or self.presets.get(request.get("voice") or "", self.presets[self.default_voice])
         audio = self.model.generate(text=request["text"], **kwargs)
         return audio[0], 24000
 

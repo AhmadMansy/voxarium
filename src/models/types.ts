@@ -87,6 +87,22 @@ export interface RuntimePack {
   packId?: string;
 }
 
+/** A token the Studio can insert into the text, e.g. <laugh> or [pause 1.0s]. */
+export interface ExpressionTag {
+  token: string;
+  label: string;
+  kind: 'sound' | 'emotion' | 'pause';
+}
+
+/** What a model accepts beyond plain text; drives the Studio's Expression panel. */
+export interface ModelExpression {
+  note?: string;
+  tags?: ExpressionTag[];
+  instruction?: { label: string; placeholder: string; examples: string[]; maxLength: number };
+  attributes?: { id: string; label: string; options: string[] }[];
+  intensity?: { label: string; min: number; max: number; step: number; default: number; hint?: string };
+}
+
 export interface ModelManifest {
   schemaVersion?: number;
   id: string;
@@ -114,6 +130,7 @@ export interface ModelManifest {
   filesVerified: boolean;
   /** The Hugging Face repo is gated: downloads need the user's access token. */
   gated?: boolean;
+  expression?: ModelExpression;
   runtimePack: RuntimePack;
   order: number;
   downloadBytes: number;

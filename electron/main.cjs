@@ -283,6 +283,7 @@ const defaultSettings = () => ({
   apiAllowCloning: false,
   closeToTray: false,
   launchAtLogin: false,
+  expression: {},
 });
 
 function getSettings() {

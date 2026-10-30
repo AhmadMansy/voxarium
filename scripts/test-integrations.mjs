@@ -124,6 +124,12 @@ try {
   assert.ok(mp3.length > 4000 && (mp3[0] === 0xff || mp3.subarray(0, 3).toString() === 'ID3'), 'an MP3 stream came back');
   assert.equal(speech.headers.get('x-voxarium-model'), 'phonon-31m-en');
 
+  step('Studio: no Expression panel for Phonon; OpenAI "instructions" accepted');
+  await page.locator('.nav-item', { hasText: 'Studio' }).click();
+  await page.waitForSelector('.editor__area');
+  assert.equal(await page.locator('.expression-panel').count(), 0, 'Phonon has no expression controls');
+  const instructed = await api('/v1/audio/speech', { method: 'POST', body: { input: 'Instructions are accepted.', instructions: 'calm', response_format: 'wav' } });
+  assert.equal(instructed.status, 200, await instructed.clone().text());
   step('validating bad requests');
   assert.equal((await api('/v1/audio/speech', { method: 'POST', body: { input: '' } })).status, 400);
   assert.equal((await api('/v1/speak', { method: 'POST', body: { text: 'x', voice: 'no-such-voice' } })).status, 400);
@@ -145,6 +151,21 @@ try {
     assert.equal(after.activeModel.id, 'supertonic-3', 'the Studio and API share one active model');
     const history = await page.evaluate(() => window.studio.history.list());
     assert.equal(history.find((entry) => entry.id === body.history_id).meta.source, 'api');
+  }
+
+  if (hasSupertonic) {
+  step('Expression: Supertonic tags in the Studio and through the API');
+  const supertonic = (await (await api('/v1/models')).json()).data.find((model) => model.id === 'supertonic-3');
+  assert.deepEqual(supertonic.expression.tags.map((item) => item.token), ['<laugh>', '<breath>', '<sigh>']);
+  await page.locator('.nav-item', { hasText: 'Studio' }).click();
+  await page.waitForSelector('.expression-panel');
+  await page.locator('.editor__area').fill('That is so funny.');
+  await page.locator('.editor__area').evaluate((area) => area.setSelectionRange(7, 7));
+  await page.locator('.expression-panel button', { hasText: 'Laugh' }).click();
+  assert.equal(await page.locator('.editor__area').inputValue(), 'That is <laugh> so funny.');
+  const plain = await (await api('/v1/speak', { method: 'POST', body: { text: 'That is so funny.', voice: 'F1', seed: 7, return_audio: false } })).json();
+  const tagged = await (await api('/v1/speak', { method: 'POST', body: { text: 'That is <laugh> so funny.', voice: 'F1', seed: 7, return_audio: false } })).json();
+  assert.ok(tagged.duration > plain.duration + 0.15, `the <laugh> tag is voiced (${plain.duration.toFixed(2)}s → ${tagged.duration.toFixed(2)}s)`);
   }
 
   step('CLI via Voxarium’s own runtime (ELECTRON_RUN_AS_NODE)');

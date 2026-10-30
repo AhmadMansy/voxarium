@@ -580,6 +580,84 @@ const pins = {
     weight: 'model.pth',
   },
 };
+// What each model accepts beyond plain text, and how the Studio exposes it.
+// `tags` are inserted into the text; `instruction`, `attributes` and `intensity`
+// are sent alongside it. The emotion/nonVerbal capability flags derive from this.
+const tag = (token, label, kind = 'sound') => ({ token, label, kind });
+const EXPRESSION = {
+  'supertonic-3': {
+    note: 'Supertonic reads expression tags inside the text. Its voice style comes from the preset voices.',
+    tags: [tag('<laugh>', 'Laugh'), tag('<breath>', 'Breath'), tag('<sigh>', 'Sigh')],
+  },
+  voxcpm2: {
+    note: 'Describe the voice to design it, or the delivery when you use a reference clip.',
+    instruction: {
+      label: 'Voice description',
+      placeholder: 'A young woman, gentle and sweet voice',
+      examples: ['A young woman, gentle and sweet voice', 'A mature male narrator, calm and deep', 'Slightly faster, cheerful tone'],
+      maxLength: 300,
+    },
+  },
+  'breeze-tts2': {
+    note: 'An instruction designs the voice, or directs the delivery of a reference clip. Vocal events go in the text.',
+    instruction: {
+      label: 'Voice direction',
+      placeholder: 'A warm, thoughtful young woman with a clear voice and a calm, reflective delivery.',
+      examples: [
+        'A warm, thoughtful young woman with a clear voice and a calm, reflective delivery.',
+        'Speak slowly with a restrained, serious tone.',
+      ],
+      maxLength: 400,
+    },
+    tags: [tag('(sigh)', 'Sigh'), tag('(clears throat)', 'Clear throat'), tag('[叹气]', '叹气 (sigh, Chinese)'), tag('[笑]', '笑 (laugh, Chinese)')],
+  },
+  omnivoice: {
+    note: 'Pick voice attributes to design a voice. Accents apply to English.',
+    attributes: [
+      { id: 'gender', label: 'Gender', options: ['male', 'female'] },
+      { id: 'age', label: 'Age', options: ['child', 'teenager', 'young adult', 'middle-aged', 'elderly'] },
+      { id: 'pitch', label: 'Pitch', options: ['very low pitch', 'low pitch', 'moderate pitch', 'high pitch', 'very high pitch'] },
+      { id: 'style', label: 'Style', options: ['whisper'] },
+      {
+        id: 'accent',
+        label: 'Accent',
+        options: ['american accent', 'british accent', 'australian accent', 'canadian accent', 'indian accent', 'chinese accent', 'japanese accent', 'korean accent', 'portuguese accent', 'russian accent'],
+      },
+    ],
+  },
+  chatterbox: {
+    note: 'Exaggeration controls how expressive the delivery is.',
+    intensity: { label: 'Exaggeration', min: 0.25, max: 2, step: 0.05, default: 0.5, hint: '0.5 is neutral; higher is more dramatic.' },
+  },
+  'moss-tts': {
+    note: 'Insert explicit pauses anywhere in the text.',
+    tags: [tag('[pause 0.5s]', 'Pause 0.5s', 'pause'), tag('[pause 1.0s]', 'Pause 1s', 'pause'), tag('[pause 2.5s]', 'Pause 2.5s', 'pause')],
+  },
+  'openaudio-s1-mini': {
+    note: 'Emotion and tone markers go at the start of a sentence; sound markers anywhere. From the OpenAudio documentation.',
+    tags: [
+      tag('(excited)', 'Excited', 'emotion'),
+      tag('(sad)', 'Sad', 'emotion'),
+      tag('(angry)', 'Angry', 'emotion'),
+      tag('(surprised)', 'Surprised', 'emotion'),
+      tag('(whispering)', 'Whispering', 'emotion'),
+      tag('(shouting)', 'Shouting', 'emotion'),
+      tag('(laughing)', 'Laughing'),
+      tag('(sighing)', 'Sighing'),
+      tag('(sobbing)', 'Sobbing'),
+    ],
+  },
+};
+
+function expressionCapabilities(expression) {
+  if (!expression) return { emotion: false, nonVerbal: false };
+  const tags = expression.tags || [];
+  return {
+    emotion: Boolean(expression.instruction || expression.attributes || expression.intensity || tags.some((item) => item.kind === 'emotion')),
+    nonVerbal: tags.some((item) => item.kind === 'sound'),
+  };
+}
+
 const ALWAYS_SKIP = [/(^|\/)README\.md$/i, /(^|\/)\.gitattributes$/, /\.(png|jpe?g|svg|gif)$/i, /^samples\//, /^audio_samples\//, /^img\//, /^eval\//];
 
 async function pinFiles(model) {
@@ -707,8 +785,14 @@ const document = {
   models: built.map((model, index) => ({
     ...base,
     ...model,
-    // Arabic support comes from the declared languages, never a separate flag.
-    capabilities: { ...model.capabilities, arabic: model.languages.some((language) => language.arabic || language.code === 'ar') },
+    // Derived capabilities: Arabic from the declared languages, emotion and
+    // non-verbal sounds from what the Expression panel can actually send.
+    capabilities: {
+      ...model.capabilities,
+      ...expressionCapabilities(EXPRESSION[model.id]),
+      arabic: model.languages.some((language) => language.arabic || language.code === 'ar'),
+    },
+    ...(EXPRESSION[model.id] ? { expression: EXPRESSION[model.id] } : {}),
     order: index,
     downloadBytes:
       model.files && model.files.length

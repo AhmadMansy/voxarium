@@ -41,6 +41,7 @@ import { MODELS, getModel, installState } from './models/registry';
 import { currentPreferences, rememberPreferences, switchModelSettings } from './models/preferences';
 import { capabilityReason, supportsLanguage, voiceCompatibleWithModel } from './models/compat';
 import { licenseAcknowledged } from './models/license';
+import { resolveExpression } from './models/expression';
 import { runtimeReadiness, type RuntimeReadiness } from './models/runtime';
 import type {
   LicenseAck,
@@ -162,6 +163,8 @@ interface StudioContextValue {
       language?: string;
       variety?: string;
       speed?: number;
+      instruction?: string;
+      intensity?: number;
     }) => Promise<SynthesizeResult>;
     preview: (voiceId: string, sample?: string) => Promise<SynthesizeResult>;
   };
@@ -866,6 +869,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       language?: string;
       variety?: string;
       speed?: number;
+      instruction?: string;
+      intensity?: number;
     }) => {
       const engine = engineRef.current;
       const manifest = activeModelRef.current;
@@ -873,6 +878,12 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       await ensureVoice(options.voiceId);
       setActiveRequests((count) => count + 1);
       try {
+        // The Expression panel applies to every caller (Studio, Batch, API); an API
+        // request can override it.
+        const expression = resolveExpression(manifest, settingsRef.current?.expression?.[manifest.id], {
+          instruction: options.instruction,
+          intensity: options.intensity,
+        });
         return await runSynthesis({
           tts: engine.tts,
           manifest,
@@ -880,6 +891,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           language: settingsRef.current?.language,
           variety: settingsRef.current?.arabicVariety,
           ...options,
+          ...expression,
         });
       } finally {
         setActiveRequests((count) => Math.max(0, count - 1));
@@ -1653,6 +1665,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       seed: typeof payload.seed === 'string' ? payload.seed : preferences.seed,
       ...(language ? { language } : {}),
       ...(typeof payload.speed === 'number' ? { speed: payload.speed } : {}),
+      ...(typeof payload.instruction === 'string' ? { instruction: payload.instruction } : {}),
+      ...(typeof payload.intensity === 'number' ? { intensity: payload.intensity } : {}),
     });
 
     let historyId: string | null = null;

@@ -33,13 +33,18 @@ class Vox:
     def synthesize(self, request):
         text = request["text"]
         kwargs = {"cfg_value": 2.0, "inference_timesteps": 10}
+        # The Expression panel's description wins over the preset; with a reference
+        # clip it steers the delivery instead ("controllable cloning").
+        instruction = (request.get("instruction") or "").strip().strip("()")
         reference = self.ctx.reference_for(request.get("voice"))
         if reference:
             kwargs["reference_wav_path"] = reference["audio"]
             if reference.get("text"):
                 kwargs.update(prompt_wav_path=reference["audio"], prompt_text=reference["text"])
+            if instruction:
+                text = f"({instruction}){text}"
         else:
-            description = self.presets.get(request.get("voice") or "", self.presets[self.default_voice])
+            description = instruction or self.presets.get(request.get("voice") or "", self.presets[self.default_voice])
             if description:
                 text = f"({description}){text}"
         wav = self.model.generate(text=text, **kwargs)
