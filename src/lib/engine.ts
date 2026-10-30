@@ -146,10 +146,12 @@ export async function loadEngine({
   serverUrl,
   onStage,
 }: LoadEngineOptions): Promise<LoadedEngine> {
+  // Sidecar readiness is dynamic (installed packs), not the static manifest flag.
+  // The caller and the main-process supervisor both enforce it, so do not re-gate here.
+  if (manifest.runtime === 'sidecar') return loadSidecarEngine({ settings, manifest, onStage });
+
   const gate = runtimeGateError(manifest);
   if (gate) throw new Error(gate);
-
-  if (manifest.runtime === 'sidecar') return loadSidecarEngine({ settings, manifest, onStage });
 
   if (manifest.runtime !== 'phonon') throw new Error(`${manifest.shortName} is not a Phonon runtime.`);
 
