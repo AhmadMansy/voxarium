@@ -70,6 +70,7 @@ try {
   const preferences = await server.ssrLoadModule('/src/models/preferences.ts');
   const catalog = await server.ssrLoadModule('/src/data/catalog.ts');
   const runtime = await server.ssrLoadModule('/src/models/runtime.ts');
+const bridge = await server.ssrLoadModule('/src/lib/engineBridge.ts');
 
   const { MODELS, DEFAULT_MODEL_ID, getModel, qualitiesFor, defaultQualityFor } = registry;
   const { normalizePreferences, switchModelSettings, rememberPreferences } = preferences;
@@ -528,6 +529,44 @@ try {
     assert.equal(back.modelSettings[omni.id].language, 'ar');
     assert.equal(back.modelSettings[omni.id].arabicVariety, 'arz');
     assert.equal(back.modelSettings[phonon.id].quality, 'f32');
+  });
+
+  await test('API names resolve to models and voices loosely but safely', () => {
+    const kokoro = getModel('kokoro-82m');
+    assert.equal(bridge.resolveModel(MODELS, 'kokoro-82m').id, 'kokoro-82m');
+    assert.equal(bridge.resolveModel(MODELS, 'Kokoro').id, 'kokoro-82m');
+    assert.equal(bridge.resolveModel(MODELS, 'Phonon 31M English').id, 'phonon-31m-en');
+    assert.equal(bridge.resolveModel(MODELS, 'tts-1'), null);
+    const voices = [
+      { id: 'kokoro-82m:af_heart', name: 'Heart', source: 'model', modelId: kokoro.id },
+      { id: 'kokoro-82m:ref:my_voice', name: 'My Voice', source: 'model', modelId: kokoro.id },
+    ];
+    assert.equal(bridge.resolveVoice(kokoro, voices, 'kokoro-82m:af_heart').id, 'kokoro-82m:af_heart');
+    assert.equal(bridge.resolveVoice(kokoro, voices, 'af_heart').id, 'kokoro-82m:af_heart');
+    assert.equal(bridge.resolveVoice(kokoro, voices, 'heart').id, 'kokoro-82m:af_heart');
+    assert.equal(bridge.resolveVoice(kokoro, voices, 'nobody'), null);
+    assert.equal(bridge.isReferenceVoice(voices[1]), true, 'reference clips are recognised for the opt-in gate');
+    assert.equal(bridge.isReferenceVoice(voices[0]), false);
+  });
+
+  await test('API speech requests are validated and OpenAI defaults map to Voxarium', () => {
+    const { speechRequest } = require('../electron/integrations/api-server.cjs');
+    const openai = speechRequest({ model: 'tts-1', input: 'Hi', voice: 'alloy' }, { openai: true });
+    assert.equal(openai.model, undefined, 'OpenAI model names use the active model');
+    assert.equal(openai.voice, undefined, 'OpenAI voice names use the current voice');
+    assert.equal(openai.format, 'mp3', 'OpenAI defaults to mp3');
+    const native = speechRequest({ text: 'Hi', model: 'kokoro-82m', voice: 'af_heart', seed: 7, speed: 1.2 }, { openai: false });
+    assert.deepEqual([native.model, native.voice, native.format, native.seed, native.speed], ['kokoro-82m', 'af_heart', 'wav', '7', 1.2]);
+    for (const [body, pattern] of [
+      [{ text: '' }, /required/],
+      [{ text: '   ' }, /no text/],
+      [{ text: 'x', format: 'ogg' }, /Unsupported format/],
+      [{ text: 'x', speed: 9 }, /speed/],
+      [{ text: 'x', seed: '-1' }, /seed/],
+      [{ text: 'x'.repeat(20001) }, /too long/],
+    ]) {
+      assert.throws(() => speechRequest(body, { openai: false }), pattern);
+    }
   });
 
   await test('rememberPreferences mirrors only model-scoped edits', () => {

@@ -12,6 +12,7 @@ import type {
   CloneKeyStatus,
   CustomVoiceRecord,
   DownloadProgress,
+  EngineBridgeRequest,
   EngineInfo,
   HistoryEntry,
   ModelStatus,
@@ -22,8 +23,9 @@ import type {
   StorageStats,
   VoiceInfo,
 } from './types';
-import { customVoiceToInfo, getVoice, setCustomVoices as setCustomVoiceRegistry, setModelVoices } from './data/catalog';
-import { computePeaks } from './lib/audio';
+import { VOICES, customVoiceToInfo, getModelVoices, getVoice, setCustomVoices as setCustomVoiceRegistry, setModelVoices } from './data/catalog';
+import { computePeaks, encodeMp3, encodeWavBuffer } from './lib/audio';
+import { BridgeError, describeModel, describeVoice, isReferenceVoice, resolveModel, resolveVoice, waitFor } from './lib/engineBridge';
 import {
   loadEngine,
   previewLine,
@@ -35,9 +37,10 @@ import {
   type SynthesizeResult,
 } from './lib/engine';
 import { buildBaseName, titleFromText } from './lib/utils';
-import { getModel, installState } from './models/registry';
+import { MODELS, getModel, installState } from './models/registry';
 import { currentPreferences, rememberPreferences, switchModelSettings } from './models/preferences';
-import { capabilityReason } from './models/compat';
+import { capabilityReason, supportsLanguage, voiceCompatibleWithModel } from './models/compat';
+import { licenseAcknowledged } from './models/license';
 import { runtimeReadiness, type RuntimeReadiness } from './models/runtime';
 import type {
   LicenseAck,
@@ -155,6 +158,10 @@ interface StudioContextValue {
       signal?: AbortSignal;
       onChunk?: (pcm: Float32Array, totalSamples: number) => void;
       keepPartial?: boolean;
+      /** Per-request overrides (API); otherwise the Studio settings apply. */
+      language?: string;
+      variety?: string;
+      speed?: number;
     }) => Promise<SynthesizeResult>;
     preview: (voiceId: string, sample?: string) => Promise<SynthesizeResult>;
   };
@@ -170,6 +177,7 @@ interface StudioContextValue {
     text: string;
     voiceId: string;
     stats: SpeechStats | null;
+    source?: 'studio' | 'api';
   }) => Promise<HistoryEntry | null>;
   deleteHistory: (id: string, options?: { confirm?: boolean; deleteFile?: boolean }) => Promise<boolean>;
   patchHistory: (id: string, patch: Partial<HistoryEntry>) => Promise<void>;
@@ -291,6 +299,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [engineStatus, setEngineStatus] = useState<EngineStatus>('idle');
   const [engineInfo, setEngineInfo] = useState<EngineInfo | null>(null);
   const [engineError, setEngineError] = useState<string | null>(null);
+  // The latest load failure, readable inside async flows where state is stale.
+  const engineErrorRef = useRef<string | null>(null);
   const [engineStage, setEngineStage] = useState('');
   const [loadedRuntime, setLoadedRuntime] = useState<string | null>(null);
   const [activeRequests, setActiveRequests] = useState(0);
@@ -663,9 +673,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   /** Loads a specific model. The caller decides whether to commit the switch first. */
   const loadFor = useCallback(
     async (manifest: ModelManifest, install: ModelInstallState, base: Settings): Promise<boolean> => {
+      engineErrorRef.current = null;
       const appInfo = infoRef.current;
       if (!appInfo?.serverUrl) {
-        setEngineError('The local model server is unavailable. Try restarting Voxarium.');
+        engineErrorRef.current = 'The local model server is unavailable. Try restarting Voxarium.';
+        setEngineError(engineErrorRef.current);
         setEngineStatus('error');
         return false;
       }
@@ -676,6 +688,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       }
       const gate = runtimeGateError(manifest, runtimeFor(manifest.id).ready);
       if (gate) {
+        engineErrorRef.current = gate;
         setEngineError(gate);
         setEngineStatus('error');
         setEngineStage('');
@@ -705,6 +718,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         return true;
       } catch (error) {
         console.error('[voxarium] engine load failed', error);
+        engineErrorRef.current = errorMessage(error);
         setEngineError(errorMessage(error));
         setEngineStatus('error');
         setEngineStage('');
@@ -848,6 +862,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       signal?: AbortSignal;
       onChunk?: (pcm: Float32Array, totalSamples: number) => void;
       keepPartial?: boolean;
+      /** Per-request overrides (API); otherwise the Studio settings apply. */
+      language?: string;
+      variety?: string;
+      speed?: number;
     }) => {
       const engine = engineRef.current;
       const manifest = activeModelRef.current;
@@ -1065,13 +1083,17 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     await window.studio.models.openFolder(id, target);
   }, []);
 
+  // Why the last switch failed, so API clients get the same reason as the toast.
+  const activationErrorRef = useRef<string | null>(null);
   const activateModel = useCallback(
     async (id: string) => {
+      activationErrorRef.current = null;
       const current = settingsRef.current;
       if (!current) return false;
       const previousModel = activeModelRef.current;
       if (id === previousModel.id) return true;
       if (activeRequests > 0) {
+        activationErrorRef.current = 'The Studio is generating; try again when it finishes.';
         toast('Wait for the current generation to finish before switching models.', 'info');
         return false;
       }
@@ -1087,6 +1109,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         } catch {}
       }
       if (!nextInstall.installed) {
+        activationErrorRef.current = `${nextModel.shortName} is not installed yet.`;
         toast(`${nextModel.shortName} is not installed yet.`, 'info');
         return false;
       }
@@ -1101,12 +1124,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       const activated = await window.studio.models.activate(id);
       if (!activated.ok) {
         setModelBusyId(null);
+        activationErrorRef.current = activated.error || `${nextModel.shortName} could not be activated.`;
         toast(`${nextModel.shortName} could not be activated.`, 'error', activated.error);
         return false;
       }
 
       const loaded = await loadFor(nextModel, nextInstall, nextSettings);
       if (!loaded) {
+        activationErrorRef.current = engineErrorRef.current || `${nextModel.shortName} failed to load.`;
         // Put the previous model back in charge and restore its engine so a failed
         // swap never strands the user on a model that cannot run.
         await window.studio.models.activate(previousModel.id).catch(() => {});
@@ -1342,7 +1367,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   }, [toast]);
 
   const saveGeneration = useCallback(
-    async (options: { pcm: Float32Array; text: string; voiceId: string; stats: SpeechStats | null }) => {
+    async (options: { pcm: Float32Array; text: string; voiceId: string; stats: SpeechStats | null; source?: 'studio' | 'api' }) => {
       const current = settingsRef.current;
       if (!current) return null;
       const manifest = activeModelRef.current;
@@ -1387,6 +1412,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
             language: preferences.language,
             arabicVariety: preferences.arabicVariety,
             conditions: { ...preferences.conditions },
+            source: options.source || 'studio',
           },
           stats: options.stats,
         };
@@ -1523,6 +1549,159 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     engineStatus === 'ready' && settings != null && loadedRuntime != null
       ? loadedRuntime !== runtimeKey(effectiveSettingsFor(activeModel, activeInstall, settings), activeModel.id)
       : false;
+
+  // ---------------------------------------------------------------------------
+  // Engine bridge: requests from the local API, CLI and MCP clients run on this
+  // same engine (same active model, voices and History) as the Studio.
+  // ---------------------------------------------------------------------------
+  const bridgeState = useRef({ booted, engineStatus, engineError, activeRequests, customVoices });
+  bridgeState.current = { booted, engineStatus, engineError, activeRequests, customVoices };
+
+  /** Voices a model can use right now, with its default. */
+  const bridgeVoices = (model: ModelManifest): { voices: VoiceInfo[]; defaultId?: string; note?: string } => {
+    const live = bridgeState.current;
+    if (model.voices.format === 'phonon-safetensors') {
+      const voices = [...live.customVoices, ...VOICES].filter((voice) => voiceCompatibleWithModel(model, voice));
+      return { voices, defaultId: 'default' };
+    }
+    const engine = engineRef.current;
+    if (engine?.modelId === model.id && engine.voices) return { voices: engine.voices, defaultId: engine.defaultVoiceId };
+    const known = getModelVoices(model.id);
+    return known.length
+      ? { voices: known, defaultId: known.find((voice) => voice.isDefault)?.id }
+      : { voices: [], note: `${model.shortName} lists its voices once it is active. Generate with it once, or pass no voice to use its default.` };
+  };
+
+  const bridgeHandler = useRef<(request: EngineBridgeRequest) => Promise<unknown>>(async () => null);
+  bridgeHandler.current = async ({ op, payload }: EngineBridgeRequest) => {
+    await waitFor(() => bridgeState.current.booted && Boolean(settingsRef.current), {
+      timeoutMs: 60000,
+      message: 'Voxarium is still starting.',
+    });
+    const active = activeModelRef.current;
+    if (op === 'status') {
+      const live = bridgeState.current;
+      return {
+        activeModel: { id: active.id, name: active.name, license: active.license.id },
+        engine: { status: live.engineStatus, error: live.engineError, busy: live.activeRequests > 0 },
+      };
+    }
+    if (op === 'models') {
+      return MODELS.map((model) =>
+        describeModel(model, snapshotRef.current?.models.find((entry) => entry.id === model.id), runtimeFor(model.id).ready, snapshotRef.current?.licenses || {}, active.id),
+      );
+    }
+    if (op === 'voices') {
+      const model = payload.model ? resolveModel(MODELS, String(payload.model)) : active;
+      if (!model) throw new BridgeError(404, `Unknown model "${String(payload.model)}". See GET /v1/models.`);
+      const { voices, defaultId, note } = bridgeVoices(model);
+      return { model: model.id, voices: voices.map((voice) => describeVoice(voice, defaultId)), ...(note ? { note } : {}) };
+    }
+    if (op !== 'synthesize') throw new BridgeError(400, `Unknown operation "${op}".`);
+
+    const text = String(payload.text || '');
+    // 1. Model: switch the app's active model if the request names another one.
+    let model = active;
+    if (payload.model) {
+      const wanted = resolveModel(MODELS, String(payload.model));
+      if (!wanted) throw new BridgeError(404, `Unknown model "${String(payload.model)}". See GET /v1/models.`);
+      model = wanted;
+    }
+    if (model.id !== active.id) {
+      const install = snapshotRef.current?.models.find((entry) => entry.id === model.id);
+      if (!install?.installed) throw new BridgeError(409, `${model.shortName} is not installed. Install it from the Models page first.`);
+      if (!licenseAcknowledged(model, snapshotRef.current?.licenses || {})) {
+        throw new BridgeError(403, `${model.shortName} uses the ${model.license.name}. Acknowledge it in the Models page before using it.`);
+      }
+      await waitFor(() => bridgeState.current.activeRequests === 0, { timeoutMs: 10 * 60000, message: 'The Studio is busy generating.' });
+      if (!(await activateModel(model.id))) {
+        throw new BridgeError(409, activationErrorRef.current || `${model.shortName} could not start.`);
+      }
+    }
+    await waitFor(() => bridgeState.current.engineStatus === 'ready' && engineRef.current?.modelId === model.id, {
+      timeoutMs: 30 * 60000,
+      failure: () => (bridgeState.current.engineStatus === 'error' ? bridgeState.current.engineError || `${model.shortName} failed to load.` : null),
+      message: `${model.shortName} did not finish loading in time.`,
+    });
+
+    // 2. Voice: the requested one, else the Studio's current voice, else the model default.
+    const { voices, defaultId } = bridgeVoices(model);
+    let voice: VoiceInfo | null = null;
+    if (payload.voice) {
+      voice = resolveVoice(model, voices, String(payload.voice));
+      if (!voice) throw new BridgeError(400, `${model.shortName} has no voice "${String(payload.voice)}". See GET /v1/voices?model=${model.id}.`);
+    } else {
+      const current = settingsRef.current?.lastVoice;
+      voice = voices.find((item) => item.id === current) || voices.find((item) => item.id === defaultId) || voices[0] || null;
+    }
+    if (!voice) throw new BridgeError(409, `${model.shortName} reported no voices.`);
+    if (isReferenceVoice(voice) && !settingsRef.current?.apiAllowCloning) {
+      throw new BridgeError(403, 'Reference-clip voices are disabled for API clients. Allow them in Settings › Local API.');
+    }
+
+    // 3. Language: validated against the model (Phonon follows the Studio language).
+    const language = payload.language ? String(payload.language) : undefined;
+    if (language && !supportsLanguage(model, language)) {
+      throw new BridgeError(400, `${model.shortName} does not support "${language}". Supported: ${model.languages.map((item) => item.code).join(', ')}.`);
+    }
+
+    const preferences = effectiveSettingsFor(model, activeInstallRef.current, settingsRef.current as Settings);
+    const result = await synthesize({
+      text,
+      voiceId: voice.id,
+      temperature: typeof payload.temperature === 'number' ? payload.temperature : preferences.temperature,
+      seed: typeof payload.seed === 'string' ? payload.seed : preferences.seed,
+      ...(language ? { language } : {}),
+      ...(typeof payload.speed === 'number' ? { speed: payload.speed } : {}),
+    });
+
+    let historyId: string | null = null;
+    let filePath: string | null = null;
+    if (payload.save) {
+      const stored = await saveGeneration({ pcm: result.pcm, text, voiceId: voice.id, stats: result.stats, source: 'api' });
+      historyId = stored?.id || null;
+      filePath = stored?.filePath || null;
+    }
+    let played = false;
+    if (payload.play) {
+      const url = URL.createObjectURL(new Blob([encodeWavBuffer(result.pcm, 24000)], { type: 'audio/wav' }));
+      const audio = new Audio(url);
+      audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true });
+      played = await audio.play().then(() => true, () => false);
+    }
+    return {
+      pcm: result.pcm,
+      ...(payload.format === 'mp3' ? { mp3: encodeMp3(result.pcm, 24000) } : {}),
+      sampleRate: 24000,
+      duration: result.pcm.length / 24000,
+      modelId: model.id,
+      voiceId: voice.id,
+      license: model.license.id,
+      commercial: model.license.commercial,
+      historyId,
+      filePath,
+      played,
+    };
+  };
+
+  useEffect(() => {
+    const bridge = window.studio?.engineBridge;
+    if (!bridge) return;
+    const unsubscribe = bridge.onRequest((request) => {
+      bridgeHandler.current(request).then(
+        (result) => bridge.respond({ id: request.id, ok: true, result }),
+        (error: unknown) =>
+          bridge.respond({
+            id: request.id,
+            ok: false,
+            error: errorMessage(error),
+            status: error instanceof BridgeError ? error.status : 500,
+          }),
+      );
+    });
+    bridge.ready();
+    return unsubscribe;
+  }, []);
 
   const [hfToken, setHfToken] = useState<{ hasToken: boolean; encrypted: boolean } | null>(null);
   useEffect(() => {

@@ -242,6 +242,8 @@ export interface SynthesizeOptions {
   language?: string;
   /** Arabic variety (ISO 639-3) for models that distinguish them. */
   variety?: string;
+  /** Speaking rate for sidecar models that support it (1 = normal). */
+  speed?: number;
 }
 
 export interface SynthesizeResult {
@@ -262,6 +264,7 @@ export async function synthesize({
   sidecar,
   language,
   variety,
+  speed,
 }: SynthesizeOptions): Promise<SynthesizeResult> {
   if (!text.trim()) throw new Error('There is no text to speak.');
   if (manifest?.runtime === 'sidecar' && sidecar) {
@@ -273,6 +276,7 @@ export async function synthesize({
       voiceId: nativeVoiceId(manifest.id, voiceId),
       language,
       variety,
+      speed,
       temperature,
       seed: seed == null ? undefined : String(seed),
       signal,

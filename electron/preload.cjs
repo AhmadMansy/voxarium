@@ -66,6 +66,28 @@ contextBridge.exposeInMainWorld('studio', {
     deleteCustom: (id) => invoke('voices:deleteCustom', { id }),
   },
 
+  api: {
+    status: () => invoke('api:status'),
+    regenerateToken: () => invoke('api:regenerateToken'),
+    onChanged: (callback) => {
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('api:changed', listener);
+      return () => ipcRenderer.removeListener('api:changed', listener);
+    },
+  },
+
+  // The main process forwards API/CLI/MCP jobs here so they run on the same
+  // engine as the Studio.
+  engineBridge: {
+    ready: () => ipcRenderer.send('engine:bridge-ready'),
+    respond: (message) => ipcRenderer.send('engine:response', message),
+    onRequest: (callback) => {
+      const listener = (_event, message) => callback(message);
+      ipcRenderer.on('engine:request', listener);
+      return () => ipcRenderer.removeListener('engine:request', listener);
+    },
+  },
+
   huggingface: {
     tokenStatus: () => invoke('hf:tokenStatus'),
     setToken: (token) => invoke('hf:setToken', { token }),

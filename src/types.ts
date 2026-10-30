@@ -143,6 +143,35 @@ export interface Settings {
   pronunciations: Pronunciation[];
   setupComplete: boolean;
   onboardingDismissed: boolean;
+  /** Local HTTP API for other apps, the CLI and MCP clients. */
+  apiEnabled: boolean;
+  apiPort: number;
+  /** Lets API clients use the user's reference clips (local voice cloning). */
+  apiAllowCloning: boolean;
+  /** Closing the window keeps Voxarium running in the tray. */
+  closeToTray: boolean;
+  /** Start hidden in the tray when the user signs in. */
+  launchAtLogin: boolean;
+}
+
+export interface ApiStatus {
+  enabled: boolean;
+  running: boolean;
+  url: string | null;
+  port: number;
+  token: string | null;
+  error: string | null;
+  discoveryFile: string;
+  closeToTray: boolean;
+  launchAtLogin: boolean;
+  cli: { command: string; args: string[]; env: Record<string, string> };
+  mcp: { command: string; args: string[]; env: Record<string, string> };
+}
+
+export interface EngineBridgeRequest {
+  id: string;
+  op: 'status' | 'models' | 'voices' | 'synthesize';
+  payload: Record<string, unknown>;
 }
 
 export interface SpeechStats {
@@ -172,6 +201,8 @@ export interface GenerationMeta {
   language: Language;
   arabicVariety?: string;
   conditions: Conditions;
+  /** Where the take came from: the Studio, or the local API (CLI/MCP/other apps). */
+  source?: 'studio' | 'api';
 }
 
 export interface HistoryEntry {
@@ -360,6 +391,16 @@ export interface StudioApi {
     }>;
     renameCustom: (id: string, name: string) => Promise<{ ok: boolean; error?: string; voice?: CustomVoiceRecord | null }>;
     deleteCustom: (id: string) => Promise<{ ok: boolean; voices: CustomVoiceRecord[] }>;
+  };
+  api: {
+    status: () => Promise<ApiStatus | null>;
+    regenerateToken: () => Promise<ApiStatus | null>;
+    onChanged: (callback: (status: ApiStatus | null) => void) => () => void;
+  };
+  engineBridge: {
+    ready: () => void;
+    respond: (message: { id: string; ok: boolean; result?: unknown; error?: string; status?: number }) => void;
+    onRequest: (callback: (request: EngineBridgeRequest) => void) => () => void;
   };
   huggingface: {
     tokenStatus: () => Promise<{ hasToken: boolean; encrypted: boolean }>;

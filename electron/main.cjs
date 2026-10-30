@@ -12,6 +12,8 @@ const {
   screen,
   session,
   shell,
+  Tray,
+  clipboard,
 } = require('electron');
 const fs = require('node:fs');
 const fsp = fs.promises;
@@ -24,6 +26,9 @@ const { probeHardware } = require('./models/hardware.cjs');
 const { createSidecarSupervisor } = require('./models/sidecar.cjs');
 const { createRuntimeManager, runtimeDir } = require('./models/runtimes.cjs');
 const { loadManifests, getModel } = require('./models/registry.cjs');
+const { createEngineBridge } = require('./integrations/bridge.cjs');
+const { createApiServer } = require('./integrations/api-server.cjs');
+const { createIntegrations, DEFAULT_PORT } = require('./integrations/service.cjs');
 
 const IS_DEV = Boolean(process.env.VITE_DEV_SERVER_URL);
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || '';
@@ -58,6 +63,14 @@ let sidecars = null;
 let runtimeManager = null;
 let hardwareCache = null;
 let modelsInitialized = false;
+/** @type {ReturnType<typeof createEngineBridge> | null} */
+let engineBridge = null;
+/** @type {ReturnType<typeof createIntegrations> | null} */
+let integrations = null;
+// Set when the user really quits, so close-to-tray does not swallow it.
+let isQuitting = false;
+// Launched by a CLI/MCP client or at login: run in the tray without showing a window.
+let startHidden = process.argv.includes('--hidden');
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -262,6 +275,12 @@ const defaultSettings = () => ({
   pronunciations: [],
   setupComplete: false,
   onboardingDismissed: false,
+  // Local API and background behaviour (see electron/integrations).
+  apiEnabled: false,
+  apiPort: DEFAULT_PORT,
+  apiAllowCloning: false,
+  closeToTray: false,
+  launchAtLogin: false,
 });
 
 function getSettings() {
@@ -862,6 +881,27 @@ function appIconPath() {
   return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[1];
 }
 
+function showWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) createWindow();
+  startHidden = false;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+/** The engine lives in the window; create it hidden when an API request needs it. */
+async function ensureEngineWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) return mainWindow;
+  startHidden = true;
+  createWindow();
+  return mainWindow;
+}
+
+function quitApp() {
+  isQuitting = true;
+  app.quit();
+}
+
 function createWindow() {
   const saved = readJson(WINDOW_FILE(), null);
   let bounds = saved && Number.isFinite(saved.width) ? saved : null;
@@ -899,6 +939,8 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false,
       spellcheck: true,
+      // The window hosts the engine for API requests even while hidden in the tray.
+      backgroundThrottling: false,
     },
     ...(bounds ? { ...bounds } : {}),
   };
@@ -906,8 +948,23 @@ function createWindow() {
   mainWindow = win;
 
   win.once('ready-to-show', () => {
+    if (startHidden) {
+      startHidden = false;
+      return;
+    }
     win.show();
   });
+
+  win.on('close', (event) => {
+    if (isQuitting || !getSettings().closeToTray || !integrations?.hasTray()) return;
+    // Keep the engine loaded for API requests; the tray brings the window back.
+    event.preventDefault();
+    win.hide();
+  });
+
+  // A reload or crash drops whatever the renderer was working on.
+  win.webContents.on('did-start-loading', () => engineBridge?.reset('The Voxarium window reloaded.'));
+  win.webContents.on('render-process-gone', () => engineBridge?.reset('The Voxarium engine stopped unexpectedly.'));
 
   const saveBounds = () => {
     if (win.isDestroyed() || win.isMinimized() || win.isMaximized()) return;
@@ -1207,7 +1264,19 @@ function registerIpc() {
     if (!patch || typeof patch !== 'object') return getSettings();
     const next = await saveSettings(patch);
     if (patch.theme) applyWindowTheme(BrowserWindow.fromWebContents(event.sender), patch.theme);
+    if (['apiEnabled', 'apiPort', 'closeToTray', 'launchAtLogin'].some((key) => key in patch)) {
+      await integrations?.apply(next);
+      send('api:changed', integrations?.status());
+    }
     return next;
+  });
+
+  ipcMain.handle('api:status', async () => integrations?.status() || null);
+  ipcMain.handle('api:regenerateToken', async () => {
+    if (!integrations) return null;
+    integrations.regenerateToken();
+    await integrations.apply(getSettings());
+    return integrations.status();
   });
 
   ipcMain.handle('models:snapshot', async (event, options = {}) => modelsSnapshot({ forceHardware: Boolean(options?.forceHardware) }));
@@ -1795,6 +1864,16 @@ function registerIpc() {
   });
 }
 
+/** Raw 16-bit little-endian mono PCM (the OpenAI "pcm" response format at 24 kHz). */
+function encodePcm16(pcm) {
+  const buffer = Buffer.alloc(pcm.length * 2);
+  for (let i = 0; i < pcm.length; i += 1) {
+    const sample = Math.max(-1, Math.min(1, pcm[i]));
+    buffer.writeInt16LE(Math.round(sample < 0 ? sample * 0x8000 : sample * 0x7fff), i * 2);
+  }
+  return buffer;
+}
+
 function encodeWav(pcm, sampleRate) {
   const length = pcm.length;
   const buffer = Buffer.alloc(44 + length * 2);
@@ -1830,11 +1909,10 @@ if (!app.requestSingleInstanceLock()) {
     app.commandLine.appendSwitch('force-high-performance-gpu');
   }
 
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
+  app.on('second-instance', (event, argv) => {
+    // A CLI/MCP client launching us "--hidden" while we already run needs nothing.
+    if (argv.includes('--hidden')) return;
+    showWindow();
   });
 
   app.whenReady().then(async () => {
@@ -1876,9 +1954,32 @@ if (!app.requestSingleInstanceLock()) {
     if (!nativeImage.createFromPath(appIconPath()).isEmpty()) {
       // The icon is also supplied per-window; this makes the taskbar group correctly.
     }
+    engineBridge = createEngineBridge({ ipcMain, ensureWindow: ensureEngineWindow, log: (...args) => console.log(...args) });
+    integrations = createIntegrations({
+      app,
+      Tray,
+      Menu,
+      nativeImage,
+      clipboard,
+      dataDir: DATA_DIR(),
+      iconPath: appIconPath(),
+      apiServer: createApiServer({
+        bridge: engineBridge,
+        getToken: () => integrations?.token(),
+        encodeWav,
+        encodePcm16,
+        version: app.getVersion(),
+        log: (...args) => console.log(...args),
+      }),
+      getSettings,
+      showWindow,
+      quit: quitApp,
+      log: (...args) => console.log(...args),
+    });
     registerIpc();
     buildMenu();
     createWindow();
+    await integrations.apply(getSettings());
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -1890,9 +1991,13 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('before-quit', async (event) => {
+    isQuitting = true;
     if ((!modelServer && !sidecars) || quitAfterServerClose) return;
     event.preventDefault();
     quitAfterServerClose = true;
+    try {
+      await integrations?.shutdown();
+    } catch {}
     try {
       await sidecars?.cleanup();
     } catch {}

@@ -1253,3 +1253,39 @@
   font-size: 11.5px;
   line-height: 1.45;
 }
+
+/* Local API card: copyable client snippets. */
+.api-port {
+  flex: 0 0 84px;
+  width: 84px;
+  text-align: center;
+}
+
+.api-snippet__tabs {
+  margin-bottom: 8px;
+}
+
+.api-snippet {
+  position: relative;
+}
+
+.api-snippet pre {
+  margin: 0;
+  padding: 12px 14px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  color: var(--text-soft);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.api-snippet .btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}

@@ -15,6 +15,7 @@ export interface SidecarSynthesisOptions {
   voiceId: string | null;
   language?: string;
   variety?: string;
+  speed?: number;
   temperature?: number;
   seed?: string;
   signal?: AbortSignal;
@@ -75,6 +76,7 @@ export async function synthesizeWithSidecar({
   voiceId,
   language,
   variety,
+  speed,
   temperature = 0.3,
   seed,
   signal,
@@ -92,6 +94,7 @@ export async function synthesizeWithSidecar({
       voice: voiceId,
       language: language || undefined,
       variety: variety || undefined,
+      speed: speed || undefined,
       temperature,
       seed: seed || undefined,
       format: 'f32',

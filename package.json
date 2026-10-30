@@ -21,6 +21,8 @@
     "test": "node scripts/test-models.mjs",
     "test:models": "node scripts/test-models.mjs",
     "test:e2e": "node scripts/test-electron.mjs",
+    "test:integrations": "node scripts/test-integrations.mjs",
+    "voxarium": "node electron/cli/voxarium.cjs",
     "pack": "npm run build && electron-builder --win --x64"
   },
   "dependencies": {
@@ -57,7 +59,8 @@
     ],
     "asar": true,
     "asarUnpack": [
-      "electron/sidecars/**"
+      "electron/sidecars/**",
+      "electron/cli/**"
     ],
     "win": {
       "target": [

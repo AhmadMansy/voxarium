@@ -50,6 +50,10 @@ folder on first launch, so models, voices, settings and history carry over.
 - **Voice controls** — quantization (Q8/F32), device selection (Auto/CPU/WebGPU), thread
   count, language normalization, rewrite rules, speaking conditions, pronunciation
   overrides, and reproducible seeds. Unsupported controls are disabled with a reason.
+- **Local API, MCP and CLI** - other apps, scripts and AI agents can generate speech
+  through an OpenAI-compatible API on 127.0.0.1, an MCP server, or the command line,
+  using the same engine and active model as the Studio. Optional tray mode keeps it
+  running in the background. See [docs/integrations.md](docs/integrations.md).
 - **Polished shell** — dark and light themes, four accent colors, a global player with
   speed and volume controls, persistent window state, and keyboard shortcuts for every
   page.
