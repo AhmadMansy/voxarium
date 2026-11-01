@@ -26,7 +26,7 @@
   gap: 10px;
   padding: 11px 13px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--field);
 }
 
@@ -46,19 +46,19 @@
 
 .cloud-note strong {
   color: var(--text);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 620;
 }
 
 .cloud-note p {
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
 .cloud-note .link {
   flex: none;
-  font-size: 10.5px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -77,7 +77,7 @@
   gap: 10px;
   padding: 12px 13px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--surface);
   text-align: left;
   transition:
@@ -106,14 +106,14 @@
 
 .clone-tab strong {
   color: var(--text);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 620;
   letter-spacing: -0.01em;
 }
 
 .clone-tab em {
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: 12px;
   font-style: normal;
 }
 
@@ -144,13 +144,13 @@
   gap: 14px;
   padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: linear-gradient(180deg, var(--surface), transparent);
+  border-radius: var(--r-lg);
+  background: var(--surface);
 }
 
 .recorder.is-recording {
   border-color: color-mix(in srgb, var(--danger) 38%, transparent);
-  background: linear-gradient(180deg, var(--danger-soft), transparent);
+  background: var(--danger-soft);
 }
 
 .recorder__stage {
@@ -168,9 +168,6 @@
   border-radius: 50%;
   color: var(--accent-ink);
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff 12%), var(--accent-strong));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 14px 30px -16px var(--accent);
   transition: transform 0.16s var(--ease);
 }
 
@@ -180,27 +177,15 @@
 
 .record-button.is-recording {
   background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 88%, #fff 12%), var(--danger));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 0 0 0 color-mix(in srgb, var(--danger) 45%, transparent);
   animation: record-pulse 1.7s var(--ease) infinite;
 }
 
 @keyframes record-pulse {
   0% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.28),
-      0 0 0 0 color-mix(in srgb, var(--danger) 42%, transparent);
   }
   70% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.28),
-      0 0 0 15px transparent;
   }
   100% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.28),
-      0 0 0 0 transparent;
   }
 }
 
@@ -222,7 +207,7 @@
 
 .recorder__readout em {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-style: normal;
 }
 
@@ -237,8 +222,8 @@
 .recorder__levels > span {
   flex: 1;
   min-height: 3px;
-  border-radius: 4px;
-  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 45%, transparent));
+  border-radius: var(--r-xs);
+  background: var(--accent);
   transition: height 0.07s linear;
 }
 
@@ -246,7 +231,7 @@
 .clone-success .clip-player {
   padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: var(--r-md);
   background: var(--field);
 }
 
@@ -255,7 +240,7 @@
   align-items: center;
   gap: 7px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .recorder__hint > svg {
@@ -280,7 +265,7 @@
   flex: none;
   color: var(--text-muted);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
 }
 
@@ -293,7 +278,7 @@
   margin: 0;
   padding: 11px 13px;
   border: 1px dashed var(--border-strong);
-  border-radius: 11px;
+  border-radius: var(--r-md);
   color: var(--text-soft);
   font-size: 12px;
   font-style: italic;
@@ -314,7 +299,7 @@
 
 .clone-form .field em {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
   line-height: 1.45;
 }
@@ -325,10 +310,10 @@
   gap: 9px;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: var(--r-md);
   background: var(--surface);
   color: var(--text-soft);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.5;
   cursor: pointer;
 }
@@ -352,7 +337,7 @@
   gap: 9px;
   padding: 12px 13px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--field);
 }
 
@@ -372,20 +357,20 @@
 
 .clone-key__head strong {
   color: var(--text);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .clone-key__head em {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
 }
 
 .clone-key .settings-card__icon {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
 }
 
 .clone-key__row {
@@ -401,7 +386,7 @@
 
 .clone-key__note {
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -421,7 +406,7 @@
   align-items: flex-start;
   gap: 9px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -435,7 +420,7 @@
   background: var(--surface);
   color: var(--text-soft);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .clone-steps strong {
@@ -451,7 +436,7 @@
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--accent-line);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--accent-softer);
 }
 
@@ -485,13 +470,13 @@
 
 .clone-progress strong {
   color: var(--text);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .clone-progress em {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
 }
 
@@ -504,10 +489,8 @@
   gap: 9px;
   padding: 26px 22px 22px;
   border: 1px dashed var(--border-strong);
-  border-radius: 15px;
-  background:
-    radial-gradient(120% 90% at 50% 0%, var(--accent-softer), transparent 70%),
-    var(--surface);
+  border-radius: var(--r-lg);
+  background: var(--surface);
   text-align: center;
 }
 
@@ -517,14 +500,14 @@
   width: 52px;
   height: 52px;
   border: 1px solid var(--accent-line);
-  border-radius: 14px;
+  border-radius: var(--r-lg);
   background: var(--accent-soft);
   color: var(--accent);
 }
 
 .import-drop > strong {
   color: var(--text);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 640;
   letter-spacing: -0.02em;
 }
@@ -532,17 +515,17 @@
 .import-drop > p {
   max-width: 460px;
   color: var(--text-muted);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
 .import-drop code {
   padding: 1px 4px;
-  border-radius: 5px;
+  border-radius: var(--r-xs);
   background: var(--tag-bg);
   color: var(--text-soft);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .import-drop__meta {
@@ -553,7 +536,7 @@
   justify-content: center;
   margin-top: 2px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .import-drop__meta > span {
@@ -572,7 +555,7 @@
   gap: 10px;
   padding: 12px 13px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--field);
 }
 
@@ -586,19 +569,19 @@
   display: block;
   margin-bottom: 3px;
   color: var(--text);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .import-note p {
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
 .import-note .link {
   margin-top: 5px;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 /* --- success ------------------------------------------------------------- */
@@ -634,7 +617,7 @@
 .clone-success > p {
   max-width: 440px;
   color: var(--text-muted);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
@@ -668,9 +651,7 @@
 /* --- custom voice cards --------------------------------------------------- */
 
 .voice-card.is-custom {
-  background:
-    linear-gradient(180deg, var(--accent-softer), transparent 40%),
-    var(--card);
+  background: var(--card);
 }
 
 .voice-card__actions .btn--danger-text:hover:not(:disabled) {

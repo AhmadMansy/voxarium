@@ -435,7 +435,7 @@ export function CloneVoiceModal() {
                 onClick={() => void submitClone()}
                 disabled={busy || !clip || !consent}
               >
-                <Icon name={busy ? 'loader' : 'sparkles'} size={15} className={busy ? 'spin' : undefined} />
+                <Icon name={busy ? 'loader' : 'mic'} size={15} className={busy ? 'spin' : undefined} />
                 {busy ? 'Cloning…' : 'Clone this voice'}
               </button>
             ) : (

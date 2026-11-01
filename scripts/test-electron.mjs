@@ -176,6 +176,8 @@ try {
   step('browsing the runtime pack catalog');
   const runtimePanel = page.locator('.runtimes-panel');
   await runtimePanel.waitFor();
+  // The engine catalog is an advanced disclosure below the models; open it.
+  await runtimePanel.locator('summary').click();
   assert.equal(await runtimePanel.locator('.runtime-card').count(), 15, 'every runtime pack stays visible');
   const pythonRuntime = runtimePanel.locator('.runtime-card', { hasText: 'Python 3.12 runtime' }).first();
   await pythonRuntime.waitFor();

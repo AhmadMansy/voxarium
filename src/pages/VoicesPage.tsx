@@ -293,11 +293,7 @@ export function VoicesPage() {
                       <span className="tag tag--ok" title="Stored on this device">
                         <Icon name="check" size={10} /> Saved
                       </span>
-                    ) : (
-                      <span className="tag" title="Downloads on first use">
-                        <Icon name="downloadCloud" size={11} /> On demand
-                      </span>
-                    )}
+                    ) : null}
                     <button
                       className={classNames('icon-toggle icon-toggle--floating', isFavorite(voice.id) && 'is-on')}
                       onClick={() => toggle(voice.id)}
@@ -344,7 +340,7 @@ export function VoicesPage() {
                     {isPreviewing ? 'Synthesizing…' : activePreview && player.playing ? 'Playing' : 'Preview'}
                   </button>
                   <button
-                    className={classNames('btn btn--sm', selected ? 'btn--ghost' : 'btn--primary')}
+                    className={classNames('btn btn--sm', selected ? 'btn--ghost' : 'btn--subtle')}
                     onClick={() => useVoice(voice)}
                     disabled={selected || !compatible}
                     title={!compatible ? voiceCompatibilityNote(models.activeModel, voice) || undefined : undefined}

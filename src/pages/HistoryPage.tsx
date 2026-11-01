@@ -185,7 +185,7 @@ export function HistoryPage() {
           <strong>No recordings yet</strong>
           <p>Everything you generate is saved here with its script, voice and settings, so you can revisit or export it later.</p>
           <button className="btn btn--primary" onClick={() => setPage('studio')}>
-            <Icon name="sparkles" size={15} /> Create your first take
+            <Icon name="studio" size={15} /> Create your first take
           </button>
         </div>
       ) : (

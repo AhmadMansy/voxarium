@@ -64,7 +64,7 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
   const percent = progress?.percent ?? (progress && progress.total ? (progress.loaded / progress.total) * 100 : null);
   const badge = licenseBadge(pack.license);
   const status = pack.installed ? 'Installed' : pack.available ? 'Not installed' : 'Not published';
-  const statusTone = pack.installed ? 'ok' : pack.available ? 'accent' : 'muted';
+  const statusTone = pack.installed ? 'ok' : 'muted';
   const canDownload = pack.available && Boolean(pack.archive || pack.buildable);
   const size = pack.installed ? pack.bytes || pack.installedBytes : pack.sizeBytes;
   const kindLabel = pack.kind === 'python' ? 'Base interpreter' : pack.kind === 'tool' ? 'Installer tool' : 'Model runtime';
@@ -77,7 +77,7 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
         <div>
           <h3>{pack.name}</h3>
           <span className="runtime-card__meta">
-            {kindLabel} · v{pack.version} · {pack.platform}/{pack.arch}
+            {kindLabel} · v{pack.version} · {pack.platformLabel || `${pack.platform}/${pack.arch}`}
           </span>
         </div>
         <span className={classNames('tag', `tag--${statusTone}`)}>{status}</span>
@@ -147,7 +147,7 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
         ) : (
           <>
             <button
-              className="btn btn--primary btn--sm"
+              className="btn btn--subtle btn--sm"
               onClick={() => void models.downloadRuntime(pack.id)}
               disabled={busy || !canDownload}
               title={canDownload ? undefined : pack.reason || 'This pack has no published archive yet.'}
@@ -463,7 +463,7 @@ function ModelCard({ model }: { model: ModelManifest }) {
           </button>
         ) : (
           <button
-            className="btn btn--primary btn--sm"
+            className="btn btn--subtle btn--sm"
             onClick={() => void download()}
             disabled={busy || !installable.ok}
             title={installable.ok ? undefined : installable.reason}
@@ -700,37 +700,6 @@ export function ModelsPage() {
         </div>
       </section>
 
-      <section className="card runtimes-panel">
-        <header className="runtimes-panel__head">
-          <div className="models-overview__main">
-            <span className="models-overview__mark">
-              <Icon name="layers" size={20} />
-            </span>
-            <div>
-              <span className="models-overview__eyebrow">Runtime packs</span>
-              <h2>Separate downloads, verified before use</h2>
-              <p>
-                The installer stays small. Python and model runtimes download individually, are checked against a
-                pinned SHA-256, and install into your own data folder. {installedRuntimeCount} of {runtimePacks.length}{' '}
-                installed.
-              </p>
-            </div>
-          </div>
-        </header>
-        <div className="runtimes-grid">
-          {runtimePacks.map((pack) => (
-            <RuntimePackCard key={pack.id} pack={pack} />
-          ))}
-        </div>
-        {!runtimePacks.length && (
-          <div className="empty empty--compact models-empty">
-            <Icon name="layers" size={24} />
-            <strong>The runtime catalog is unavailable</strong>
-            <span>Restart Voxarium or reinstall it to restore the runtime catalog.</span>
-          </div>
-        )}
-      </section>
-
       <div className="models-toolbar" role="group" aria-label="Filter models">
         {[
           { id: 'all', label: `All ${MODELS.length}` },
@@ -764,6 +733,31 @@ export function ModelsPage() {
           <span>Show all models to see what is available.</span>
         </div>
       )}
+
+      <details className="card runtimes-panel">
+        <summary className="runtimes-panel__head">
+          <span className="runtimes-panel__title">
+            <strong>Engines and runtimes</strong>
+            <span>
+              Advanced · {installedRuntimeCount} of {runtimePacks.length} installed. Each is a separate download, checked
+              against a pinned SHA-256, kept in your own data folder.
+            </span>
+          </span>
+          <Icon name="chevronRight" size={16} className="runtimes-panel__chevron" />
+        </summary>
+        <div className="runtimes-grid">
+          {runtimePacks.map((pack) => (
+            <RuntimePackCard key={pack.id} pack={pack} />
+          ))}
+        </div>
+        {!runtimePacks.length && (
+          <div className="empty empty--compact models-empty">
+            <Icon name="layers" size={24} />
+            <strong>The runtime catalog is unavailable</strong>
+            <span>Restart Voxarium or reinstall it to restore the runtime catalog.</span>
+          </div>
+        )}
+      </details>
     </div>
   );
 }

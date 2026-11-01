@@ -283,7 +283,7 @@ export function BatchPage() {
         actions={
           <>
             <button className="btn btn--subtle" onClick={() => setScript(example)} disabled={running}>
-              <Icon name="sparkles" size={15} /> Load example
+              <Icon name="fileText" size={15} /> Load example
             </button>
             <button className="btn btn--subtle" onClick={() => void window.studio.paths.reveal('audio')}>
               <Icon name="folder" size={15} /> Audio folder
@@ -474,7 +474,7 @@ export function BatchPage() {
                 </>
               ) : (
                 <>
-                  <Icon name="sparkles" size={17} /> Generate {items.length || ''} line{items.length === 1 ? '' : 's'}
+                  Generate {items.length || ''} line{items.length === 1 ? '' : 's'}
                 </>
               )}
             </button>

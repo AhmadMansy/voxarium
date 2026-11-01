@@ -41,7 +41,8 @@ function runtimeLabel(model: ModelManifest, installed: boolean, ready: boolean):
 function runtimeTone(model: ModelManifest, installed: boolean, ready: boolean): string {
   if (installed) return 'ok';
   if (!runtimeReady(model, ready)) return 'muted';
-  return 'accent';
+  // Ready to install is the normal state of a list, not something to highlight.
+  return 'muted';
 }
 
 export function SetupWizard({ open, onClose }: SetupWizardProps) {

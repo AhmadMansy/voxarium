@@ -20,15 +20,16 @@ import { PageHeader } from '../components/PageHeader';
 import { VoiceAvatar } from '../components/VoiceAvatar';
 
 const THEMES: { id: Theme; label: string; hint: string }[] = [
-  { id: 'dark', label: 'Midnight', hint: 'Easy on the eyes' },
-  { id: 'light', label: 'Daylight', hint: 'Crisp and bright' },
+  { id: 'dark', label: 'Graphite', hint: 'Easy on the eyes' },
+  { id: 'light', label: 'Paper', hint: 'Warm and bright' },
 ];
 
 const ACCENTS: { id: Accent; label: string; color: string }[] = [
-  { id: 'violet', label: 'Violet', color: 'hsl(262 85% 67%)' },
-  { id: 'cyan', label: 'Cyan', color: 'hsl(190 85% 55%)' },
-  { id: 'amber', label: 'Amber', color: 'hsl(38 92% 58%)' },
-  { id: 'rose', label: 'Rose', color: 'hsl(342 82% 64%)' },
+  { id: 'signal', label: 'Signal', color: 'hsl(16 100% 58%)' },
+  { id: 'violet', label: 'Violet', color: 'hsl(256 92% 70%)' },
+  { id: 'cyan', label: 'Cyan', color: 'hsl(186 92% 44%)' },
+  { id: 'amber', label: 'Amber', color: 'hsl(42 100% 52%)' },
+  { id: 'rose', label: 'Rose', color: 'hsl(340 90% 64%)' },
 ];
 
 const DEVICES: { id: Device; label: string; hint: string }[] = [
@@ -757,7 +758,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
           <section className="card settings-card">
             <header className="settings-card__head">
               <span className="settings-card__icon">
-                <Icon name="sparkles" size={17} />
+                <Icon name="studio" size={17} />
               </span>
               <div>
                 <h2>Generation defaults</h2>
@@ -906,7 +907,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
                 <p>Bring your own voice, or import one designed in Gradium Studio.</p>
               </div>
               <span className={classNames('tag', capabilityEnabled(activeModel, 'voiceClone') ? 'tag--ok' : 'tag--muted')}>
-                <Icon name={capabilityEnabled(activeModel, 'voiceClone') ? 'sparkles' : 'x'} size={11} />{' '}
+                <Icon name={capabilityEnabled(activeModel, 'voiceClone') ? 'check' : 'x'} size={11} />{' '}
                 {capabilityEnabled(activeModel, 'voiceClone') ? 'Cloud, once' : 'Unavailable'}
               </span>
             </header>
@@ -1333,7 +1334,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
               </div>
             </dl>
             <button className="btn btn--subtle btn--sm settings-side__cta" onClick={onOpenSetup}>
-              <Icon name="sparkles" size={14} /> Open setup assistant
+              <Icon name="layers" size={14} /> Open setup assistant
             </button>
           </section>
 

@@ -16,6 +16,7 @@ import { StudioPage } from './pages/StudioPage';
 import { VoicesPage } from './pages/VoicesPage';
 import type { Page } from './types';
 import { classNames } from './lib/utils';
+import { shortcut } from './lib/platform';
 
 const NAV: { id: Page; label: string; icon: IconName; hint: string }[] = [
   { id: 'studio', label: 'Studio', icon: 'studio', hint: 'Write and render speech' },
@@ -193,7 +194,7 @@ export function App() {
                 {item.id === 'integrations' && settings.apiEnabled && (
                   <span className="nav-item__dot" title="The local API is on" aria-label="API on" />
                 )}
-                {item.id === 'studio' && !badge && <span className="nav-item__key">⌘1</span>}
+                {item.id === 'studio' && !badge && <span className="nav-item__key">{shortcut('1')}</span>}
               </button>
             );
           })}

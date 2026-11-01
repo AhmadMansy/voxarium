@@ -21,7 +21,7 @@
   gap: 2px;
   padding: 3px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 
@@ -31,9 +31,9 @@
   gap: 6px;
   height: 29px;
   padding: 0 10px;
-  border-radius: 7px;
+  border-radius: var(--r-xs);
   color: var(--text-muted);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 540;
   white-space: nowrap;
   transition:
@@ -49,14 +49,13 @@
 .filter-chip > span {
   color: var(--text-muted);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   opacity: 0.8;
 }
 
 .filter-chip.is-active {
   background: var(--card);
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), var(--inset-highlight);
 }
 
 .filter-chip.is-active > span {
@@ -67,7 +66,7 @@
 .filter-chip--icon {
   padding: 0 9px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   background: var(--surface);
 }
 
@@ -98,40 +97,26 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 10px;
   min-width: 0;
-  padding: 15px;
+  padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 15px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--card) 88%, transparent), var(--card));
-  box-shadow: var(--inset-highlight), 0 14px 34px -30px rgba(0, 0, 0, 0.8);
+  border-radius: var(--r-lg);
+  background: var(--card);
   transition:
-    transform 0.2s var(--ease),
-    border-color 0.2s var(--ease),
-    box-shadow 0.2s var(--ease);
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
 }
 
 .voice-card:hover {
-  transform: translateY(-2px);
   border-color: var(--border-strong);
-  box-shadow: var(--inset-highlight), var(--shadow-soft);
+  background: var(--card-2);
 }
 
+/* The voice that is in use is marked with the signal colour, nothing else on the card is. */
 .voice-card.is-selected {
-  border-color: var(--accent-line);
-  box-shadow:
-    0 0 0 1px var(--accent-line),
-    var(--inset-highlight),
-    var(--shadow-soft);
-}
-
-.voice-card.is-selected::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  border-radius: 15px 0 0 15px;
-  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .voice-card__top {
@@ -152,7 +137,7 @@
 
 .voice-card__marks .tag {
   height: 19px;
-  font-size: 9px;
+  font-size: 12px;
   padding: 0 6px;
 }
 
@@ -168,7 +153,7 @@
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  font-size: 14.5px;
+  font-size: 16px;
   font-weight: 640;
   letter-spacing: -0.02em;
   line-height: 1.3;
@@ -177,12 +162,12 @@
 .voice-card__heading .tag {
   height: 18px;
   padding: 0 6px;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .voice-card__heading > span {
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -193,7 +178,7 @@
   min-height: 50px;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.52;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
