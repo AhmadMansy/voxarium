@@ -38,7 +38,7 @@ export function VoicesPage() {
     downloadAllVoices,
     voiceDownloadBusy,
     customVoices,
-    openClone,
+    openAddVoice,
     renameCustomVoice,
     deleteCustomVoice,
     toast,
@@ -56,7 +56,18 @@ export function VoicesPage() {
   const [renameValue, setRenameValue] = useState('');
   const [renamingBusy, setRenamingBusy] = useState(false);
 
-  const voices = useMemo(() => [...customVoices, ...VOICES], [customVoices]);
+  // Only voices that work with the active model are listed. The rest belong to other models'
+  // catalogs and are one click away, so the library always matches the model in use.
+  const [showOthers, setShowOthers] = useState(false);
+  const allVoices = useMemo(() => [...customVoices, ...VOICES], [customVoices]);
+  const hiddenOthers = useMemo(
+    () => allVoices.filter((voice) => !voiceCompatibleWithModel(models.activeModel, voice)).length,
+    [allVoices, models.activeModel],
+  );
+  const voices = useMemo(
+    () => (showOthers ? allVoices : allVoices.filter((voice) => voiceCompatibleWithModel(models.activeModel, voice))),
+    [allVoices, showOthers, models.activeModel],
+  );
   const installed = useMemo(() => new Set(['default', ...(model?.voiceIds || [])]), [model?.voiceIds]);
   const selectedId = settings?.lastVoice || 'default';
 
@@ -104,7 +115,10 @@ export function VoicesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, filter, locale, gender, favorites, installed, voices, models.activeModel]);
 
-  const missing = useMemo(() => VOICES.filter((voice) => !installed.has(voice.id)), [installed]);
+  const missing = useMemo(
+    () => VOICES.filter((voice) => voiceCompatibleWithModel(models.activeModel, voice) && !installed.has(voice.id)),
+    [installed, models.activeModel],
+  );
   const missingBytes = missing.length * 256136;
 
   const useVoice = (voice: VoiceInfo) => {
@@ -193,7 +207,7 @@ export function VoicesPage() {
               <Icon name={voiceDownloadBusy ? 'loader' : 'download'} size={15} className={voiceDownloadBusy ? 'spin' : undefined} />
               {missing.length ? `Download ${missing.length}` : 'All voices saved'}
             </button>
-            <button className="btn btn--primary" onClick={() => openClone('record')}>
+            <button className="btn btn--primary" onClick={() => openAddVoice()}>
               <Icon name="mic" size={15} /> Add a voice
             </button>
           </>
@@ -203,14 +217,16 @@ export function VoicesPage() {
       <div className="notice">
         <Icon name="info" size={15} />
         <span>
-          Showing compatibility with <strong>{models.activeModel.shortName}</strong>.{' '}
-          {models.activeModel.voices.format === 'phonon-safetensors'
-            ? 'Voices in the current language stay available; others are grouped below with the reason they cannot be used.'
-            : models.activeModel.voices.note ||
-              'This model brings its own voice pack, so the shared Phonon catalog cannot be used with it.'}{' '}
-          Your own voices are cloned or imported once, then run entirely on this device.
+          Voices for <strong>{models.activeModel.shortName}</strong>.{' '}
+          {models.activeModel.voices.note || 'Voices that work with this model are listed here.'}{' '}
+          Your own voices are added once, then run entirely on this device.
         </span>
-        <em>{formatBytes(missingBytes)} missing</em>
+        {hiddenOthers > 0 && (
+          <button className="link" onClick={() => setShowOthers((value) => !value)}>
+            {showOthers ? 'Hide' : 'Show'} {hiddenOthers} voices from other models
+          </button>
+        )}
+        {missing.length > 0 && <em>{formatBytes(missingBytes)} missing</em>}
       </div>
 
       <div className="filter-bar">
@@ -409,11 +425,11 @@ export function VoicesPage() {
             {filter === 'favorites'
               ? 'Star a voice and it will show up here for quick access.'
               : filter === 'yours'
-                ? 'Clone your voice with Gradium or import a .safetensors voice file to get started.'
+                ? 'Add a voice of your own to get started.'
                 : 'Try a different name, accent or filter.'}
           </p>
           {filter === 'yours' ? (
-            <button className="btn btn--primary btn--sm" onClick={() => openClone('record')}>
+            <button className="btn btn--primary btn--sm" onClick={() => openAddVoice()}>
               <Icon name="mic" size={14} /> Add a voice
             </button>
           ) : (

@@ -14,7 +14,7 @@
       "name": "Phonon 31M English",
       "shortName": "Phonon 31M",
       "family": "Phonon",
-      "description": "The original Voxarium checkpoint: 31M parameters, English narration, streaming 24 kHz audio and the full Gradium voice catalog.",
+      "description": "A 31M-parameter English model with streaming 24 kHz audio and a 102-voice catalog. Small enough to run on any computer.",
       "runtime": "phonon",
       "runtimeLabel": "phonon-tts · WASM / WebGPU",
       "repo": "gradium/phonon-31m-en",
@@ -39,8 +39,8 @@
       ],
       "capabilities": {
         "voiceImport": true,
-        "voiceClone": true,
-        "cloneKind": "cloud",
+        "voiceClone": false,
+        "cloneKind": "none",
         "multiSpeaker": false,
         "emotion": false,
         "nonVerbal": false,
@@ -66,7 +66,7 @@
           "en-gb",
           "characters"
         ],
-        "note": "102 catalog voices plus local imports and Gradium cloud clones."
+        "note": "102 catalog voices plus imported voice files."
       },
       "hardware": {
         "backend": "wasm-webgpu",
@@ -193,8 +193,8 @@
       ],
       "capabilities": {
         "voiceImport": true,
-        "voiceClone": true,
-        "cloneKind": "cloud",
+        "voiceClone": false,
+        "cloneKind": "none",
         "multiSpeaker": false,
         "emotion": false,
         "nonVerbal": false,

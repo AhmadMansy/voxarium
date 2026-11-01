@@ -102,12 +102,6 @@ contextBridge.exposeInMainWorld('studio', {
     setToken: (token) => invoke('hf:setToken', { token }),
   },
 
-  clone: {
-    keyStatus: () => invoke('clone:keyStatus'),
-    setKey: (key) => invoke('clone:setKey', { key }),
-    create: (payload) => invoke('clone:create', payload),
-  },
-
   history: {
     list: () => invoke('history:list'),
     upsert: (entry) => invoke('history:upsert', entry),
@@ -172,11 +166,6 @@ contextBridge.exposeInMainWorld('studio', {
     return () => ipcRenderer.removeListener('sidecar:status', listener);
   },
 
-  onCloneProgress: (callback) => {
-    const listener = (_event, payload) => callback(payload);
-    ipcRenderer.on('clone:progress', listener);
-    return () => ipcRenderer.removeListener('clone:progress', listener);
-  },
 
   onMenuAction: (callback) => {
     const listener = (_event, payload) => callback(payload);

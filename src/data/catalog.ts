@@ -81,8 +81,8 @@ export function customVoiceToInfo(record: CustomVoiceRecord): VoiceInfo {
     gender: null,
     age: null,
     description: copied
-      ? 'Cloned from your recording with Gradium, then stored on this device.'
-      : 'Imported Phonon voice file. Works with every Phonon checkpoint.',
+      ? 'Cloned by an earlier version of Voxarium and stored on this device.'
+      : 'Imported voice file, stored on this device.',
     file: record.fileName || `${record.id}.safetensors`,
     isDefault: false,
     source: 'custom',

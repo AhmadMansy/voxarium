@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { useEffect, useRef, useState } from 'react';
 import { SetupWizard } from './components/SetupWizard';
-import { CloneVoiceModal } from './components/CloneVoiceModal';
+import { AddVoiceModal } from './components/AddVoiceModal';
 import { Toasts } from './components/Toasts';
 import { Icon, type IconName } from './components/Icons';
 import { PlayerBar } from './components/PlayerBar';
@@ -283,7 +283,7 @@ export function App() {
       </div>
 
       <Toasts />
-      <CloneVoiceModal />
+      <AddVoiceModal />
       <SetupWizard
         open={setupOpen}
         onClose={() => {

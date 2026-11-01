@@ -200,3 +200,44 @@
   flex: none;
 }
 
+
+/* Add a voice */
+.add-voice {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.add-voice__option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.add-voice__option + .add-voice__option {
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.add-voice__option h3 {
+  font-size: var(--fs-lg);
+}
+
+.add-voice__option p {
+  color: var(--text-soft);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+}
+
+.add-voice__option ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-soft);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+}
+
+.add-voice__option li + li {
+  margin-top: 6px;
+}

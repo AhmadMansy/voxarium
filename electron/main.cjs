@@ -153,11 +153,9 @@ const HISTORY_FILE = () => path.join(DATA_DIR(), 'history.json');
 const WINDOW_FILE = () => path.join(DATA_DIR(), 'window.json');
 const CUSTOM_VOICES_FILE = () => path.join(DATA_DIR(), 'custom-voices.json');
 const CUSTOM_VOICES_DIR = () => path.join(DIRS().voices, 'custom');
-const CLONE_KEY_FILE = () => path.join(DATA_DIR(), 'gradium-key.json');
 const HF_TOKEN_FILE = () => path.join(DATA_DIR(), 'huggingface-token.json');
 
-const GRADIUM_API = 'https://api.gradium.ai/api';
-const CLONE_LANGUAGES = ['en', 'fr', 'de', 'es', 'pt'];
+const VOICE_LANGUAGES = ['en', 'fr', 'de', 'es', 'pt'];
 const VOICE_SHAPE = [1, 512, 125];
 
 function ensureDirs() {
@@ -260,7 +258,6 @@ const defaultSettings = () => ({
   autoSave: true,
   autoPlay: true,
   streaming: true,
-  allowCloudCloning: true,
   gpuPreference: 'auto',
   defaultVoice: 'default',
   lastVoice: 'default',
@@ -550,7 +547,7 @@ async function downloadVoices(ids) {
 }
 
 // ---------------------------------------------------------------------------
-// Custom voices: imported .safetensors files and Gradium voice clones
+// Custom voices: imported .safetensors files (and clones made by earlier versions)
 // ---------------------------------------------------------------------------
 
 function voiceDisplayName(value, fallback = 'My voice') {
@@ -625,7 +622,7 @@ function listCustomVoices() {
         id: entry.id,
         name: voiceDisplayName(entry.name),
         source: entry.source === 'clone' ? 'clone' : 'import',
-        language: CLONE_LANGUAGES.includes(entry.language) ? entry.language : 'en',
+        language: VOICE_LANGUAGES.includes(entry.language) ? entry.language : 'en',
         createdAt: Number(entry.createdAt) || 0,
         bytes: stat.size,
         fileName: path.basename(filePath),
@@ -658,7 +655,7 @@ async function saveCustomVoice(buffer, { name, source, language, consentAt } = {
     id,
     name: finalName,
     source: source === 'clone' ? 'clone' : 'import',
-    language: CLONE_LANGUAGES.includes(language) ? language : 'en',
+    language: VOICE_LANGUAGES.includes(language) ? language : 'en',
     createdAt: Date.now(),
     bytes: info.bytes,
     sha256: crypto.createHash('sha256').update(buffer).digest('hex'),
@@ -689,14 +686,6 @@ async function removeCustomVoice(id) {
     entries.filter((item) => item.id !== id),
   );
   return true;
-}
-
-function readCloneKey() {
-  return readSecret(CLONE_KEY_FILE());
-}
-
-async function writeCloneKey(key) {
-  return writeSecret(CLONE_KEY_FILE(), key);
 }
 
 /** Secrets are encrypted with the OS keychain (DPAPI on Windows) when it is available. */
@@ -747,121 +736,6 @@ async function hfWhoami(token) {
 
 function hfTokenStatus() {
   return { hasToken: Boolean(readHfToken()), encrypted: safeStorage.isEncryptionAvailable() };
-}
-
-function cloneKeyStatus() {
-  return {
-    hasKey: Boolean(readCloneKey()),
-    encrypted: safeStorage.isEncryptionAvailable(),
-  };
-}
-
-function gradiumError(body, response) {
-  const detail = body?.detail ?? body?.error ?? body?.message;
-  if (typeof detail === 'string' && detail.trim()) return `Gradium: ${detail.trim()}`;
-  if (Array.isArray(detail)) {
-    const parts = detail
-      .map((item) => (typeof item === 'string' ? item : item?.msg))
-      .filter(Boolean);
-    if (parts.length) return `Gradium: ${parts.join('; ')}`;
-  }
-  return `Gradium API error ${response.status}${response.statusText ? ` ${response.statusText}` : ''}.`;
-}
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function cloneVoiceWithGradium({ audio, name, language, startS, consentAt }) {
-  const apiKey = readCloneKey();
-  if (!apiKey) {
-    return { ok: false, code: 'no-key', error: 'Add a Gradium API key to clone a voice.' };
-  }
-  const buffer = Buffer.isBuffer(audio) ? audio : Buffer.from(audio || []);
-  if (buffer.length < 4096) {
-    return { ok: false, error: 'The recording is too short. Record at least a few seconds of speech.' };
-  }
-  const lang = CLONE_LANGUAGES.includes(language) ? language : 'en';
-  const start = Number.isFinite(Number(startS)) ? Math.max(0, Number(startS)) : 0;
-
-  const progress = (stage, message, extra = {}) => send('clone:progress', { stage, message, ...extra });
-
-  progress('upload', 'Uploading your recording to Gradium…');
-  const form = new FormData();
-  form.append('name', voiceDisplayName(name, 'My voice'));
-  form.append('language', lang);
-  form.append('start_s', String(start));
-  form.append('audio_file', new Blob([buffer], { type: 'audio/wav' }), 'recording.wav');
-
-  let created;
-  try {
-    created = await fetch(`${GRADIUM_API}/voices/`, {
-      method: 'POST',
-      headers: { 'x-api-key': apiKey },
-      body: form,
-      signal: AbortSignal.timeout(120000),
-    });
-  } catch (error) {
-    return { ok: false, error: `Gradium could not be reached. ${error instanceof Error ? error.message : ''}`.trim() };
-  }
-  const createdBody = await created.json().catch(() => null);
-  if (!created.ok) return { ok: false, error: gradiumError(createdBody, created) };
-  const voiceUid = createdBody?.uid;
-  if (!voiceUid) return { ok: false, error: createdBody?.error || 'Gradium did not return a voice id.' };
-
-  progress('wait', 'Gradium is building the voice embedding…');
-  let ready = false;
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    await sleep(attempt === 0 ? 600 : 2000);
-    let response;
-    try {
-      response = await fetch(`${GRADIUM_API}/voices/embeddings/${encodeURIComponent(voiceUid)}/default`, {
-        headers: { 'x-api-key': apiKey },
-        signal: AbortSignal.timeout(30000),
-      });
-    } catch {
-      continue;
-    }
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        return { ok: false, error: 'Gradium rejected the API key. Check it in Settings.' };
-      }
-      continue;
-    }
-    const body = await response.json().catch(() => null);
-    if (body?.found) {
-      ready = true;
-      break;
-    }
-  }
-  if (!ready) {
-    return {
-      ok: false,
-      error: 'Gradium is still preparing this voice. Try again in a minute — it is saved in your Gradium account.',
-    };
-  }
-
-  progress('download', 'Downloading the voice file…');
-  let blobResponse;
-  try {
-    blobResponse = await fetch(
-      `${GRADIUM_API}/voices/embeddings/${encodeURIComponent(voiceUid)}/default/blob?as_safetensors=1`,
-      { headers: { 'x-api-key': apiKey }, signal: AbortSignal.timeout(60000) },
-    );
-  } catch (error) {
-    return { ok: false, error: `The voice file could not be downloaded. ${error instanceof Error ? error.message : ''}`.trim() };
-  }
-  if (!blobResponse.ok) {
-    const body = await blobResponse.json().catch(() => null);
-    return { ok: false, error: gradiumError(body, blobResponse) };
-  }
-  const voiceBuffer = Buffer.from(await blobResponse.arrayBuffer());
-  try {
-    readVoiceSafetensors(voiceBuffer);
-  } catch (error) {
-    return { ok: false, error: `Gradium returned an unexpected voice file. ${error instanceof Error ? error.message : ''}`.trim() };
-  }
-  const saved = await saveCustomVoice(voiceBuffer, { name, source: 'clone', language: lang, consentAt });
-  progress('done', 'Voice ready.', { voiceId: saved.id });
-  return { ok: true, voice: saved };
 }
 
 function applyWindowTheme(win, theme) {  if (!win || win.isDestroyed()) return;
@@ -1042,10 +916,6 @@ function buildMenu() {
           label: 'Import voice file…',
           click: () => send('menu:action', { action: 'import-voice' }),
         },
-        {
-          label: 'Clone a voice…',
-          click: () => send('menu:action', { action: 'clone-voice' }),
-        },
         { type: 'separator' },
         {
           label: 'Open audio folder',
@@ -1092,16 +962,12 @@ function buildMenu() {
       label: 'Help',
       submenu: [
         {
-          label: 'Phonon model card',
-          click: () => shell.openExternal('https://huggingface.co/gradium/phonon-31m-en'),
+          label: 'Voxarium on GitHub',
+          click: () => shell.openExternal('https://github.com/AhmadMansy/voxarium'),
         },
         {
-          label: 'Phonon by Gradium',
-          click: () => shell.openExternal('https://gradium.ai/phonon'),
-        },
-        {
-          label: 'Runtime source',
-          click: () => shell.openExternal('https://github.com/gradium-ai/xn-ptts'),
+          label: 'Report a problem',
+          click: () => shell.openExternal('https://github.com/AhmadMansy/voxarium/issues/new/choose'),
         },
         { type: 'separator' },
         {
@@ -1621,11 +1487,11 @@ function registerIpc() {
 
   ipcMain.handle('voices:importCustom', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
-      title: 'Import a Phonon voice',
-      message: 'Choose a .safetensors voice file downloaded from Gradium Studio.',
+      title: 'Import a voice file',
+      message: 'Choose a .safetensors voice file made for the active model.',
       properties: ['openFile'],
       filters: [
-        { name: 'Phonon voice', extensions: ['safetensors'] },
+        { name: 'Voice file', extensions: ['safetensors'] },
         { name: 'All files', extensions: ['*'] },
       ],
     });
@@ -1691,26 +1557,6 @@ function registerIpc() {
     await writeSecret(HF_TOKEN_FILE(), clean);
     return { ok: true, user: check.user, ...hfTokenStatus() };
   });
-  ipcMain.handle('clone:keyStatus', async () => cloneKeyStatus());
-  ipcMain.handle('clone:setKey', async (event, { key } = {}) => {
-    const clean = String(key || '').trim();
-    if (clean && !/^[A-Za-z0-9._-]{8,200}$/.test(clean)) {
-      return { ok: false, error: 'That does not look like a Gradium API key.', ...cloneKeyStatus() };
-    }
-    await writeCloneKey(clean);
-    return { ok: true, ...cloneKeyStatus() };
-  });
-  ipcMain.handle('clone:create', async (event, { audio, name, language, startS, consentAt } = {}) => {
-    try {
-      if (!Number.isFinite(Number(consentAt))) {
-        return { ok: false, error: 'Confirm the speaker permission checkbox before cloning a voice.' };
-      }
-      return await cloneVoiceWithGradium({ audio, name, language, startS, consentAt: Number(consentAt) });
-    } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : String(error) };
-    }
-  });
-
   ipcMain.handle('history:list', async () => readJson(HISTORY_FILE(), []));
   ipcMain.handle('history:upsert', async (event, entry) => {
     if (!entry || typeof entry !== 'object' || !entry.id) throw new Error('Invalid history entry');
@@ -1973,6 +1819,8 @@ if (!app.requestSingleInstanceLock()) {
     migrateLegacyDataDir();
     retargetLegacyHistory();
     ensureDirs();
+    // Cloud cloning was removed; delete any API key saved by an earlier version.
+    fs.rmSync(path.join(DATA_DIR(), 'gradium-key.json'), { force: true });
     app.setAppUserModelId(APP_ID);
     registerAppProtocol();
     initModelServices();

@@ -752,7 +752,7 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
     }
     const silent = getModel('chatterbox');
     assert.equal(voiceCompatibleWithModel(silent, defaultVoice), false);
-    assert.match(voiceCompatibilityNote(silent, defaultVoice), /Phonon voice/i);
+    assert.match(voiceCompatibilityNote(silent, defaultVoice), /different voice catalog/i);
     assert.equal(voicesForModel(silent).voices.length, 0);
     assert.ok(voicesForModel(silent).reason);
   });

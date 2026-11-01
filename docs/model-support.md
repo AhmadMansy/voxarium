@@ -258,10 +258,10 @@ Capabilities come from the manifest and drive the UI:
   voices require a Phonon-format model and a matching locale; incompatible rows stay
   visible but disabled with a reason. Imported custom embeddings are validated
   against the selected model's format.
-- **Clone tab:** available only when `voiceClone` is true. Cloud cloning is gated by
-  the existing “send once” consent and an explicit permission checkbox; the consent
-  timestamp (`consentAt`) is persisted with the custom voice and required by
-  `clone:create`. Offline import remains available without cloud consent.
+- **Add a voice:** the dialog depends on the active model. Models with a voice-file format import a
+  `.safetensors` file; models that clone from a recording (`cloneKind: 'local'`) read a clip placed in the
+  references folder; other models say they use a fixed set of voices. Everything happens on the
+  computer: Voxarium has no cloud cloning and uploads nothing.
 - **Dialogue/emotion/streaming/normalization/speed:** each control is hidden or
   disabled with a reason when the active model does not support it.
 - **Batch:** validates every line's voice and language against the active model,

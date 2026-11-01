@@ -3,7 +3,7 @@ import type { Quality } from '../types';
 
 export type RuntimeKind = 'phonon' | 'onnx-web' | 'sidecar';
 export type ModelFormat = 'phonon-safetensors' | 'kokoro-voice-pack' | 'reference-audio' | 'unknown';
-export type CloneKind = 'none' | 'local' | 'cloud';
+export type CloneKind = 'none' | 'local';
 export type FitLevel = 'great' | 'runs' | 'cpu' | 'too-heavy';
 
 export interface ModelCapabilities {

@@ -60,7 +60,7 @@ Effort: **S** ≤ half a day · **M** 1–3 days · **L** a week or more. Stream
 3. Third-party notices: generate at build time (e.g. `license-checker`) and bundle. AGPL-3.0 can include Apache-2.0, MIT and (L)GPL-3 code; confirm `phonon-tts` and the voice dataset licenses, and check `@breezystack/lamejs` **(verify)**.
 4. AGPL §13: add a visible **Source code** link and version/commit in Settings → About. The local API is loopback-only, but this keeps modified builds compliant.
 5. Repo files: `README`, `CONTRIBUTING` (CLA, how to add a model), `CODE_OF_CONDUCT`, `SECURITY.md` (the app runs downloaded code and a local API), `.github/ISSUE_TEMPLATE` including a **Model request** form (license, size, languages, ONNX/GGUF availability), PR template **(S)**.
-6. Name check: trademark and domain search for "Voxarium" before posting **(S)**. Keep "unofficial, not affiliated with Gradium" wherever Phonon appears.
+6. Name check: trademark and domain search for "Voxarium" before posting **(S)**. Voxarium names no model in its own branding; each model card carries its own credit and license. Say "not affiliated with any model author" in the README.
 7. Store policy: do **not** plan Mac App Store or Microsoft Store in M1. Their terms conflict with AGPL-style distribution **(verify)**; GitHub Releases is the channel.
 
 ### B. CI and release pipeline (M)

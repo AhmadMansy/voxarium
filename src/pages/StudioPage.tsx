@@ -777,7 +777,7 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
               <div>
                 <strong>Your render will appear here</strong>
                 <p>
-                  Phonon streams audio as it generates, then saves the take to your history. Use the buttons above to export
+                  {activeModel.shortName} streams audio as it generates, then saves the take to your history. Use the buttons above to export
                   WAV or MP3 whenever you like.
                 </p>
               </div>

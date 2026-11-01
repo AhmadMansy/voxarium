@@ -130,6 +130,14 @@ try {
         await wait(700);
         await shot(name, size, theme);
       }
+      // The Add a voice dialog.
+      await page.locator('.nav-item', { hasText: 'Voices' }).first().click();
+      await page.getByRole('button', { name: /Add a voice/ }).first().click();
+      await page.waitForSelector('.add-voice');
+      await wait(400);
+      await shot('09-add-voice', size, theme);
+      await page.keyboard.press('Escape');
+      await wait(300);
     }
   }
   console.log(`\nScreenshots written to ${outDir}`);

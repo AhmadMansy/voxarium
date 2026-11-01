@@ -16,7 +16,7 @@ interface VoicePickerProps {
 }
 
 export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
-  const { settings, model, models, updateSettings, engine, customVoices, openClone } = useStudio();
+  const { settings, model, models, updateSettings, engine, customVoices, openAddVoice } = useStudio();
   const { favorites, isFavorite, toggle } = useFavoriteVoices();
   const [query, setQuery] = useState('');
   const [locale, setLocale] = useState('all');
@@ -104,7 +104,7 @@ export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
               className="btn btn--subtle"
               onClick={() => {
                 onClose();
-                openClone('record');
+                openAddVoice();
               }}
             >
               <Icon name="mic" size={15} /> Add a voice

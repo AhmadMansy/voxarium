@@ -244,7 +244,7 @@ export function BatchPage() {
       .sort((a, b) => a.createdAt - b.createdAt)
       .map((entry) => ({
         path: entry.filePath,
-        name: slugify(entry.title, 70) || `phonon-${entry.id.slice(0, 6)}`,
+        name: slugify(entry.title, 70) || `voxarium-${entry.id.slice(0, 6)}`,
       }));
     if (!files.length) return;
     const response = await window.studio.audio.exportMany(files);
@@ -315,7 +315,7 @@ export function BatchPage() {
             spellCheck
             disabled={running}
             onChange={(event) => setScript(event.target.value)}
-            placeholder={`[Zoey] Welcome back to the show — today we're talking about sound.\n[Phonon Default] Every line gets its own voice.\n\nOr write without brackets to use the voice from the studio.`}
+            placeholder={`[${getVoice(fallbackVoiceId).name}] Welcome back to the show — today we're talking about sound.\nPut a voice name in square brackets to give a line its own voice.\n\nOr write without brackets to use the voice from the studio.`}
           />
           <div className="editor__foot batch-editor__foot">
             <div className="editor__stats">

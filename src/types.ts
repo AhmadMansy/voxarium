@@ -56,7 +56,7 @@ export interface VoiceInfo {
   file: string;
   isDefault: boolean;
   /**
-   * Catalog voices come from Gradium; custom ones are cloned or imported locally;
+   * Catalog voices ship with the model's voice pack; custom ones are imported locally;
    * model voices are reported by a sidecar model and only work with that model.
    */
   source?: 'catalog' | 'custom' | 'model';
@@ -76,19 +76,8 @@ export interface CustomVoiceRecord {
   bytes: number;
   fileName: string;
   sha256?: string;
-  /** Set when the speaker permission checkbox was confirmed during a cloud clone. */
+  /** Legacy: set on voices cloned by an earlier version; kept so they keep working. */
   consentAt?: number;
-}
-
-export interface CloneProgress {
-  stage: 'upload' | 'wait' | 'download' | 'done';
-  message: string;
-  voiceId?: string;
-}
-
-export interface CloneKeyStatus {
-  hasKey: boolean;
-  encrypted: boolean;
 }
 
 export interface Catalog {
@@ -122,8 +111,6 @@ export interface Settings {
   autoSave: boolean;
   autoPlay: boolean;
   streaming: boolean;
-  /** Cloud cloning sends a short recording to Gradium once; off means import-only. */
-  allowCloudCloning: boolean;
   /** Adapter preference for multi-GPU machines. High-performance needs a restart. */
   gpuPreference: GpuPreference;
   defaultVoice: string;
@@ -441,17 +428,6 @@ export interface StudioApi {
     tokenStatus: () => Promise<{ hasToken: boolean; encrypted: boolean }>;
     setToken: (token: string) => Promise<{ ok: boolean; hasToken: boolean; encrypted: boolean; user?: string | null; error?: string }>;
   };
-  clone: {
-    keyStatus: () => Promise<CloneKeyStatus>;
-    setKey: (key: string) => Promise<CloneKeyStatus & { ok: boolean; error?: string }>;
-    create: (payload: {
-      audio: ArrayBuffer;
-      name: string;
-      language: string;
-      startS?: number;
-      consentAt?: number;
-    }) => Promise<{ ok: boolean; code?: string; error?: string; voice?: CustomVoiceRecord }>;
-  };
   history: {
     list: () => Promise<HistoryEntry[]>;
     upsert: (entry: HistoryEntry) => Promise<HistoryEntry>;
@@ -503,6 +479,5 @@ export interface StudioApi {
   onModelsChanged: (callback: () => void) => () => void;
   onSidecarLog: (callback: (event: SidecarLogEvent) => void) => () => void;
   onSidecarStatus: (callback: (status: SidecarStatus) => void) => () => void;
-  onCloneProgress: (callback: (progress: CloneProgress) => void) => () => void;
   onMenuAction: (callback: (action: { action: string; page?: Page }) => void) => () => void;
 }

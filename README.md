@@ -14,14 +14,13 @@ No cloud service, no account and no upload.
 ![Electron](https://img.shields.io/badge/Electron-40-47848F?logo=electron&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
 ![Models](https://img.shields.io/badge/TTS%20models-15-8B5CF6)
-![Voices](https://img.shields.io/badge/voices-103-8B5CF6)
 
 [Features](#features) · [Screenshots](#screenshots) · [Install](#install) ·
 [Integrations](#use-it-from-other-apps) · [Development](#development)
 
 <br />
 
-<img src="docs/screenshots/studio.png" alt="The Voxarium Studio, with a script, the Phonon 31M voice model, voice and delivery controls" width="900" />
+<img src="docs/screenshots/studio.png" alt="The Voxarium Studio, with a script, voice and delivery controls" width="900" />
 
 </div>
 
@@ -39,23 +38,23 @@ No cloud service, no account and no upload.
 | | |
 | --- | --- |
 | 🎙️ **Studio** | Write a script, pick a voice, tune temperature and seed, and hear the speech as it streams in. |
-| 🧩 **Model registry** | 15 curated TTS models with license, capability, hardware-fit and quality scores. Phonon runs inside the app. The others run in a local Python sidecar whose environment (uv, CPython, CUDA or CPU PyTorch) is built on your computer from a pinned recipe. |
-| 🧭 **First-run chooser** | The setup assistant lists every model with its fit, license and runtime status, then installs the one you pick with verified downloads. Gated models (Phonon 40M, OpenAudio) need a Hugging Face token in Settings. |
-| 🗣️ **103 voices** | Search, filter by accent and gender, star favorites, preview and cast with one click. Voices are grouped by model compatibility, so you can't select one the active model doesn't support. |
+| 🧩 **Model registry** | 15 curated TTS models with license, capability, hardware-fit and quality scores. Small models run inside the app (WebAssembly or WebGPU); the others run in a local Python sidecar whose environment (uv, CPython, CUDA or CPU PyTorch) is built on your computer from a pinned recipe. |
+| 🧭 **First-run chooser** | The setup assistant lists every model with its fit, license and runtime status, then installs the one you pick with verified downloads. Gated models need a Hugging Face token in Settings. |
+| 🗣️ **Voice library** | Search, filter by accent and gender, star favorites, preview and cast with one click. The library shows the voices the active model supports, and you can add your own. |
 | 📚 **History** | Every take is saved with its model, license and generation stats. You can replay, rename, favorite, reuse, export or reveal any take in its folder. |
 | 📜 **Batch** | Render up to 50 lines in one pass. Cast a voice per line with a `[Voice Name]` prefix, check the queue against the active model, then export every result at once. |
 | 🎛️ **Voice controls** | Q8/F32 precision, Auto/CPU/WebGPU device, thread count, language normalization, rewrite rules, speaking conditions, pronunciation overrides and reproducible seeds. Controls a model doesn't support are disabled, with the reason shown. |
 | 💾 **Export** | WAV or MP3, with a configurable filename template and default export folder. |
 | 🔌 **API, MCP and CLI** | An OpenAI-compatible API on `127.0.0.1`, an MCP server for AI agents, and a command line, all using the same engine as the Studio. Optional tray mode keeps it running in the background. |
 | 🎨 **Polished shell** | Graphite (dark) and Paper (light) themes, five accent colors, bundled typefaces so it looks the same on Windows, Linux and macOS, a global player with speed and volume controls, remembered window state, and a keyboard shortcut for every page (<kbd>Ctrl</kbd>+<kbd>1</kbd>–<kbd>7</kbd>). |
-| 🔒 **Privacy gates** | SHA-256-verified downloads, atomic per-model installs, acknowledgments for restricted licenses, loopback-only sidecars, and explicit consent before cloud voice cloning. |
+| 🔒 **Privacy gates** | SHA-256-verified downloads, atomic per-model installs, acknowledgments for restricted licenses, loopback-only sidecars, and no uploads: your scripts, voices and speech never leave your computer. |
 
 ## Screenshots
 
 <table>
   <tr>
     <td width="50%"><img src="docs/screenshots/models.png" alt="Models page with runtime packs and install status" /><br /><sub><b>Models</b>: install and switch engines; every runtime is verified before use.</sub></td>
-    <td width="50%"><img src="docs/screenshots/voices.png" alt="Voice library grid with previews and filters" /><br /><sub><b>Voices</b>: audition, filter, favorite and cast the 103-voice library.</sub></td>
+    <td width="50%"><img src="docs/screenshots/voices.png" alt="Voice library grid with previews and filters" /><br /><sub><b>Voices</b>: audition, filter, favorite and cast from the voice library.</sub></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/history.png" alt="History page with takes, waveform and generation details" /><br /><sub><b>History</b>: every take, with its settings and generation stats.</sub></td>
@@ -72,8 +71,8 @@ No cloud service, no account and no upload.
 
 ## Install
 
-**Requirements:** Windows 10/11 (x64), Linux (x64) or macOS. A GPU is optional. Phonon 31M
-runs on the CPU or through WebGPU, and the sidecar models use CUDA when it's available.
+**Requirements:** Windows 10/11 (x64), Linux (x64) or macOS. A GPU is optional. Small
+models run on the CPU or through WebGPU, and the sidecar models use CUDA when it's available.
 
 ### Platform support
 
@@ -83,7 +82,7 @@ each system today:
 | | Windows | Linux | macOS |
 | --- | --- | --- | --- |
 | App, Studio, History, Batch, API, CLI | ✅ | 🧪 builds, not yet tested by CI | 🧪 builds, not yet tested by CI |
-| Phonon models (in-app, no Python) | ✅ | 🧪 | 🧪 |
+| Models that run inside the app (no Python) | ✅ | 🧪 | 🧪 |
 | Python models (Kokoro, Supertonic, …) | ✅ Kokoro and Supertonic proven end to end; the other 11 have recipes but are not run end to end (shown as *Experimental*) | 🧪 *Experimental*: the runtime packs exist but have not been run yet | 🧪 *Experimental* on Apple Silicon (CPU); Intel Macs only get models that don't need PyTorch |
 
 ✅ verified · 🧪 expected to work, being verified. Each model card shows its tier for your system (*Builds*, *Experimental* or *Unsupported*). Progress is tracked in
@@ -111,12 +110,13 @@ npm run pack         # installer for your current OS, written to release/
 Use `pack:win`, `pack:linux` or `pack:mac` to target a system explicitly (each must run on that
 system). On Windows PowerShell use `npm.cmd` if script execution is restricted.
 
-**First launch.** The model chooser opens. Installing Phonon 31M downloads its verified
-Q8 weights and default voice into `%APPDATA%\Voxarium`. After that, generating speech
-doesn't need a network connection.
+**First launch.** The model chooser opens. Pick a model and Voxarium downloads its verified
+files into `%APPDATA%\Voxarium` (`~/.config/Voxarium` on Linux, `~/Library/Application Support/Voxarium`
+on macOS). After that, generating speech doesn't need a network connection.
 
-> **Upgrading from Phonon Studio?** On first launch, Voxarium adopts the existing
-> `%APPDATA%\Phonon Studio` folder, so your models, voices, settings and history carry over.
+> **Upgrading from an early build?** Early builds were called *Phonon Studio*. On first launch on
+> Windows, Voxarium adopts the existing `%APPDATA%\Phonon Studio` folder, so your models, voices,
+> settings and history carry over.
 
 ## Use it from other apps
 
@@ -128,7 +128,7 @@ from openai import OpenAI
 
 client = OpenAI(base_url="http://127.0.0.1:7849/v1", api_key="<token>")
 client.audio.speech.create(
-    model="phonon-31m-en",
+    model="kokoro-82m",  # any installed model id
     voice="",  # empty: the current voice
     input="Hello from Voxarium",
 ).write_to_file("hello.mp3")
@@ -152,7 +152,7 @@ matrix, runtime limits, license and capability gates, and test coverage.
 | --- | --- |
 | `%APPDATA%\Voxarium\models\<id>` | Verified model weights, tokenizer, config and default voice |
 | `%APPDATA%\Voxarium\voices` | Downloaded voice embeddings |
-| `%APPDATA%\Voxarium\voices\custom` | Imported or cloned custom voices |
+| `%APPDATA%\Voxarium\voices\custom` | Imported custom voices |
 | `%APPDATA%\Voxarium\audio` | Generated WAV recordings |
 | `%APPDATA%\Voxarium\history.json` | Recording metadata |
 
@@ -184,7 +184,7 @@ src/             React renderer
   lib/           Engine, ONNX/sidecar clients, audio encoding, catalog, utilities
   models/        Registry, fit, license, compatibility and preference logic
   styles/        Stylesheet partials
-public/phonon/   Pinned Phonon runtime copied in by scripts/sync-phonon.mjs
+public/phonon/   Pinned in-app speech engine (WebAssembly), copied in by scripts/sync-phonon.mjs
 public/ort/      Pinned ONNX Runtime Web assets copied in by scripts/sync-ort.mjs
 scripts/         Build-time asset scripts and the unit/E2E test runners
 docs/            Integration guide, model support matrix, screenshots
@@ -192,9 +192,9 @@ docs/            Integration guide, model support matrix, screenshots
 
 ## Credits
 
-Phonon 31M by [Gradium](https://gradium.ai/phonon), Apache-2.0. Voice embeddings from
-[gradium/phonon-voices](https://huggingface.co/gradium/phonon-voices). Each additional
-model keeps its own license, which Voxarium shows before install.
+Voxarium does not include any speech model. Every model is downloaded from its original host, keeps
+its own license and credits (shown in the app before you install it, and listed in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)), and is not affiliated with Voxarium.
 
 ## License and contributing
 
