@@ -91,7 +91,7 @@ jobs:
           sha256sum * > SHA256SUMS.txt
           cd ..
           npm sbom --package-lock-only --omit dev --sbom-format cyclonedx > assets/sbom.cdx.json
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: "assets/*"
       - name: Create draft release
