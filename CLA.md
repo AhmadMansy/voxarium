@@ -94,8 +94,9 @@ You confirm that:
 2. **Employers and schools.** If your employer or school has or may have rights in what you
    create, you have either (a) permission from them in writing to contribute under this
    agreement, or (b) a written waiver of those rights. If your employer requires a corporate
-   agreement, your employer must sign the Maintainer's corporate contributor agreement before
-   you contribute. Until one exists, do not contribute work that your employer owns.
+   agreement, your employer must sign the Maintainer's corporate contributor agreement
+   ([`CCLA.md`](CCLA.md)) before you contribute. Do not contribute work that your employer
+   owns until it has.
 3. **Third-party work.** Only you, or the person who owns the work, can license it under
    Section 1. If your Contribution includes anyone else's work, you will clearly say so,
    name the author and its license, and confirm that the license allows it to be included in
@@ -174,4 +175,4 @@ and the bot records your GitHub username. You only sign once for each version of
 agreement. By signing, you accept this Contributor License Agreement.
 
 **If you contribute on behalf of your employer** or any other organization, the organization
-must sign a corporate contributor agreement first (see Section 3.2).
+must sign the [corporate contributor agreement](CCLA.md) first (see Section 3.2).

@@ -7,7 +7,10 @@ source under the **AGPL-3.0-or-later**.
 
 1. **Sign the CLA.** The CLA bot comments on your first pull request. See [`CLA.md`](CLA.md)
    for what it says and why: it keeps the code open source and lets the maintainer license it
-   in other ways later. You keep your copyright. You sign once.
+   in other ways later. You keep your copyright. You sign once per version of the CLA.
+   If your employer may own what you write, your employer must sign the
+   [corporate CLA](CCLA.md) first. Do not contribute voice recordings, datasets or model weights
+   without the written consent described in section 3.5 of the CLA.
 2. **Read the [Code of Conduct](CODE_OF_CONDUCT.md).**
 3. For anything bigger than a small fix, open an issue first so we can agree on the approach.
 
