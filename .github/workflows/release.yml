@@ -70,7 +70,8 @@ jobs:
       - name: Tag must match package.json
         run: |
           version="v$(node -p "require('./package.json').version")"
-          if [ "$version" != "${GITHUB_REF_NAME}" ]; then
+          base="${GITHUB_REF_NAME%%-*}"
+          if [ "$version" != "$base" ]; then
             echo "Tag ${GITHUB_REF_NAME} does not match package.json version $version" >&2
             exit 1
           fi
@@ -101,6 +102,8 @@ jobs:
           Builds may be unsigned. Verify downloads with `SHA256SUMS.txt`.
           See the README for platform support per model.
           EOF
-          gh release create "${GITHUB_REF_NAME}" assets/* \
+          flags=""
+          case "${GITHUB_REF_NAME}" in *-*) flags="--prerelease" ;; esac
+          gh release create "${GITHUB_REF_NAME}" assets/* $flags\
             --draft --title "Voxarium ${GITHUB_REF_NAME}" \
             --notes-file release-notes.md --generate-notes

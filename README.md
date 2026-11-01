@@ -141,6 +141,7 @@ All model files are pinned to specific Hugging Face revisions. Before use, each 
 checked against its expected size and SHA-256 hash. The local model server binds only to
 `127.0.0.1`. See [`docs/model-support.md`](docs/model-support.md) for the shipped model
 matrix, runtime limits, license and capability gates, and test coverage.
+There is no telemetry; [`docs/privacy.md`](docs/privacy.md) lists every host the app can contact.
 
 ### Local data
 
@@ -153,6 +154,22 @@ matrix, runtime limits, license and capability gates, and test coverage.
 | `%APPDATA%\Voxarium\history.json` | Recording metadata |
 
 You can clear model and voice downloads from Settings without touching your recordings.
+
+## Known limitations
+
+- **Early release.** Only the Windows build has been run end to end. Linux and macOS builds are
+  produced by CI but are experimental, and the release workflows have not run on GitHub yet.
+- **Model coverage.** Phonon runs inside the app. Of the Python models, Kokoro, Supertonic and
+  Piper are proven end to end on Windows; the rest are marked *Experimental*, and Sopro V2 Turbo
+  has never been built here.
+- **macOS** uses the CPU only, and Intel Macs only get models that don't need PyTorch.
+- **First start of some models** downloads a few helper files that are not hash-pinned. The app
+  labels these.
+- **Gated models** need a Hugging Face token that you add yourself in Settings.
+- **The test synthesis** after an install reports a problem but does not stop you activating a model.
+- **Builds are unsigned**, so Windows SmartScreen and macOS Gatekeeper will warn. Verify downloads
+  with `SHA256SUMS.txt`. See [`docs/signing-plan.md`](docs/signing-plan.md).
+- **The CLA is an unreviewed draft** that has not had legal review.
 
 ## Development
 
