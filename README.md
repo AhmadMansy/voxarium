@@ -47,7 +47,7 @@ No cloud service, no account and no upload.
 | 🎛️ **Voice controls** | Q8/F32 precision, Auto/CPU/WebGPU device, thread count, language normalization, rewrite rules, speaking conditions, pronunciation overrides and reproducible seeds. Controls a model doesn't support are disabled, with the reason shown. |
 | 💾 **Export** | WAV or MP3, with a configurable filename template and default export folder. |
 | 🔌 **API, MCP and CLI** | An OpenAI-compatible API on `127.0.0.1`, an MCP server for AI agents, and a command line, all using the same engine as the Studio. Optional tray mode keeps it running in the background. |
-| 🎨 **Polished shell** | Dark and light themes, four accent colors, a global player with speed and volume controls, remembered window state, and a keyboard shortcut for every page (<kbd>Ctrl</kbd>+<kbd>1</kbd>–<kbd>7</kbd>). |
+| 🎨 **Polished shell** | Graphite (dark) and Paper (light) themes, five accent colors, bundled typefaces so it looks the same on Windows, Linux and macOS, a global player with speed and volume controls, remembered window state, and a keyboard shortcut for every page (<kbd>Ctrl</kbd>+<kbd>1</kbd>–<kbd>7</kbd>). |
 | 🔒 **Privacy gates** | SHA-256-verified downloads, atomic per-model installs, acknowledgments for restricted licenses, loopback-only sidecars, and explicit consent before cloud voice cloning. |
 
 ## Screenshots
@@ -66,7 +66,7 @@ No cloud service, no account and no upload.
     <td><img src="docs/screenshots/settings.png" alt="Settings page with appearance and engine options" /><br /><sub><b>Settings</b>: themes, accents, precision, device and storage.</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/studio-light.png" alt="The Studio in the light theme" width="75%" /><br /><sub>The Studio in the <b>Daylight</b> theme.</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/studio-light.png" alt="The Studio in the light theme" width="75%" /><br /><sub>The Studio in the <b>Paper</b> theme.</sub></td>
   </tr>
 </table>
 
