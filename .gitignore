@@ -17,3 +17,6 @@ Thumbs.db
 
 # Python bytecode from sidecar adapters
 __pycache__/
+
+# Personal research notes and reports (not documentation; never committed)
+research/
