@@ -22,7 +22,7 @@ jobs:
           - { name: linux, os: ubuntu-latest, script: "pack:linux" }
           - { name: macos, os: macos-latest, script: "pack:mac" }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -69,7 +69,7 @@ jobs:
       id-token: write       # build provenance
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
