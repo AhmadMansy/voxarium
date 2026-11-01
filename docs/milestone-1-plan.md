@@ -1,7 +1,7 @@
 # Voxarium — Milestone 1 plan: public launch
 
 **Status:** Proposal · **Date:** 1 November 2026
-**Decisions already made:** the app is AGPL-3.0 with a CLA and stays open source forever; the install pipeline follows the one-contract design from `pipeline-and-legal-report.html`; targets are Windows, Linux and macOS; releases are built by GitHub Actions; the launch is announced on x.com.
+**Decisions already made:** the app is AGPL-3.0 with a CLA and stays open source forever; the install pipeline follows the one-contract design described in `docs/model-support.md`; targets are Windows, Linux and macOS; releases are built by GitHub Actions; the launch is announced on x.com.
 
 > Not legal advice. Items marked **(verify)** are general knowledge or unchecked and must be confirmed when implemented.
 
