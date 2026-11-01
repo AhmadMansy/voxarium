@@ -346,12 +346,6 @@
   min-width: 0;
 }
 
-.titlebar__page,
-.titlebar__divider,
-.titlebar__hint {
-  display: none;
-}
-
 .titlebar__status {
   display: flex;
   align-items: center;
@@ -440,11 +434,6 @@
 .page-header__text {
   min-width: 0;
   max-width: 760px;
-}
-
-/* The eyebrow and icon tile repeated what the title already says. */
-.page-header__eyebrow {
-  display: none;
 }
 
 .page-header h1 {

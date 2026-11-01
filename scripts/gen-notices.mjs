@@ -98,7 +98,6 @@ out.push(
   '',
   '| Asset | Source | License |',
   '| --- | --- | --- |',
-  '| `public/ort/*` ONNX Runtime Web | https://github.com/microsoft/onnxruntime | MIT |',
   '| `public/phonon/*` phonon-tts runtime | https://www.npmjs.com/package/phonon-tts | See section 1 |',
   '| `electron/sidecars/assets/reference-en.wav` | Kokoro `af_heart_0.wav` synthetic sample | Apache-2.0 |',
   '| Voice catalog `src/data/voices.json` | https://huggingface.co/gradium/phonon-voices | **Verify** before release |',

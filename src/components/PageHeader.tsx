@@ -1,26 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ReactNode } from 'react';
 import { useStudio } from '../state';
-import { Icon, type IconName } from './Icons';
+import { Icon } from './Icons';
 
 interface PageHeaderProps {
-  icon: IconName;
-  eyebrow?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
 }
 
-export function PageHeader({ icon, eyebrow, title, description, actions }: PageHeaderProps) {
+export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
     <header className="page-header">
       <div className="page-header__text">
-        <div className="page-header__eyebrow">
-          <span className="page-header__icon">
-            <Icon name={icon} size={14} />
-          </span>
-          {eyebrow || 'Voxarium'}
-        </div>
         <h1>{title}</h1>
         {description && <p>{description}</p>}
       </div>

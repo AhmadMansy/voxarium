@@ -180,8 +180,6 @@ export function IntegrationsPage() {
   return (
     <div className="page page--integrations">
       <PageHeader
-        icon="plug"
-        eyebrow="Integrations"
         title="Use Voxarium from other apps"
         description="An OpenAI-compatible API, an MCP server for AI agents and a command line, all on this computer and all using the same engine as the Studio."
         actions={

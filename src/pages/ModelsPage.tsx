@@ -653,8 +653,6 @@ export function ModelsPage() {
   return (
     <div className="page page--models">
       <PageHeader
-        icon="layers"
-        eyebrow="Models"
         title="Choose your voice engine"
         description="Every model stays visible with its license, capabilities and hardware fit. Download only what you want to run."
         actions={

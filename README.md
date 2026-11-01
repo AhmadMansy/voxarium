@@ -114,10 +114,6 @@ system). On Windows PowerShell use `npm.cmd` if script execution is restricted.
 files into `%APPDATA%\Voxarium` (`~/.config/Voxarium` on Linux, `~/Library/Application Support/Voxarium`
 on macOS). After that, generating speech doesn't need a network connection.
 
-> **Upgrading from an early build?** Early builds were called *Phonon Studio*. On first launch on
-> Windows, Voxarium adopts the existing `%APPDATA%\Phonon Studio` folder, so your models, voices,
-> settings and history carry over.
-
 ## Use it from other apps
 
 Turn on the local API on the **Integrations** page. Then any OpenAI-compatible client
@@ -185,7 +181,6 @@ src/             React renderer
   models/        Registry, fit, license, compatibility and preference logic
   styles/        Stylesheet partials
 public/phonon/   Pinned in-app speech engine (WebAssembly), copied in by scripts/sync-phonon.mjs
-public/ort/      Pinned ONNX Runtime Web assets copied in by scripts/sync-ort.mjs
 scripts/         Build-time asset scripts and the unit/E2E test runners
 docs/            Integration guide, model support matrix, screenshots
 ```

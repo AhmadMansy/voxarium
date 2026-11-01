@@ -250,11 +250,7 @@ export function App() {
 
       <div className={classNames('workspace', player.meta && 'has-player')}>
         <header className="titlebar">
-          <div className="titlebar__drag">
-            <span className="titlebar__page">{PAGE_LABEL[page]}</span>
-            <span className="titlebar__divider" />
-            <span className="titlebar__hint">{active.hint}</span>
-          </div>
+          <div className="titlebar__drag" />
           <div className="titlebar__status">
             <span className="titlebar__local">
               <Icon name="shield" size={12} /> On-device

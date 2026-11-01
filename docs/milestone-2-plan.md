@@ -45,8 +45,7 @@ multilingual model **without Python**, and to make the next small models cheap t
 | Piece | State |
 | --- | --- |
 | `RuntimeKind = 'phonon' \| 'onnx-web' \| 'sidecar'` | `onnx-web` is declared in the types, the model card and the wizard icons |
-| `src/lib/onnx.ts`, `src/workers/ort.worker.ts` | A worker that runs **one** ONNX session, with cancellation and a memory guard. No shipped model reaches it yet |
-| `public/ort/*` | ONNX Runtime Web (WASM, threaded, and the WebGPU build) is bundled and pinned |
+| ONNX Runtime Web | **Not bundled today.** An earlier, unused single-session worker and 43 MB of runtime files were removed from the app in the clean-up before launch; this milestone adds the runtime back, together with its first real user |
 | Local model server (`electron/model-server.cjs`) | Serves model files over loopback with range requests, so a worker can fetch them by URL |
 | Supertonic files | Already pinned: 4 ONNX graphs (`duration_predictor` 3.7 MB, `text_encoder` 36.4 MB, `vector_estimator` 256.5 MB, `vocoder` 101.4 MB), `unicode_indexer.json`, `tts.json`, 10 style presets. About 398 MB |
 | Install pipeline | `planInstall` already skips toolchain, environment and first start for non-sidecar models |
@@ -58,7 +57,7 @@ multilingual model **without Python**, and to make the next small models cheap t
 
 | | A. Renderer, ONNX Runtime Web | B. Main process, `onnxruntime-node` |
 | --- | --- | --- |
-| Already in the repo | Yes (worker, bundled assets) | No |
+| Already in the repo | No (removed until needed; small to add back) | No |
 | New native binaries per OS | None | Yes, tens of MB per platform, rebuilt per Electron version |
 | Cross-platform effort | None, WebAssembly is identical everywhere | Per-OS builds and signing |
 | CPU speed | Slower (WebAssembly; threads need cross-origin isolation, which Phonon already uses) | Native, closest to the Python numbers |
@@ -76,7 +75,7 @@ Effort: **S** ≤ half a day · **M** 1–3 days · **L** about a week.
 
 ### A. In-app ONNX engine (M–L)
 
-1. **Multi-session worker.** Supertonic needs four graphs alive at once. Extend the worker from one session to named sessions (`create`, `run(name, inputs)`, `dispose`), keeping cancellation and the memory guard **(M)**.
+1. **Multi-session worker.** Supertonic needs four graphs alive at once. Write a worker that holds several named sessions (`create`, `run(name, inputs)`, `dispose`), with cancellation and a memory guard **(M)**.
 2. **Adapter interface** in TypeScript: `load(ctx)`, `voices()`, `synthesize(request)`, with streaming chunks and an abort signal, mirroring the Python adapters so the Studio, Batch, API and history code does not care which route produced the audio **(M)**.
 3. **Engine gate.** Route `onnx-web` models through the existing engine selection; keep the honest "unavailable" state until the adapter ships **(S)**.
 4. **Seeded randomness.** Supertonic starts from noise. Provide a seeded generator (so "same text, voice and seed gives the same audio" still holds) **(S)**.

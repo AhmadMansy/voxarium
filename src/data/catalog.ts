@@ -17,10 +17,6 @@ export function setCustomVoices(list: VoiceInfo[]) {
   customVoices = list;
 }
 
-export function getCustomVoices(): VoiceInfo[] {
-  return customVoices;
-}
-
 export function allVoices(): VoiceInfo[] {
   return customVoices.length ? [...customVoices, ...VOICES] : VOICES;
 }
@@ -120,16 +116,6 @@ export const englishLocales = ['en-us', 'en-gb', 'characters'];
 
 export function localeLabel(locale: string): string {
   return localeLabels[locale] || locale;
-}
-
-export function voiceInitials(name: string): string {
-  return name
-    .replace(/^(Captain|Sir|The|Old|Master|Fairy)\s+/i, '')
-    .split(/[\s-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
 }
 
 const HUES = [258, 190, 320, 28, 152, 220, 282, 348, 46, 168];

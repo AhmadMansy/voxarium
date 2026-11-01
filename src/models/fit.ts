@@ -159,13 +159,6 @@ export function fitTone(level: FitLevel): 'ok' | 'warn' | 'danger' | 'muted' {
   return 'danger';
 }
 
-export function licenseTone(license: { restricted?: boolean; commercial?: boolean | null }): 'ok' | 'warn' | 'danger' | 'muted' {
-  if (license.restricted) return 'warn';
-  if (license.commercial === false) return 'warn';
-  if (license.commercial == null) return 'muted';
-  return 'ok';
-}
-
 export function emptyHardware(): HardwareProfile {
   return {
     platform: 'unknown',

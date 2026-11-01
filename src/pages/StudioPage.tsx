@@ -439,8 +439,6 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
   return (
     <div className="page page--studio">
       <PageHeader
-        icon="studio"
-        eyebrow="Studio"
         title="Create speech"
         description="Write a script, cast a voice, and render natural speech entirely on this device."
         actions={

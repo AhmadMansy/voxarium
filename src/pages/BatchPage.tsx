@@ -276,8 +276,6 @@ export function BatchPage() {
   return (
     <div className="page page--batch">
       <PageHeader
-        icon="batch"
-        eyebrow="Batch"
         title="Render a whole script"
         description={`Put a voice in square brackets at the start of each line and ${models.activeModel.shortName} will cast every line automatically.`}
         actions={

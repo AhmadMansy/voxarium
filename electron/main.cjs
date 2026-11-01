@@ -21,7 +21,7 @@ const fsp = fs.promises;
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { startModelServer } = require('./model-server.cjs');
-const { createModelState, adoptLegacyFiles } = require('./models/state.cjs');
+const { createModelState } = require('./models/state.cjs');
 const { createModelManager } = require('./models/downloads.cjs');
 const { probeHardware } = require('./models/hardware.cjs');
 const { createSidecarSupervisor } = require('./models/sidecar.cjs');
@@ -90,56 +90,6 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 const DATA_DIR = () => app.getPath('userData');
-
-// Before the rename this app stored everything in `%APPDATA%\Phonon Studio`.
-// Adopt that folder once so existing models, voices and history keep working.
-const LEGACY_DATA_DIR = () => path.join(app.getPath('appData'), 'Phonon Studio');
-
-function migrateLegacyDataDir() {
-  try {
-    const target = DATA_DIR();
-    const legacy = LEGACY_DATA_DIR();
-    if (path.resolve(target).toLowerCase() === path.resolve(legacy).toLowerCase()) return;
-    if (!fs.existsSync(legacy)) return;
-    // Never overwrite a Voxarium profile that already has its own settings.
-    if (fs.existsSync(path.join(target, 'settings.json'))) return;
-    fs.mkdirSync(target, { recursive: true });
-    for (const entry of fs.readdirSync(legacy, { withFileTypes: true })) {
-      const from = path.join(legacy, entry.name);
-      const to = path.join(target, entry.name);
-      if (fs.existsSync(to)) continue;
-      try {
-        fs.renameSync(from, to);
-      } catch {
-        fs.cpSync(from, to, { recursive: true, force: false, errorOnExist: false });
-      }
-    }
-    console.log('[voxarium] adopted data from', legacy);
-  } catch (error) {
-    console.warn('[voxarium] could not adopt the previous data folder', error);
-  }
-}
-
-/** History stores absolute take paths, so repoint anything still under the old folder. */
-function retargetLegacyHistory() {
-  try {
-    const file = HISTORY_FILE();
-    const history = readJson(file, null);
-    if (!Array.isArray(history)) return;
-    const legacy = LEGACY_DATA_DIR();
-    const prefix = legacy.toLowerCase() + path.sep;
-    let changed = false;
-    for (const entry of history) {
-      if (!entry || typeof entry.filePath !== 'string') continue;
-      if (!entry.filePath.toLowerCase().startsWith(prefix)) continue;
-      entry.filePath = path.join(DATA_DIR(), path.relative(legacy, entry.filePath));
-      changed = true;
-    }
-    if (changed) fs.writeFileSync(file, JSON.stringify(history, null, 2), 'utf8');
-  } catch (error) {
-    console.warn('[voxarium] could not repoint the recording history', error);
-  }
-}
 
 const DIRS = () => ({
   data: DATA_DIR(),
@@ -1816,8 +1766,6 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
-    migrateLegacyDataDir();
-    retargetLegacyHistory();
     ensureDirs();
     // Cloud cloning was removed; delete any API key saved by an earlier version.
     fs.rmSync(path.join(DATA_DIR(), 'gradium-key.json'), { force: true });
@@ -1825,12 +1773,6 @@ if (!app.requestSingleInstanceLock()) {
     registerAppProtocol();
     initModelServices();
     try {
-      const adopted = await adoptLegacyFiles({
-        dirs: DIRS(),
-        state: modelState,
-        verifyFile: (file, sha) => modelManager.sha256File(file).then((hash) => hash === sha).catch(() => false),
-      });
-      if (adopted.files.length) notifyModels();
       modelServer = await startModelServer({
         dirs: DIRS(),
         resolveModelFile: (id, name) => modelManager.resolveFile(id, name),

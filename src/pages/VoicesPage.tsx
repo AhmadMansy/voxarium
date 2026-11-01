@@ -194,8 +194,6 @@ export function VoicesPage() {
   return (
     <div className="page page--voices">
       <PageHeader
-        icon="voices"
-        eyebrow="Voice library"
         title="Find a voice"
         description="Audition the cast, star the ones you love, and drop any voice straight into the studio — or add your own."
         actions={

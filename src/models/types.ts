@@ -200,7 +200,7 @@ export interface ModelInstallState {
   installedAt: number | null;
   verifiedAt: number | null;
   synthesisCheck?: SynthesisCheck | null;
-  source: 'download' | 'import' | 'legacy' | null;
+  source: 'download' | 'import' | null;
   error?: string;
 }
 

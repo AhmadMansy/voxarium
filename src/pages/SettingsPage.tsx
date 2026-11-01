@@ -268,8 +268,6 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
   return (
     <div className="page page--settings">
       <PageHeader
-        icon="settings"
-        eyebrow="Settings"
         title="Studio settings"
         description={`Tune ${models.activeModel.shortName}, choose where files live, and make the studio sound the way you want.`}
         actions={

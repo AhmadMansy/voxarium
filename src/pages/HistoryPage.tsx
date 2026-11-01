@@ -161,8 +161,6 @@ export function HistoryPage() {
   return (
     <div className="page page--history">
       <PageHeader
-        icon="history"
-        eyebrow="Library"
         title="Your recordings"
         description={`${pluralize(history.length, 'take')} · ${formatDuration(totalDuration)} of speech · ${formatBytes(totalBytes)} on disk`}
         actions={

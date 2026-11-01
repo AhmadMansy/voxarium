@@ -1,8 +1,8 @@
 # Model support in Voxarium
 
 This note describes what the multi-model studio ships today, which gates are
-enforced, and how to extend the registry. The authoritative product spec lives in
-[`model-expansion-plan.md`](./model-expansion-plan.md).
+enforced, and how to extend the registry. Planned work is described in the milestone
+plans in this folder.
 
 ## Design rules
 

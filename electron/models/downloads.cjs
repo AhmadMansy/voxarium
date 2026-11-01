@@ -377,10 +377,6 @@ function createModelManager({ dirs, appVersion, state, broadcast, getToken = () 
     if (!model.files.some((file) => file.name === name)) return null;
     const finalPath = path.join(modelDir(dirs, model.id), name);
     if (fs.existsSync(finalPath)) return finalPath;
-    if (model.id === getModel(null).id) {
-      const legacy = path.join(dirs.models, name);
-      if (fs.existsSync(legacy)) return legacy;
-    }
     return null;
   }
 
