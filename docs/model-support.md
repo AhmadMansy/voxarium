@@ -157,7 +157,7 @@ Uninstalling uv or Python is refused while a model environment still uses it.
 ### Sidecar protocol
 
 The supervisor (`electron/models/sidecar.cjs`) starts
-`venv/Scripts/python.exe start.py --host 127.0.0.1 --port 0 --model-dir <dir>`
+`venv/Scripts/python.exe start.py --host 127.0.0.1 --port 0 --model-dir <dir>` (`venv/bin/python` on Linux and macOS)
 with a random 32-byte token. The server prints `VOXARIUM_READY {"port": N}` as
 soon as it listens, then loads the model in the background. `GET /health` reports
 `{ready, stage, error, device}`; `GET /voices` lists the model's voices plus the
@@ -336,7 +336,12 @@ and an offline restart.
   Breeze TTS 2 and VoxCPM2 are slow on CPU, and MOSS needs about 20 GB of free RAM.
 - **Disk.** A CUDA environment is 4–6 GB before weights. uv hard-links PyTorch
   from its cache, so additional models that share a PyTorch version cost much less.
-- **Linux/macOS.** Recipes target Windows x64 (`win32`/`x64` packs only).
+- **Linux/macOS.** `uv` and CPython are pinned per platform (`win32-x64`, `linux-x64`,
+  `darwin-arm64`, `darwin-x64`) and every sidecar declares a support tier per platform in
+  `runtimes.json` (`A` verified, `B` builds, `C` experimental; missing means unsupported).
+  Only Kokoro and Supertonic are `B` on Windows; everything on Linux and macOS is `C` until a
+  smoke test runs there. macOS runs sidecars on the CPU (no MPS yet), and Intel Macs get only
+  recipes without PyTorch because PyTorch publishes no recent macOS Intel wheels.
 - **Verification depth.** Every recipe is checked to resolve on Windows x64 with
   binary wheels (or pure-Python sources). Supertonic and Kokoro were built,
   downloaded and synthesized end to end on Windows; the larger models share the

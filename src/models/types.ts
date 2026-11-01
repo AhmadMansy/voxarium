@@ -246,6 +246,10 @@ export interface RuntimePackState {
   version: string;
   platform: string;
   arch: string;
+  /** Support tier on this platform: A verified, B builds, C experimental, D unsupported. */
+  tier?: 'A' | 'B' | 'C' | 'D' | null;
+  tierLabel?: string | null;
+  platformLabel?: string;
   description: string;
   homepage?: string;
   license: ModelLicense;

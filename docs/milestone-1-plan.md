@@ -205,3 +205,14 @@ Keep each post under 280 characters unless the account has longer posts. Pin pos
 **Before the first push:** create the `cla-signatures` branch (the CLA bot stores signatures there), enable private vulnerability reporting and Discussions, and have the CLA reviewed.
 
 **Next:** workstream C (platform-aware runtime catalog and helpers), then D (pipeline object, preflight, test synthesis).
+
+**2026-11-01 (later) — workstream C started (committed on `feat/milestone-1-foundations`):**
+
+- [x] `electron/models/platform.cjs`: platform key, per-platform entry resolution, venv paths, support tiers (A/B/C/D), pack resolution. Unit-tested for every platform from Windows.
+- [x] `runtimes.json`: `uv` and `python-3.12` are platform-neutral packs with pinned `variants` for `win32-x64`, `linux-x64`, `darwin-arm64`, `darwin-x64` (sizes and SHA-256 measured from the real release assets); old `uv-win-x64` / `python-3.12-win-x64` installs migrate automatically.
+- [x] Every sidecar declares `support` per platform: Kokoro and Supertonic are `B` on Windows, the other 11 are `C`; Linux and Apple Silicon are `C`; Intel Macs only get torch-free recipes.
+- [x] Runtime manager: `venv/bin/python` on POSIX, DLL setup and `msvc-runtime` Windows-only, macOS PyTorch from PyPI without a local version suffix, unsupported packs report why.
+- [x] Archive extractor: POSIX file modes (executable bit), safe relative symlinks and hard links, device entries rejected, containment re-checked after links. Verified against the real macOS Python archive; the real Linux archive needs a case-sensitive filesystem (CI).
+- [x] UI: tier badge on model cards; macOS traffic-light layout, app menu; Linux login-item switch disabled; platform-aware wording.
+- [x] Verified on Windows: 33/33 model tests, typecheck, build, and a real download + install + run of `uv` 0.13.6 and Python 3.12.16 through the manager.
+- Not done: macOS MPS; Linux arm64; CI smoke tests per OS (workstream C7); anything on a real Linux or macOS machine.

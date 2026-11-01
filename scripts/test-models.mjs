@@ -10,13 +10,16 @@ import { createServer } from 'vite';
 
 const require = createRequire(import.meta.url);
 const { extractArchive, safePath } = require('../electron/models/archive.cjs');
+const platformLib = require('../electron/models/platform.cjs');
+const runtimesLib = require('../electron/models/runtimes.cjs');
 const runtimeCatalog = require('../electron/models/runtimes.json');
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-function tarHeader(name, size, type = '0') {
+function tarHeader(name, size, type = '0', mode = '0000644', linkname = '') {
   const header = Buffer.alloc(512, 0);
   header.write(name, 0, 100, 'utf8');
-  header.write('0000644\0', 100, 8, 'utf8');
+  header.write(`${mode}\0`, 100, 8, 'utf8');
+  if (linkname) header.write(linkname, 157, 100, 'utf8');
   header.write('0000000\0', 108, 8, 'utf8');
   header.write('0000000\0', 116, 8, 'utf8');
   header.write(`${size.toString(8).padStart(11, '0')}\0`, 124, 12, 'utf8');
@@ -35,7 +38,7 @@ function buildTarGz(entries) {
   const chunks = [];
   for (const entry of entries) {
     const body = Buffer.from(entry.data || '');
-    chunks.push(tarHeader(entry.name, body.length, entry.type || '0'));
+    chunks.push(tarHeader(entry.name, body.length, entry.type || '0', entry.mode || '0000644', entry.link || ''));
     chunks.push(body);
     chunks.push(Buffer.alloc((512 - (body.length % 512)) % 512));
   }
@@ -240,17 +243,26 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
     assert.equal(new Set(packs.map((pack) => pack.id)).size, packs.length);
 
     const uv = packs.find((pack) => pack.kind === 'tool');
-    assert.equal(uv.id, 'uv-win-x64');
-    assert.match(uv.archive.sha256, /^[a-f0-9]{64}$/);
-    assert.match(uv.archive.url, /^https:\/\/github\.com\/astral-sh\/uv\/releases\/download\//);
+    assert.equal(uv.id, 'uv');
+    assert.deepEqual(uv.legacyIds, ['uv-win-x64']);
+    assert.deepEqual(Object.keys(uv.variants).sort(), [...platformLib.PLATFORMS].sort());
+    for (const [key, variant] of Object.entries(uv.variants)) {
+      assert.match(variant.archive.sha256, /^[a-f0-9]{64}$/, `uv ${key}`);
+      assert.match(variant.archive.url, /^https:\/\/github\.com\/astral-sh\/uv\/releases\/download\//, `uv ${key}`);
+      assert.ok(variant.archive.size > 1_000_000, `uv ${key} size`);
+    }
 
     const python = packs.find((pack) => pack.kind === 'python');
-    assert.equal(python.id, 'python-3.12-win-x64');
+    assert.equal(python.id, 'python-3.12');
+    assert.deepEqual(python.legacyIds, ['python-3.12-win-x64']);
     assert.equal(python.available, true);
-    assert.equal(python.entry.python, 'python/python.exe');
-    assert.equal(python.archive.size, 47113364);
-    assert.match(python.archive.sha256, /^[a-f0-9]{64}$/);
-    assert.match(python.archive.url, /^https:\/\/github\.com\/astral-sh\/python-build-standalone\//);
+    assert.equal(python.variants['win32-x64'].entry.python, 'python/python.exe');
+    assert.equal(python.variants['win32-x64'].archive.size, 47113364);
+    assert.equal(python.variants['linux-x64'].entry.python, 'python/bin/python3.12');
+    for (const [key, variant] of Object.entries(python.variants)) {
+      assert.match(variant.archive.sha256, /^[a-f0-9]{64}$/, `python ${key}`);
+      assert.match(variant.archive.url, /^https:\/\/github\.com\/astral-sh\/python-build-standalone\//, `python ${key}`);
+    }
 
     const sidecars = packs.filter((pack) => pack.kind === 'sidecar');
     assert.equal(sidecars.length, 13);
@@ -258,7 +270,7 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
       assert.equal(pack.available, true, pack.id);
       assert.equal(pack.importable, true, pack.id);
       assert.equal(pack.entry.server, 'start.py', pack.id);
-      assert.equal(pack.entry.python, 'venv/Scripts/python.exe', pack.id);
+      assert.deepEqual(pack.entry.python, { win32: 'venv/Scripts/python.exe', default: 'venv/bin/python' }, pack.id);
       assert.ok(pack.requires.includes(uv.id), pack.id);
       assert.ok(pack.license?.id, pack.id);
       const build = pack.build;
@@ -417,6 +429,131 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
       const evilOut = path.join(dir, 'evil');
       await assert.rejects(() => extractArchive(evil, evilOut), /escapes the install folder/);
       assert.equal(fs.existsSync(path.join(dir, 'escaped.txt')), false);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('catalog resolves per platform with tiers and unsupported reasons', () => {
+    const win = runtimesLib.loadCatalog('win32-x64');
+    const linux = runtimesLib.loadCatalog('linux-x64');
+    const macArm = runtimesLib.loadCatalog('darwin-arm64');
+    const macIntel = runtimesLib.loadCatalog('darwin-x64');
+    const unknown = runtimesLib.loadCatalog('freebsd-x64');
+
+    // Interpreter and tool packs pick the right archive and entry point.
+    assert.equal(win.byId.get('uv').entry.uv, 'uv.exe');
+    assert.equal(linux.byId.get('uv').entry.uv, 'uv-x86_64-unknown-linux-gnu/uv');
+    assert.equal(macArm.byId.get('python-3.12').entry.python, 'python/bin/python3.12');
+    assert.match(macArm.byId.get('uv').archive.name, /aarch64-apple-darwin/);
+    assert.equal(win.byId.get('uv-win-x64'), win.byId.get('uv'), 'legacy id still resolves');
+    assert.equal(unknown.byId.get('uv').available, false);
+    assert.match(unknown.byId.get('uv').reason, /no build for/);
+
+    // Tiers: only Kokoro and Supertonic were run end to end on Windows.
+    assert.equal(win.byId.get('kokoro-82m-sidecar').tier, 'B');
+    assert.equal(win.byId.get('supertonic-3-sidecar').tier, 'B');
+    assert.equal(win.byId.get('chatterbox-sidecar').tier, 'C');
+    assert.equal(linux.byId.get('kokoro-82m-sidecar').tier, 'C');
+    assert.equal(win.byId.get('kokoro-82m-sidecar').entry.python, 'venv/Scripts/python.exe');
+    assert.equal(linux.byId.get('kokoro-82m-sidecar').entry.python, 'venv/bin/python');
+
+    // PyTorch ships no macOS Intel wheels, so only the torch-free recipe is offered there.
+    assert.equal(macIntel.byId.get('supertonic-3-sidecar').available, true);
+    assert.equal(macIntel.byId.get('kokoro-82m-sidecar').available, false);
+    assert.equal(macIntel.byId.get('kokoro-82m-sidecar').tier, 'D');
+    assert.match(macIntel.byId.get('kokoro-82m-sidecar').reason, /does not support macOS \(Intel\)/);
+    assert.equal(unknown.byId.get('kokoro-82m-sidecar').available, false);
+
+    // Every sidecar still lists only real tool packs after the rename.
+    for (const pack of win.packs.filter((entry) => entry.kind === 'sidecar')) {
+      for (const id of pack.requires) assert.ok(win.byId.has(id), `${pack.id} requires unknown ${id}`);
+    }
+  });
+
+  await test('installs made under the old Windows-only pack ids are migrated, not lost', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'voxarium-migrate-'));
+    try {
+      const runtimes = path.join(dir, 'runtimes');
+      const uvEntry = runtimesLib.getPack('uv').entry.uv;
+      const legacy = path.join(runtimes, 'uv-win-x64');
+      fs.mkdirSync(path.dirname(path.join(legacy, uvEntry)), { recursive: true });
+      fs.writeFileSync(path.join(legacy, uvEntry), 'stub-uv');
+      fs.writeFileSync(path.join(legacy, '.voxarium-runtime.json'), JSON.stringify({ id: 'uv-win-x64', version: '0.13.6', entry: { uv: 'uv.exe' } }));
+      fs.writeFileSync(path.join(dir, 'runtimes-state.json'), JSON.stringify({ version: 1, installs: { 'uv-win-x64': { source: 'download', installedBytes: 46000000 } } }));
+
+      const manager = runtimesLib.createRuntimeManager({ dirs: { runtimes, data: dir }, appVersion: 'test', broadcast: () => {}, log: () => {} });
+      assert.equal(fs.existsSync(legacy), false, 'old folder renamed');
+      assert.equal(fs.existsSync(path.join(runtimes, 'uv', uvEntry)), true, 'files moved');
+      const status = manager.status('uv');
+      assert.equal(status.installed, true);
+      assert.equal(status.source, 'download');
+      assert.equal(manager.status('uv-win-x64').id, 'uv', 'old id still resolves');
+      const state = JSON.parse(fs.readFileSync(path.join(dir, 'runtimes-state.json'), 'utf8'));
+      assert.ok(state.installs.uv && !state.installs['uv-win-x64'], 'state record renamed');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('platform helpers resolve entries, venv paths and tiers', () => {
+    assert.equal(platformLib.platformKey('linux', 'x64'), 'linux-x64');
+    const entry = { python: { win32: 'a.exe', default: 'bin/a' }, server: 'start.py' };
+    assert.deepEqual(platformLib.resolveEntry(entry, 'win32-x64'), { python: 'a.exe', server: 'start.py' });
+    assert.deepEqual(platformLib.resolveEntry(entry, 'darwin-arm64'), { python: 'bin/a', server: 'start.py' });
+    assert.deepEqual(platformLib.resolveEntry({ x: { 'linux-x64': 'l', default: 'd' } }, 'linux-x64'), { x: 'l' });
+    assert.equal(platformLib.venvPython(path.join('v'), 'win32'), path.join('v', 'Scripts', 'python.exe'));
+    assert.equal(platformLib.venvPython(path.join('v'), 'linux'), path.join('v', 'bin', 'python'));
+    assert.equal(platformLib.tierFor({ support: { 'linux-x64': 'C' } }, 'linux-x64'), 'C');
+    assert.equal(platformLib.tierFor({ support: { 'linux-x64': 'C' } }, 'darwin-arm64'), 'D');
+    assert.equal(platformLib.tierFor({}, 'win32-x64'), 'D');
+  });
+
+  await test('the sidecar start script only registers Windows DLL folders on Windows', () => {
+    const pack = runtimeCatalog.packs.find((entry) => entry.id === 'kokoro-82m-sidecar');
+    const win = runtimesLib.startScript(pack, 'win32');
+    const linux = runtimesLib.startScript(pack, 'linux');
+    assert.match(win, /add_dll_directory/);
+    assert.doesNotMatch(linux, /add_dll_directory|Scripts/);
+    assert.match(linux, /from voxarium_sidecar import main/);
+    assert.match(linux, /main\("kokoro"\)/);
+  });
+
+  await test('tar.gz extraction keeps executable bits and safe links on POSIX, and rejects unsafe links', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'voxarium-links-'));
+    try {
+      const make = (name, entries) => {
+        const file = path.join(dir, `${name}.tar.gz`);
+        fs.writeFileSync(file, buildTarGz(entries));
+        return file;
+      };
+      const safe = make('safe', [
+        { name: 'python/', type: '5', mode: '0000755' },
+        { name: 'python/bin/', type: '5', mode: '0000755' },
+        { name: 'python/bin/python3.12', data: 'interpreter', mode: '0000755' },
+        { name: 'python/bin/python', type: '2', link: 'python3.12' },
+        { name: 'python/lib/', type: '5' },
+        { name: 'python/lib/data.txt', data: 'payload' },
+        { name: 'python/lib/copy.txt', type: '1', link: 'python/lib/data.txt' },
+      ]);
+      const escaping = make('escaping', [{ name: 'a/', type: '5' }, { name: 'a/out', type: '2', link: '../../outside' }]);
+      const absolute = make('absolute', [{ name: 'abs', type: '2', link: '/etc/passwd' }]);
+      const device = make('device', [{ name: 'dev', type: '3' }]);
+
+      if (process.platform === 'win32') {
+        // Links need extra privileges on Windows and Windows packs never contain them.
+        await assert.rejects(() => extractArchive(safe, path.join(dir, 'out-win')), /links are not supported on Windows/);
+      } else {
+        const out = path.join(dir, 'out');
+        await extractArchive(safe, out);
+        assert.equal(fs.readFileSync(path.join(out, 'python', 'bin', 'python'), 'utf8'), 'interpreter');
+        assert.ok(fs.lstatSync(path.join(out, 'python', 'bin', 'python')).isSymbolicLink());
+        assert.notEqual(fs.statSync(path.join(out, 'python', 'bin', 'python3.12')).mode & 0o111, 0, 'executable bit kept');
+        assert.equal(fs.readFileSync(path.join(out, 'python', 'lib', 'copy.txt'), 'utf8'), 'payload');
+        await assert.rejects(() => extractArchive(escaping, path.join(dir, 'out-escape')), /escapes the install folder/);
+        await assert.rejects(() => extractArchive(absolute, path.join(dir, 'out-abs')), /absolute or empty target/);
+      }
+      await assert.rejects(() => extractArchive(device, path.join(dir, 'out-dev')), /device or FIFO/);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

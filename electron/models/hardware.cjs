@@ -33,10 +33,10 @@ function normalizeGpu(device) {
 function probeNvidia() {
   return new Promise((resolve) => {
     const { execFile } = require('node:child_process');
-    const candidates = [
-      'nvidia-smi',
-      path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'nvidia-smi.exe'),
-    ];
+    const candidates = ['nvidia-smi'];
+    if (process.platform === 'win32') {
+      candidates.push(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'nvidia-smi.exe'));
+    }
     const attempt = (index) => {
       if (index >= candidates.length) return resolve([]);
       execFile(

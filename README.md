@@ -84,9 +84,9 @@ each system today:
 | --- | --- | --- | --- |
 | App, Studio, History, Batch, API, CLI | ✅ | 🧪 builds, not yet tested by CI | 🧪 builds, not yet tested by CI |
 | Phonon models (in-app, no Python) | ✅ | 🧪 | 🧪 |
-| Python models (Kokoro, Supertonic, …) | ✅ Kokoro and Supertonic proven end to end; others resolve-checked | ⏳ runtime packs are Windows-only today | ⏳ runtime packs are Windows-only today |
+| Python models (Kokoro, Supertonic, …) | ✅ Kokoro and Supertonic proven end to end; the other 11 have recipes but are not run end to end (shown as *Experimental*) | 🧪 *Experimental*: the runtime packs exist but have not been run yet | 🧪 *Experimental* on Apple Silicon (CPU); Intel Macs only get models that don't need PyTorch |
 
-✅ verified · 🧪 expected to work, being verified · ⏳ in progress. Progress is tracked in
+✅ verified · 🧪 expected to work, being verified. Each model card shows its tier for your system (*Builds*, *Experimental* or *Unsupported*). Progress is tracked in
 [`docs/milestone-1-plan.md`](docs/milestone-1-plan.md).
 
 ### Download
