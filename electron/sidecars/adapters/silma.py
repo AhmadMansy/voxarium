@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """SILMA TTS (F5-TTS based Arabic/English cloning model).
 
 Two Windows workarounds live here:

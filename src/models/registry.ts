@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import manifestData from '../../electron/models/manifests.json';
 import type { ManifestDocument, ModelInstallState, ModelManifest } from './types';
 import type { ModelFileState } from './types';
@@ -10,10 +11,6 @@ export const MODEL_IDS = MODELS.map((model) => model.id);
 
 export function getModel(id: string | null | undefined): ModelManifest {
   return MODEL_BY_ID.get(id || '') || MODEL_BY_ID.get(DEFAULT_MODEL_ID) || MODELS[0];
-}
-
-export function isKnownModel(id: string | null | undefined): boolean {
-  return Boolean(id && MODEL_BY_ID.has(id));
 }
 
 export function modelFiles(model: ModelManifest, quality?: QualityLike): ModelManifest['files'] {
@@ -34,10 +31,6 @@ export function defaultQualityFor(model: ModelManifest): QualityLike {
   const qualities = qualitiesFor(model);
   if (qualities.includes(model.defaults.quality)) return model.defaults.quality;
   return qualities[0] || 'q8';
-}
-
-export function isMultiModel(): boolean {
-  return MODELS.length > 1;
 }
 
 export function installState(model: ModelManifest, state?: ModelInstallState | null): ModelInstallState {

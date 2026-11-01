@@ -1,0 +1,55 @@
+name: Sidecar smoke test
+
+# Installs a small model end to end (uv + Python + environment + weights + first start +
+# a test synthesis) on every operating system. A green run is the evidence for a model's
+# support tier on that system. It downloads gigabytes, so it runs weekly and on demand,
+# not on every push.
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: ${{ matrix.model }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        model: [supertonic-3, kokoro-82m]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Smoke test
+        shell: bash
+        run: |
+          node scripts/smoke-sidecar.mjs ${{ matrix.model }} --json | tee smoke-report.json
+        # The exit code is the verdict; the JSON is kept as an artifact either way.
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f smoke-report.json ]; then
+            node -e "
+              const r = JSON.parse(require('fs').readFileSync('smoke-report.json','utf8'));
+              const lines = ['### ' + r.model + ' on ' + r.platform + ' (tier ' + r.tier + '): ' + (r.ok ? 'PASS' : 'FAIL'), ''];
+              for (const [k,v] of Object.entries(r.stages)) lines.push('- ' + k + ': ' + (v.ok ? 'ok' : 'FAILED') + ' in ' + v.seconds + ' s' + (v.error ? ' — ' + v.error.split('\n')[0] : ''));
+              if (r.synthesis) lines.push('', 'Audio: ' + r.synthesis.durationSec + ' s, peak ' + r.synthesis.peak + ', rms ' + r.synthesis.rms);
+              console.log(lines.join('\n'));
+            " >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-${{ matrix.model }}-${{ matrix.os }}
+          path: smoke-report.json
+          if-no-files-found: ignore

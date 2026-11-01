@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useStudio } from '../state';
 import { classNames } from '../lib/utils';
 import { Icon } from './Icons';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import React, {
   createContext,
   useCallback,
@@ -9,7 +10,6 @@ import React, {
 } from 'react';
 import type {
   AppInfo,
-  CloneKeyStatus,
   CustomVoiceRecord,
   DownloadProgress,
   EngineBridgeRequest,
@@ -84,6 +84,8 @@ interface ModelManager {
   download: (id: string, quality?: Quality) => Promise<boolean>;
   cancel: () => Promise<void>;
   verify: (id: string) => Promise<{ mismatched: string[] } | null>;
+  /** Speaks a test sentence with an installed sidecar model and records whether the audio is plausible. */
+  testSynthesis: (id: string) => Promise<boolean>;
   uninstall: (id: string) => Promise<boolean>;
   activate: (id: string) => Promise<boolean>;
   acknowledge: (id: string) => Promise<boolean>;
@@ -120,17 +122,9 @@ interface StudioContextValue {
   importVoiceFile: () => Promise<VoiceInfo | null>;
   renameCustomVoice: (id: string, name: string) => Promise<boolean>;
   deleteCustomVoice: (id: string) => Promise<boolean>;
-  cloneVoice: (options: {
-    audio: ArrayBuffer;
-    name: string;
-    language: string;
-    consentAt?: number;
-  }) => Promise<VoiceInfo | null>;
-  cloneKey: CloneKeyStatus | null;
-  saveCloneKey: (key: string) => Promise<boolean>;
-  cloneTab: 'record' | 'import' | null;
-  openClone: (tab?: 'record' | 'import') => void;
-  closeClone: () => void;
+  addVoiceOpen: boolean;
+  openAddVoice: () => void;
+  closeAddVoice: () => void;
   page: Page;
   setPage: (page: Page) => void;
   studioText: string;
@@ -288,12 +282,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [storage, setStorage] = useState<StorageStats | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [customVoices, setCustomVoicesState] = useState<VoiceInfo[]>([]);
-  const [cloneKey, setCloneKey] = useState<CloneKeyStatus | null>(null);
-  const [cloneTab, setCloneTab] = useState<'record' | 'import' | null>(null);
+  const [addVoiceOpen, setAddVoiceOpen] = useState(false);
   const [page, setPage] = useState<Page>('studio');
   const [studioText, setStudioTextState] = useState(() => {
     try {
-      return localStorage.getItem('phonon.studioText') || '';
+      return localStorage.getItem('voxarium.studioText') ?? localStorage.getItem('phonon.studioText') ?? '';
     } catch {
       return '';
     }
@@ -381,7 +374,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        localStorage.setItem('phonon.studioText', studioText);
+        localStorage.setItem('voxarium.studioText', studioText);
       } catch {}
     }, 350);
     return () => clearTimeout(timer);
@@ -479,94 +472,19 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [refreshCustomVoices, toast],
   );
 
-  const cloneVoice = useCallback(
-    async (options: { audio: ArrayBuffer; name: string; language: string; consentAt?: number }) => {
-      const payload = {
-        ...options,
-        language: options.language,
-        consentAt: options.consentAt || Date.now(),
-      };
-      const result = await window.studio.clone.create(payload);
-      if (!result.ok || !result.voice) {
-        if (result.code !== 'no-key') {
-          toast('The voice could not be cloned.', 'error', result.error);
-        }
-        throw new Error(result.error || 'The voice could not be cloned.');
-      }
-      await refreshCustomVoices();
-      void refreshStorage();
-      return getVoice(result.voice.id);
-    },
-    [refreshCustomVoices, refreshStorage, toast],
-  );
-
-  const saveCloneKey = useCallback(
-    async (key: string) => {
-      try {
-        const result = await window.studio.clone.setKey(key);
-        if (!result.ok) {
-          toast('The API key could not be saved.', 'error', result.error);
-          return false;
-        }
-        setCloneKey({ hasKey: result.hasKey, encrypted: result.encrypted });
-        toast(result.hasKey ? 'Gradium API key saved on this device.' : 'Gradium API key removed.', 'success');
-        return true;
-      } catch (error) {
-        toast('The API key could not be saved.', 'error', errorMessage(error));
-        return false;
-      }
-    },
-    [toast],
-  );
-
-  const openClone = useCallback(
-    (tab: 'record' | 'import' = 'record') => {
-      const manifest = activeModelRef.current;
-      if (tab === 'record' && !manifest.capabilities.voiceClone) {
-        toast(
-          `${manifest.shortName} cannot clone voices.`,
-          'info',
-          capabilityReason(manifest, 'voiceClone'),
-        );
-        if (manifest.capabilities.voiceImport) setCloneTab('import');
-        return;
-      }
-      if (tab === 'import' && !manifest.capabilities.voiceImport) {
-        toast(
-          `${manifest.shortName} cannot import Phonon voices.`,
-          'info',
-          capabilityReason(manifest, 'voiceImport'),
-        );
-        return;
-      }
-      if (tab === 'record' && settingsRef.current?.allowCloudCloning === false) {
-        setCloneTab('import');
-        return;
-      }
-      setCloneTab(tab);
-    },
-    [toast],
-  );
-  const closeClone = useCallback(() => setCloneTab(null), []);
+  const openAddVoice = useCallback(() => setAddVoiceOpen(true), []);
+  const closeAddVoice = useCallback(() => setAddVoiceOpen(false), []);
 
   useEffect(() => {
     setCustomVoiceRegistry(customVoices);
   }, [customVoices]);
 
   useEffect(() => {
-    if (!window.studio?.onCloneProgress) return;
-    const unsubscribe = window.studio.onCloneProgress((progress) => {
-      if (progress.stage === 'done') void refreshCustomVoices();
-    });
-    return unsubscribe;
-  }, [refreshCustomVoices]);
-
-  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         if (!window.studio) throw new Error('The desktop bridge is unavailable.');
-        const [appInfo, appSettings, status, entries, storageStats, customRecords, cloneStatus, models] =
+        const [appInfo, appSettings, status, entries, storageStats, customRecords, models] =
           await Promise.all([
             window.studio.info(),
             window.studio.settings.get(),
@@ -574,7 +492,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
             window.studio.history.list(),
             window.studio.storage.stats(),
             window.studio.voices.listCustom(),
-            window.studio.clone.keyStatus(),
             window.studio.models.snapshot(),
           ]);
         if (cancelled) return;
@@ -587,7 +504,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         const mappedCustom = customRecords.map(customVoiceToInfo);
         setCustomVoiceRegistry(mappedCustom);
         setCustomVoicesState(mappedCustom);
-        setCloneKey(cloneStatus);
         if (models) {
           setSnapshot(models);
           setSidecars(Object.fromEntries(models.sidecars.map((item) => [item.modelId, item])));
@@ -1013,6 +929,29 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         toast('The files could not be verified.', 'error', errorMessage(error));
         return null;
+      }
+    },
+    [refreshModels, toast],
+  );
+
+  const testSynthesis = useCallback(
+    async (id: string) => {
+      try {
+        const result = await window.studio.models.verifySynthesis(id);
+        await refreshModels();
+        if (result.unsupported) {
+          toast('This model is tested by the app engine.', 'info');
+          return true;
+        }
+        if (result.ok) {
+          toast('Test synthesis passed.', 'success', `${result.durationSec.toFixed(1)} s of audio in ${(result.elapsedMs / 1000).toFixed(1)} s`);
+        } else {
+          toast('Test synthesis failed.', 'error', result.error || undefined);
+        }
+        return result.ok;
+      } catch (error) {
+        toast('Test synthesis failed.', 'error', errorMessage(error));
+        return false;
       }
     },
     [refreshModels, toast],
@@ -1545,9 +1484,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       }
       if (action.action === 'import-text') void importText();
       if (action.action === 'import-voice') void importVoiceFile();
-      if (action.action === 'clone-voice') openClone('record');
     });
-  }, [importText, importVoiceFile, openClone, setStudioText]);
+  }, [importText, importVoiceFile, setStudioText]);
 
   useEffect(() => {
     const onError = (event: ErrorEvent) => {
@@ -1770,6 +1708,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       download: downloadModelById,
       cancel: cancelModelDownload,
       verify: verifyModel,
+      testSynthesis,
       uninstall: uninstallModel,
       activate: activateModel,
       acknowledge: acknowledgeModel,
@@ -1819,6 +1758,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       uninstallModel,
       uninstallRuntime,
       verifyModel,
+      testSynthesis,
       verifyRuntime,
     ],
   );
@@ -1841,12 +1781,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       importVoiceFile,
       renameCustomVoice,
       deleteCustomVoice,
-      cloneVoice,
-      cloneKey,
-      saveCloneKey,
-      cloneTab,
-      openClone,
-      closeClone,
+      addVoiceOpen,
+      openAddVoice,
+      closeAddVoice,
       page,
       setPage,
       studioText,
@@ -1887,10 +1824,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       bootError,
       booted,
       clearHistory,
-      cloneKey,
-      cloneTab,
-      cloneVoice,
-      closeClone,
       customVoices,
       deleteCustomVoice,
       deleteHistory,
@@ -1912,7 +1845,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       model,
       modelsValue,
       modelVoicesVersion,
-      openClone,
+      addVoiceOpen,
+      closeAddVoice,
+      openAddVoice,
       page,
       patchHistory,
       preview,
@@ -1924,7 +1859,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       renameCustomVoice,
       reuseHistory,
       runtimeDirty,
-      saveCloneKey,
       saveGeneration,
       setPage,
       setStudioText,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // A tiny localhost server for model weights and voice embeddings. Keeping these on a
 // real HTTP origin means the Phonon wasm worker can fetch them normally (with CORS and
 // range support) in both the Vite dev server and the packaged app.

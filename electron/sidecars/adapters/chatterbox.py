@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Chatterbox Multilingual (Resemble AI). Outputs carry the Perth watermark."""
 
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ExpressionSettings } from '../types';
 import type { ModelManifest } from './types';
 

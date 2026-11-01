@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,13 +10,17 @@ import { createServer } from 'vite';
 
 const require = createRequire(import.meta.url);
 const { extractArchive, safePath } = require('../electron/models/archive.cjs');
+const platformLib = require('../electron/models/platform.cjs');
+const verifyLib = require('../electron/models/verify.cjs');
+const runtimesLib = require('../electron/models/runtimes.cjs');
 const runtimeCatalog = require('../electron/models/runtimes.json');
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-function tarHeader(name, size, type = '0') {
+function tarHeader(name, size, type = '0', mode = '0000644', linkname = '') {
   const header = Buffer.alloc(512, 0);
   header.write(name, 0, 100, 'utf8');
-  header.write('0000644\0', 100, 8, 'utf8');
+  header.write(`${mode}\0`, 100, 8, 'utf8');
+  if (linkname) header.write(linkname, 157, 100, 'utf8');
   header.write('0000000\0', 108, 8, 'utf8');
   header.write('0000000\0', 116, 8, 'utf8');
   header.write(`${size.toString(8).padStart(11, '0')}\0`, 124, 12, 'utf8');
@@ -34,7 +39,7 @@ function buildTarGz(entries) {
   const chunks = [];
   for (const entry of entries) {
     const body = Buffer.from(entry.data || '');
-    chunks.push(tarHeader(entry.name, body.length, entry.type || '0'));
+    chunks.push(tarHeader(entry.name, body.length, entry.type || '0', entry.mode || '0000644', entry.link || ''));
     chunks.push(body);
     chunks.push(Buffer.alloc((512 - (body.length % 512)) % 512));
   }
@@ -70,6 +75,7 @@ try {
   const preferences = await server.ssrLoadModule('/src/models/preferences.ts');
   const catalog = await server.ssrLoadModule('/src/data/catalog.ts');
   const runtime = await server.ssrLoadModule('/src/models/runtime.ts');
+  const pipeline = await server.ssrLoadModule('/src/models/pipeline.ts');
 const bridge = await server.ssrLoadModule('/src/lib/engineBridge.ts');
 const expression = await server.ssrLoadModule('/src/models/expression.ts');
 
@@ -132,8 +138,8 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
     ...overrides,
   });
 
-  await test('manifest registry has the selected 15 models and a valid default', () => {
-    assert.equal(MODELS.length, 15);
+  await test('manifest registry lists every model once and has a valid default', () => {
+    assert.equal(MODELS.length, 17);
     assert.equal(new Set(MODELS.map((model) => model.id)).size, MODELS.length);
     assert.equal(getModel(DEFAULT_MODEL_ID).id, 'phonon-31m-en');
     assert.equal(getModel('does-not-exist').id, 'phonon-31m-en');
@@ -235,29 +241,38 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
 
   await test('runtime catalog pins uv and Python, and every sidecar pack is a pinned recipe', () => {
     const packs = runtimeCatalog.packs;
-    assert.equal(packs.length, 15);
+    assert.equal(packs.length, 17);
     assert.equal(new Set(packs.map((pack) => pack.id)).size, packs.length);
 
     const uv = packs.find((pack) => pack.kind === 'tool');
-    assert.equal(uv.id, 'uv-win-x64');
-    assert.match(uv.archive.sha256, /^[a-f0-9]{64}$/);
-    assert.match(uv.archive.url, /^https:\/\/github\.com\/astral-sh\/uv\/releases\/download\//);
+    assert.equal(uv.id, 'uv');
+    assert.deepEqual(uv.legacyIds, ['uv-win-x64']);
+    assert.deepEqual(Object.keys(uv.variants).sort(), [...platformLib.PLATFORMS].sort());
+    for (const [key, variant] of Object.entries(uv.variants)) {
+      assert.match(variant.archive.sha256, /^[a-f0-9]{64}$/, `uv ${key}`);
+      assert.match(variant.archive.url, /^https:\/\/github\.com\/astral-sh\/uv\/releases\/download\//, `uv ${key}`);
+      assert.ok(variant.archive.size > 1_000_000, `uv ${key} size`);
+    }
 
     const python = packs.find((pack) => pack.kind === 'python');
-    assert.equal(python.id, 'python-3.12-win-x64');
+    assert.equal(python.id, 'python-3.12');
+    assert.deepEqual(python.legacyIds, ['python-3.12-win-x64']);
     assert.equal(python.available, true);
-    assert.equal(python.entry.python, 'python/python.exe');
-    assert.equal(python.archive.size, 47113364);
-    assert.match(python.archive.sha256, /^[a-f0-9]{64}$/);
-    assert.match(python.archive.url, /^https:\/\/github\.com\/astral-sh\/python-build-standalone\//);
+    assert.equal(python.variants['win32-x64'].entry.python, 'python/python.exe');
+    assert.equal(python.variants['win32-x64'].archive.size, 47113364);
+    assert.equal(python.variants['linux-x64'].entry.python, 'python/bin/python3.12');
+    for (const [key, variant] of Object.entries(python.variants)) {
+      assert.match(variant.archive.sha256, /^[a-f0-9]{64}$/, `python ${key}`);
+      assert.match(variant.archive.url, /^https:\/\/github\.com\/astral-sh\/python-build-standalone\//, `python ${key}`);
+    }
 
     const sidecars = packs.filter((pack) => pack.kind === 'sidecar');
-    assert.equal(sidecars.length, 13);
+    assert.equal(sidecars.length, 15);
     for (const pack of sidecars) {
       assert.equal(pack.available, true, pack.id);
       assert.equal(pack.importable, true, pack.id);
       assert.equal(pack.entry.server, 'start.py', pack.id);
-      assert.equal(pack.entry.python, 'venv/Scripts/python.exe', pack.id);
+      assert.deepEqual(pack.entry.python, { win32: 'venv/Scripts/python.exe', default: 'venv/bin/python' }, pack.id);
       assert.ok(pack.requires.includes(uv.id), pack.id);
       assert.ok(pack.license?.id, pack.id);
       const build = pack.build;
@@ -280,7 +295,7 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
   await test('every sidecar model points at a catalog pack whose adapter ships with the app', () => {
     const packs = runtimeCatalog.packs;
     const sidecars = MODELS.filter((model) => model.runtime === 'sidecar');
-    assert.equal(sidecars.length, 13);
+    assert.equal(sidecars.length, 15);
     for (const model of sidecars) {
       assert.match(model.runtimePack.packId || '', /-sidecar$/, model.id);
       const pack = packs.find((entry) => entry.id === model.runtimePack.packId);
@@ -421,6 +436,288 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
     }
   });
 
+  await test('catalog resolves per platform with tiers and unsupported reasons', () => {
+    const win = runtimesLib.loadCatalog('win32-x64');
+    const linux = runtimesLib.loadCatalog('linux-x64');
+    const macArm = runtimesLib.loadCatalog('darwin-arm64');
+    const macIntel = runtimesLib.loadCatalog('darwin-x64');
+    const unknown = runtimesLib.loadCatalog('freebsd-x64');
+
+    // Interpreter and tool packs pick the right archive and entry point.
+    assert.equal(win.byId.get('uv').entry.uv, 'uv.exe');
+    assert.equal(linux.byId.get('uv').entry.uv, 'uv-x86_64-unknown-linux-gnu/uv');
+    assert.equal(macArm.byId.get('python-3.12').entry.python, 'python/bin/python3.12');
+    assert.match(macArm.byId.get('uv').archive.name, /aarch64-apple-darwin/);
+    assert.equal(win.byId.get('uv-win-x64'), win.byId.get('uv'), 'legacy id still resolves');
+    assert.equal(unknown.byId.get('uv').available, false);
+    assert.match(unknown.byId.get('uv').reason, /no build for/);
+
+    // Tiers: only Kokoro and Supertonic were run end to end on Windows.
+    assert.equal(win.byId.get('kokoro-82m-sidecar').tier, 'B');
+    assert.equal(win.byId.get('supertonic-3-sidecar').tier, 'B');
+    assert.equal(win.byId.get('chatterbox-sidecar').tier, 'C');
+    assert.equal(linux.byId.get('kokoro-82m-sidecar').tier, 'C');
+    assert.equal(win.byId.get('kokoro-82m-sidecar').entry.python, 'venv/Scripts/python.exe');
+    assert.equal(linux.byId.get('kokoro-82m-sidecar').entry.python, 'venv/bin/python');
+
+    // PyTorch ships no macOS Intel wheels, so only the torch-free recipe is offered there.
+    assert.equal(macIntel.byId.get('supertonic-3-sidecar').available, true);
+    assert.equal(macIntel.byId.get('kokoro-82m-sidecar').available, false);
+    assert.equal(macIntel.byId.get('kokoro-82m-sidecar').tier, 'D');
+    assert.match(macIntel.byId.get('kokoro-82m-sidecar').reason, /does not support macOS \(Intel\)/);
+    assert.equal(unknown.byId.get('kokoro-82m-sidecar').available, false);
+
+    // Every sidecar still lists only real tool packs after the rename.
+    for (const pack of win.packs.filter((entry) => entry.kind === 'sidecar')) {
+      for (const id of pack.requires) assert.ok(win.byId.has(id), `${pack.id} requires unknown ${id}`);
+    }
+  });
+
+  await test('installs made under the old Windows-only pack ids are migrated, not lost', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'voxarium-migrate-'));
+    try {
+      const runtimes = path.join(dir, 'runtimes');
+      const uvEntry = runtimesLib.getPack('uv').entry.uv;
+      const legacy = path.join(runtimes, 'uv-win-x64');
+      fs.mkdirSync(path.dirname(path.join(legacy, uvEntry)), { recursive: true });
+      fs.writeFileSync(path.join(legacy, uvEntry), 'stub-uv');
+      fs.writeFileSync(path.join(legacy, '.voxarium-runtime.json'), JSON.stringify({ id: 'uv-win-x64', version: '0.13.6', entry: { uv: 'uv.exe' } }));
+      fs.writeFileSync(path.join(dir, 'runtimes-state.json'), JSON.stringify({ version: 1, installs: { 'uv-win-x64': { source: 'download', installedBytes: 46000000 } } }));
+
+      const manager = runtimesLib.createRuntimeManager({ dirs: { runtimes, data: dir }, appVersion: 'test', broadcast: () => {}, log: () => {} });
+      assert.equal(fs.existsSync(legacy), false, 'old folder renamed');
+      assert.equal(fs.existsSync(path.join(runtimes, 'uv', uvEntry)), true, 'files moved');
+      const status = manager.status('uv');
+      assert.equal(status.installed, true);
+      assert.equal(status.source, 'download');
+      assert.equal(manager.status('uv-win-x64').id, 'uv', 'old id still resolves');
+      const state = JSON.parse(fs.readFileSync(path.join(dir, 'runtimes-state.json'), 'utf8'));
+      assert.ok(state.installs.uv && !state.installs['uv-win-x64'], 'state record renamed');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('platform helpers resolve entries, venv paths and tiers', () => {
+    assert.equal(platformLib.platformKey('linux', 'x64'), 'linux-x64');
+    const entry = { python: { win32: 'a.exe', default: 'bin/a' }, server: 'start.py' };
+    assert.deepEqual(platformLib.resolveEntry(entry, 'win32-x64'), { python: 'a.exe', server: 'start.py' });
+    assert.deepEqual(platformLib.resolveEntry(entry, 'darwin-arm64'), { python: 'bin/a', server: 'start.py' });
+    assert.deepEqual(platformLib.resolveEntry({ x: { 'linux-x64': 'l', default: 'd' } }, 'linux-x64'), { x: 'l' });
+    assert.equal(platformLib.venvPython(path.join('v'), 'win32'), path.join('v', 'Scripts', 'python.exe'));
+    assert.equal(platformLib.venvPython(path.join('v'), 'linux'), path.join('v', 'bin', 'python'));
+    assert.equal(platformLib.tierFor({ support: { 'linux-x64': 'C' } }, 'linux-x64'), 'C');
+    assert.equal(platformLib.tierFor({ support: { 'linux-x64': 'C' } }, 'darwin-arm64'), 'D');
+    assert.equal(platformLib.tierFor({}, 'win32-x64'), 'D');
+  });
+
+  await test('the sidecar start script only registers Windows DLL folders on Windows', () => {
+    const pack = runtimeCatalog.packs.find((entry) => entry.id === 'kokoro-82m-sidecar');
+    const win = runtimesLib.startScript(pack, 'win32');
+    const linux = runtimesLib.startScript(pack, 'linux');
+    assert.match(win, /add_dll_directory/);
+    assert.doesNotMatch(linux, /add_dll_directory|Scripts/);
+    assert.match(linux, /from voxarium_sidecar import main/);
+    assert.match(linux, /main\("kokoro"\)/);
+  });
+
+  await test('tar.gz extraction keeps executable bits and safe links on POSIX, and rejects unsafe links', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'voxarium-links-'));
+    try {
+      const make = (name, entries) => {
+        const file = path.join(dir, `${name}.tar.gz`);
+        fs.writeFileSync(file, buildTarGz(entries));
+        return file;
+      };
+      const safe = make('safe', [
+        { name: 'python/', type: '5', mode: '0000755' },
+        { name: 'python/bin/', type: '5', mode: '0000755' },
+        { name: 'python/bin/python3.12', data: 'interpreter', mode: '0000755' },
+        { name: 'python/bin/python', type: '2', link: 'python3.12' },
+        { name: 'python/lib/', type: '5' },
+        { name: 'python/lib/data.txt', data: 'payload' },
+        { name: 'python/lib/copy.txt', type: '1', link: 'python/lib/data.txt' },
+      ]);
+      const escaping = make('escaping', [{ name: 'a/', type: '5' }, { name: 'a/out', type: '2', link: '../../outside' }]);
+      const absolute = make('absolute', [{ name: 'abs', type: '2', link: '/etc/passwd' }]);
+      const device = make('device', [{ name: 'dev', type: '3' }]);
+
+      if (process.platform === 'win32') {
+        // Links need extra privileges on Windows and Windows packs never contain them.
+        await assert.rejects(() => extractArchive(safe, path.join(dir, 'out-win')), /links are not supported on Windows/);
+      } else {
+        const out = path.join(dir, 'out');
+        await extractArchive(safe, out);
+        assert.equal(fs.readFileSync(path.join(out, 'python', 'bin', 'python'), 'utf8'), 'interpreter');
+        assert.ok(fs.lstatSync(path.join(out, 'python', 'bin', 'python')).isSymbolicLink());
+        assert.notEqual(fs.statSync(path.join(out, 'python', 'bin', 'python3.12')).mode & 0o111, 0, 'executable bit kept');
+        assert.equal(fs.readFileSync(path.join(out, 'python', 'lib', 'copy.txt'), 'utf8'), 'payload');
+        await assert.rejects(() => extractArchive(escaping, path.join(dir, 'out-escape')), /escapes the install folder/);
+        await assert.rejects(() => extractArchive(absolute, path.join(dir, 'out-abs')), /absolute or empty target/);
+      }
+      await assert.rejects(() => extractArchive(device, path.join(dir, 'out-dev')), /device or FIFO/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('analyzePcm accepts speech-like audio and rejects silence, noise and truncation', () => {
+    const rate = 24000;
+    const tone = (seconds, amplitude = 0.3) => Float32Array.from({ length: Math.round(seconds * rate) }, (_, i) => amplitude * Math.sin((2 * Math.PI * 220 * i) / rate));
+    assert.equal(verifyLib.analyzePcm(tone(2), rate).ok, true);
+    assert.equal(verifyLib.analyzePcm(new Float32Array(0), rate).ok, false);
+    assert.match(verifyLib.analyzePcm(new Float32Array(rate * 2), rate).reasons.join(' '), /silent/);
+    assert.match(verifyLib.analyzePcm(tone(0.1), rate).reasons.join(' '), /too short/);
+    const withNaN = tone(2);
+    withNaN[10] = Number.NaN;
+    assert.match(verifyLib.analyzePcm(withNaN, rate).reasons.join(' '), /invalid samples/);
+    const clipped = Float32Array.from({ length: rate * 2 }, (_, i) => (i % 2 ? 1 : -1));
+    assert.match(verifyLib.analyzePcm(clipped, rate).reasons.join(' '), /clipped/);
+    assert.match(verifyLib.analyzePcm(tone(2, 8), rate).reasons.join(' '), /too loud/);
+  });
+
+  await test('goldenSynthesis talks to a loopback sidecar and reports success, bad audio and errors', async () => {
+    const http = await import('node:http');
+    const rate = 24000;
+    const sine = Float32Array.from({ length: rate * 2 }, (_, i) => 0.3 * Math.sin((2 * Math.PI * 220 * i) / rate));
+    let mode = 'good';
+    const server = http.createServer((request, response) => {
+      if (request.headers.authorization !== 'Bearer secret') {
+        response.writeHead(401, { 'content-type': 'application/json' });
+        return response.end(JSON.stringify({ error: 'Missing or invalid session token.' }));
+      }
+      let body = '';
+      request.on('data', (chunk) => (body += chunk));
+      request.on('end', () => {
+        const payload = JSON.parse(body || '{}');
+        assert.equal(payload.text, verifyLib.TEST_SENTENCE);
+        if (mode === 'error') {
+          response.writeHead(500, { 'content-type': 'application/json' });
+          return response.end(JSON.stringify({ error: 'RuntimeError: out of memory' }));
+        }
+        const samples = mode === 'silent' ? new Float32Array(rate * 2) : sine;
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ pcm: Buffer.from(samples.buffer).toString('base64'), sampleRate: rate }));
+      });
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const url = `http://127.0.0.1:${server.address().port}`;
+    try {
+      const good = await verifyLib.goldenSynthesis({ url, token: 'secret' });
+      assert.equal(good.ok, true);
+      assert.equal(good.error, null);
+      assert.ok(Math.abs(good.durationSec - 2) < 0.01 && good.rms > 0.1);
+
+      mode = 'silent';
+      const silent = await verifyLib.goldenSynthesis({ url, token: 'secret' });
+      assert.equal(silent.ok, false);
+      assert.match(silent.error, /silent/);
+
+      mode = 'error';
+      const failed = await verifyLib.goldenSynthesis({ url, token: 'secret' });
+      assert.equal(failed.ok, false);
+      assert.match(failed.error, /out of memory/);
+
+      const unauthorized = await verifyLib.goldenSynthesis({ url, token: 'wrong' });
+      assert.equal(unauthorized.ok, false);
+      assert.match(unauthorized.error, /token/i);
+
+      const remote = await verifyLib.goldenSynthesis({ url: 'http://example.com', token: 'secret' });
+      assert.equal(remote.ok, false);
+      assert.match(remote.error, /not on this machine/);
+      assert.equal((await verifyLib.goldenSynthesis({})).ok, false);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
+  await test('planInstall walks the same seven stages for every model and blocks before downloading', () => {
+    const base = {
+      weightsInstalled: false,
+      environmentReady: false,
+      toolchainReady: false,
+      runtimeAvailable: true,
+      runtimeReason: null,
+      prepared: false,
+      synthesisOk: null,
+      licenseAcknowledged: false,
+      requiresLicenseAck: false,
+      hasHfToken: false,
+      fit: { level: 'great' },
+      tier: null,
+      freeDiskGb: 200,
+      runtimeBytes: 0,
+      weightsBytes: 0,
+    };
+    const ids = pipeline.STAGES.map((stage) => stage.id);
+    assert.deepEqual(ids, ['preflight', 'consent', 'toolchain', 'environment', 'weights', 'prepare', 'verify']);
+
+    // In-app model: toolchain, environment and first start do not apply.
+    const phonon = getModel('phonon-31m-en');
+    const fresh = pipeline.planInstall({ ...base, model: phonon, weightsBytes: phonon.downloadBytes });
+    assert.deepEqual(fresh.stages.map((stage) => stage.id), ids);
+    assert.deepEqual(fresh.stages.map((stage) => stage.state), ['done', 'skipped', 'skipped', 'skipped', 'pending', 'skipped', 'pending']);
+    assert.equal(fresh.next, 'weights');
+    assert.equal(fresh.ready, false);
+    const done = pipeline.planInstall({ ...base, model: phonon, weightsInstalled: true, synthesisOk: true });
+    assert.equal(done.ready, true);
+    assert.equal(done.next, null);
+
+    // Sidecar model: all seven stages apply, license first.
+    const kokoro = getModel('kokoro-82m');
+    const sidecar = pipeline.planInstall({ ...base, model: kokoro, tier: 'B', runtimeBytes: 3.1e9, weightsBytes: kokoro.downloadBytes });
+    assert.deepEqual(sidecar.stages.map((stage) => stage.state), ['done', 'skipped', 'pending', 'pending', 'pending', 'pending', 'pending']);
+    assert.equal(sidecar.next, 'toolchain');
+
+    // Restricted license: consent is pending until accepted.
+    const omni = getModel('omnivoice');
+    const restricted = pipeline.planInstall({ ...base, model: omni, requiresLicenseAck: true, tier: 'C' });
+    assert.equal(restricted.stages[1].state, 'pending');
+    assert.equal(restricted.next, 'consent');
+    assert.ok(restricted.warnings.some((warning) => /Experimental/.test(warning)));
+    assert.equal(pipeline.planInstall({ ...base, model: omni, requiresLicenseAck: true, licenseAcknowledged: true }).stages[1].state, 'done');
+  });
+
+  await test('planInstall blocks unsupported platforms, low disk, heavy models and missing tokens', () => {
+    const base = {
+      weightsInstalled: false,
+      environmentReady: false,
+      toolchainReady: false,
+      runtimeAvailable: true,
+      prepared: false,
+      synthesisOk: null,
+      licenseAcknowledged: true,
+      requiresLicenseAck: false,
+      hasHfToken: false,
+      fit: { level: 'great' },
+      tier: 'C',
+      freeDiskGb: 200,
+      runtimeBytes: 3e9,
+      weightsBytes: 1e9,
+    };
+    const kokoro = getModel('kokoro-82m');
+    const unsupported = pipeline.planInstall({ ...base, model: kokoro, tier: 'D', runtimeAvailable: false, runtimeReason: 'Kokoro does not support macOS (Intel) yet.' });
+    assert.ok(unsupported.blockers.includes('Kokoro does not support macOS (Intel) yet.'));
+    assert.equal(unsupported.stages[0].state, 'blocked');
+    assert.equal(unsupported.next, 'preflight');
+
+    const lowDisk = pipeline.planInstall({ ...base, model: kokoro, freeDiskGb: 2 });
+    assert.ok(lowDisk.blockers.some((blocker) => /Not enough free disk space/.test(blocker)));
+
+    assert.ok(pipeline.planInstall({ ...base, model: kokoro, fit: { level: 'too-heavy' } }).blockers.some((blocker) => /minimum memory or disk/.test(blocker)));
+
+    const gated = getModel('phonon-40m-multilingual');
+    assert.ok(pipeline.planInstall({ ...base, model: gated }).blockers.some((blocker) => /gated on Hugging Face/.test(blocker)));
+    assert.equal(pipeline.planInstall({ ...base, model: gated, hasHfToken: true }).blockers.some((blocker) => /gated/.test(blocker)), false);
+
+    // An installed model is never blocked by disk or platform checks.
+    const installed = pipeline.planInstall({ ...base, model: kokoro, weightsInstalled: true, environmentReady: true, tier: 'D', freeDiskGb: 0.1 });
+    assert.deepEqual(installed.blockers, []);
+
+    // The watermark warning follows the manifest.
+    assert.ok(pipeline.planInstall({ ...base, model: getModel('chatterbox') }).warnings.some((warning) => /watermark/.test(warning)));
+  });
+
   await test('Arabic is inferred only from declared language codes', () => {
     assert.equal(modelHasArabic(getModel('phonon-31m-en')), false);
     assert.equal(modelHasArabic(getModel('kokoro-82m')), false);
@@ -455,7 +752,7 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
     }
     const silent = getModel('chatterbox');
     assert.equal(voiceCompatibleWithModel(silent, defaultVoice), false);
-    assert.match(voiceCompatibilityNote(silent, defaultVoice), /Phonon voice/i);
+    assert.match(voiceCompatibilityNote(silent, defaultVoice), /different voice catalog/i);
     assert.equal(voicesForModel(silent).voices.length, 0);
     assert.ok(voicesForModel(silent).reason);
   });

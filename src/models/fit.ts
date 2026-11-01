@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 export type FitLevel = 'great' | 'runs' | 'cpu' | 'too-heavy';
 
 export interface HardwareGpu {
@@ -156,13 +157,6 @@ export function fitTone(level: FitLevel): 'ok' | 'warn' | 'danger' | 'muted' {
   if (level === 'runs') return 'warn';
   if (level === 'cpu') return 'muted';
   return 'danger';
-}
-
-export function licenseTone(license: { restricted?: boolean; commercial?: boolean | null }): 'ok' | 'warn' | 'danger' | 'muted' {
-  if (license.restricted) return 'warn';
-  if (license.commercial === false) return 'warn';
-  if (license.commercial == null) return 'muted';
-  return 'ok';
 }
 
 export function emptyHardware(): HardwareProfile {

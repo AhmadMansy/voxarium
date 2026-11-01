@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Voxarium command line. Talks to the running app's local API (and starts it in
 // the tray if needed), so it uses the same engine, models and voices as the Studio.
 const fs = require('node:fs');

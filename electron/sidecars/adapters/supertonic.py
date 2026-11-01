@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Supertonic 3 (ONNX Runtime, CPU) through the official ``supertonic`` SDK."""
 
 

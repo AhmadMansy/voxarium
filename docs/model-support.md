@@ -1,8 +1,8 @@
 # Model support in Voxarium
 
 This note describes what the multi-model studio ships today, which gates are
-enforced, and how to extend the registry. The authoritative product spec lives in
-[`model-expansion-plan.md`](./model-expansion-plan.md).
+enforced, and how to extend the registry. Planned work is described in the milestone
+plans in this folder.
 
 ## Design rules
 
@@ -28,7 +28,7 @@ enforced, and how to extend the registry. The authoritative product spec lives i
 
 The first-run assistant (`src/components/SetupWizard.tsx`) is a two-step model chooser:
 
-1. **Choose a model.** All 15 registry entries are listed with their score, hardware
+1. **Choose a model.** All 17 registry entries are listed with their score, hardware
    fit, license badge and truthful runtime status. Search matches names, families,
    languages and tags. Installed and active models stay visible, and selecting a
    gated model is allowed so its status can be reviewed.
@@ -56,6 +56,8 @@ environment is built on the user's machine when the model is installed.
 | Phonon 40M Multilingual | Phonon WASM/WebGPU | bundled `phonon-tts` | — | — | CC-BY-NC-4.0 | HF-gated: needs an access token |
 | Kokoro 82M | Sidecar | `kokoro` 0.9.4 + misaki | 3.12 | 2.8.0 | Apache-2.0 | Japanese via `pyopenjtalk-plus` |
 | Supertonic 3 | Sidecar | `supertonic` 1.3.1 (ONNX Runtime) | 3.12 | none | OpenRAIL-M | CPU only, ~120 MB runtime |
+| Piper | Sidecar | `piper-tts` 1.8.0 (ONNX Runtime, GPL-3.0 package in its own process) | 3.12 | none | Per-voice dataset licenses | CPU only; six permissive voices; verified on Windows |
+| Sopro V2 Turbo | Sidecar | `sopro` 2.2.0 | 3.12 | 2.8.0 (cu128 / CPU) | Apache-2.0 | Experimental: not yet built or run end to end |
 | SILMA TTS | Sidecar | `silma-tts` 1.0.5 | 3.12 | 2.8.0 | Apache-2.0 | NeMo normalizer shimmed (see below) |
 | Chatterbox | Sidecar | `chatterbox-tts` 0.1.7 | 3.12 | 2.6.0 | MIT | Perth watermark |
 | OpenAudio S1-mini | Sidecar | fish-speech source @ `3578e4e` | 3.12 | 2.8.0 | CC-BY-NC-SA-4.0 | HF-gated: needs an access token |
@@ -91,6 +93,37 @@ source packages, so no compiler is needed.
   path is long, the builder uses `<drive>\VoxariumCache\uv` instead.
 - **Process lifetime.** Servers watch `VOXARIUM_PARENT_PID` and exit with the app.
   (A blocking read on a stdin pipe deadlocks DLL loading on Windows.)
+
+## The install contract
+
+Every model, whatever its runtime or the operating system, follows the same seven stages
+(`src/models/pipeline.ts`). Stages that do not apply are skipped, never reordered, and the
+Models page shows them under **Details → Install steps**.
+
+| # | Stage | What happens | Phonon (in-app) |
+| --- | --- | --- | --- |
+| 1 | Check this computer | Disk space, memory, GPU fit, platform support tier, Hugging Face access | yes |
+| 2 | License | Review and accept restricted licenses | when restricted |
+| 3 | Toolchain | Pinned uv and Python | skipped |
+| 4 | Environment | The model's isolated venv from a pinned recipe | skipped |
+| 5 | Model files | Pinned weights, size + SHA-256 verified | yes |
+| 6 | First start | Load once; helper files may be fetched | skipped |
+| 7 | Test synthesis | Speak a fixed sentence and check the audio | engine check |
+
+`planInstall` turns what the app already knows into the stage list, a list of **blockers**
+(unsupported platform, not enough disk, model too heavy, missing Hugging Face token) and
+**warnings** (experimental tier, CPU fallback, watermark, first start downloads).
+
+The test synthesis (`electron/models/verify.cjs`) starts the sidecar, asks it to say
+"Voxarium is ready to speak." and checks the audio for plausible duration, level, clipping
+and invalid samples. The result is stored with the install record and shown on the model
+card as *Test passed* or *Test failed*. It is a smoke test, not a quality judgement, and it
+does not block activation yet.
+
+`node scripts/smoke-sidecar.mjs <modelId>` runs stages 3 to 7 headlessly through the same
+managers the app uses. The **Sidecar smoke test** workflow runs it weekly for Supertonic 3
+and Kokoro on Windows, Linux and macOS; a green run is the evidence for that model's
+support tier on that system.
 
 ## Download and install lifecycle
 
@@ -157,7 +190,7 @@ Uninstalling uv or Python is refused while a model environment still uses it.
 ### Sidecar protocol
 
 The supervisor (`electron/models/sidecar.cjs`) starts
-`venv/Scripts/python.exe start.py --host 127.0.0.1 --port 0 --model-dir <dir>`
+`venv/Scripts/python.exe start.py --host 127.0.0.1 --port 0 --model-dir <dir>` (`venv/bin/python` on Linux and macOS)
 with a random 32-byte token. The server prints `VOXARIUM_READY {"port": N}` as
 soon as it listens, then loads the model in the background. `GET /health` reports
 `{ready, stage, error, device}`; `GET /voices` lists the model's voices plus the
@@ -227,10 +260,10 @@ Capabilities come from the manifest and drive the UI:
   voices require a Phonon-format model and a matching locale; incompatible rows stay
   visible but disabled with a reason. Imported custom embeddings are validated
   against the selected model's format.
-- **Clone tab:** available only when `voiceClone` is true. Cloud cloning is gated by
-  the existing “send once” consent and an explicit permission checkbox; the consent
-  timestamp (`consentAt`) is persisted with the custom voice and required by
-  `clone:create`. Offline import remains available without cloud consent.
+- **Add a voice:** the dialog depends on the active model. Models with a voice-file format import a
+  `.safetensors` file; models that clone from a recording (`cloneKind: 'local'`) read a clip placed in the
+  references folder; other models say they use a fixed set of voices. Everything happens on the
+  computer: Voxarium has no cloud cloning and uploads nothing.
 - **Dialogue/emotion/streaming/normalization/speed:** each control is hidden or
   disabled with a reason when the active model does not support it.
 - **Batch:** validates every line's voice and language against the active model,
@@ -290,8 +323,8 @@ network access. The flow is:
 first-run chooser -> inspect gated model -> setup install -> verify -> activate -> synthesize -> visit every page -> switch refusal -> uninstall
 ```
 
-It also asserts that the chooser lists all 15 models, that a gated model exposes its
-license and the Hugging Face gate, that the **Runtime packs** panel lists all 15 packs
+It also asserts that the chooser lists all 17 models, that a gated model exposes its
+license and the Hugging Face gate, that the **Runtime packs** panel lists all 17 packs
 (uv, Python and 13 buildable sidecars), that a fresh profile can install and activate Phonon 31M
 from setup, that a refused switch leaves the previous model active, that Settings
 reports the active model and runtime, and that the renderer reports no console or
@@ -336,7 +369,12 @@ and an offline restart.
   Breeze TTS 2 and VoxCPM2 are slow on CPU, and MOSS needs about 20 GB of free RAM.
 - **Disk.** A CUDA environment is 4–6 GB before weights. uv hard-links PyTorch
   from its cache, so additional models that share a PyTorch version cost much less.
-- **Linux/macOS.** Recipes target Windows x64 (`win32`/`x64` packs only).
+- **Linux/macOS.** `uv` and CPython are pinned per platform (`win32-x64`, `linux-x64`,
+  `darwin-arm64`, `darwin-x64`) and every sidecar declares a support tier per platform in
+  `runtimes.json` (`A` verified, `B` builds, `C` experimental; missing means unsupported).
+  Only Kokoro, Supertonic and Piper are `B` on Windows; everything on Linux and macOS is `C` until a
+  smoke test runs there. macOS runs sidecars on the CPU (no MPS yet), and Intel Macs get only
+  recipes without PyTorch because PyTorch publishes no recent macOS Intel wheels.
 - **Verification depth.** Every recipe is checked to resolve on Windows x64 with
   binary wheels (or pure-Python sources). Supertonic and Kokoro were built,
   downloaded and synthesized end to end on Windows; the larger models share the

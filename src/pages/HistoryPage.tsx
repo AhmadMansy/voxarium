@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useEffect, useMemo, useState } from 'react';
 import { decodeAudioFile, encodeMp3 } from '../lib/audio';
 import {
@@ -160,8 +161,6 @@ export function HistoryPage() {
   return (
     <div className="page page--history">
       <PageHeader
-        icon="history"
-        eyebrow="Library"
         title="Your recordings"
         description={`${pluralize(history.length, 'take')} · ${formatDuration(totalDuration)} of speech · ${formatBytes(totalBytes)} on disk`}
         actions={
@@ -184,7 +183,7 @@ export function HistoryPage() {
           <strong>No recordings yet</strong>
           <p>Everything you generate is saved here with its script, voice and settings, so you can revisit or export it later.</p>
           <button className="btn btn--primary" onClick={() => setPage('studio')}>
-            <Icon name="sparkles" size={15} /> Create your first take
+            <Icon name="studio" size={15} /> Create your first take
           </button>
         </div>
       ) : (

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """OpenAudio S1-mini through the pinned fish-speech source tree (on sys.path).
 
 fish-speech locates its Hydra configs via ``.project-root`` in the source tree,

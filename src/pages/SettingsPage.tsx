@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useEffect, useMemo, useState } from 'react';
 import { VOICES, getVoice, localeFlags, localeLabel } from '../data/catalog';
 import {
@@ -19,15 +20,16 @@ import { PageHeader } from '../components/PageHeader';
 import { VoiceAvatar } from '../components/VoiceAvatar';
 
 const THEMES: { id: Theme; label: string; hint: string }[] = [
-  { id: 'dark', label: 'Midnight', hint: 'Easy on the eyes' },
-  { id: 'light', label: 'Daylight', hint: 'Crisp and bright' },
+  { id: 'dark', label: 'Graphite', hint: 'Easy on the eyes' },
+  { id: 'light', label: 'Paper', hint: 'Warm and bright' },
 ];
 
 const ACCENTS: { id: Accent; label: string; color: string }[] = [
-  { id: 'violet', label: 'Violet', color: 'hsl(262 85% 67%)' },
-  { id: 'cyan', label: 'Cyan', color: 'hsl(190 85% 55%)' },
-  { id: 'amber', label: 'Amber', color: 'hsl(38 92% 58%)' },
-  { id: 'rose', label: 'Rose', color: 'hsl(342 82% 64%)' },
+  { id: 'signal', label: 'Signal', color: 'hsl(16 100% 58%)' },
+  { id: 'violet', label: 'Violet', color: 'hsl(256 92% 70%)' },
+  { id: 'cyan', label: 'Cyan', color: 'hsl(186 92% 44%)' },
+  { id: 'amber', label: 'Amber', color: 'hsl(42 100% 52%)' },
+  { id: 'rose', label: 'Rose', color: 'hsl(340 90% 64%)' },
 ];
 
 const DEVICES: { id: Device; label: string; hint: string }[] = [
@@ -73,18 +75,13 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
     downloads,
     refreshHistory,
     toast,
-    cloneKey,
-    saveCloneKey,
     customVoices,
-    openClone,
   } = useStudio();
 
   const [verifying, setVerifying] = useState(false);
   const [clearing, setClearing] = useState<'model' | 'voices' | null>(null);
-  const [keyDraft, setKeyDraft] = useState('');
   const [hfDraft, setHfDraft] = useState('');
   const [hfBusy, setHfBusy] = useState(false);
-  const [keyBusy, setKeyBusy] = useState(false);
   const [gpuInfo, setGpuInfo] = useState<GpuInfoResult | null>(null);
   const [restarting, setRestarting] = useState(false);
 
@@ -189,7 +186,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
   const removeModel = async () => {
     const confirmed = await window.studio.ui.confirm({
       title: 'Remove model files?',
-      message: 'Delete the Phonon checkpoint from this device?',
+      message: `Delete ${activeModel.shortName} from this device?`,
       detail: 'Voices and recordings are kept. You will need to download or import the model again to generate speech.',
       confirmLabel: 'Remove model',
       danger: true,
@@ -231,27 +228,11 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
     updateSettings({ outputDir: directory });
   };
 
-  const saveKey = async () => {
-    const clean = keyDraft.trim();
-    if (!clean) return;
-    setKeyBusy(true);
-    const ok = await saveCloneKey(clean);
-    setKeyBusy(false);
-    if (ok) setKeyDraft('');
-  };
-
   const saveHf = async (token: string) => {
     setHfBusy(true);
     const ok = await models.saveHfToken(token.trim());
     setHfBusy(false);
     if (ok) setHfDraft('');
-  };
-
-  const clearKey = async () => {
-    setKeyBusy(true);
-    const ok = await saveCloneKey('');
-    setKeyBusy(false);
-    if (ok) setKeyDraft('');
   };
 
   const updatePronunciation = (index: number, patch: { from?: string; to?: string }) => {
@@ -287,8 +268,6 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
   return (
     <div className="page page--settings">
       <PageHeader
-        icon="settings"
-        eyebrow="Settings"
         title="Studio settings"
         description={`Tune ${models.activeModel.shortName}, choose where files live, and make the studio sound the way you want.`}
         actions={
@@ -425,7 +404,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
               </span>
               <div>
                 <h2>Voice engine</h2>
-                <p>How Phonon loads and runs its weights on this machine.</p>
+                <p>How {activeModel.shortName} loads and runs on this machine.</p>
               </div>
               <span className={classNames('tag', engine.status === 'ready' ? 'tag--ok' : engine.status === 'error' ? 'tag--danger' : 'tag--warn')}>
                 <span className={classNames('status-dot', engine.status === 'ready' ? 'status-dot--ok' : engine.status === 'error' ? 'status-dot--danger' : 'status-dot--warn')} />
@@ -756,7 +735,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
           <section className="card settings-card">
             <header className="settings-card__head">
               <span className="settings-card__icon">
-                <Icon name="sparkles" size={17} />
+                <Icon name="studio" size={17} />
               </span>
               <div>
                 <h2>Generation defaults</h2>
@@ -898,131 +877,6 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
           <section className="card settings-card">
             <header className="settings-card__head">
               <span className="settings-card__icon">
-                <Icon name="key" size={17} />
-              </span>
-              <div>
-                <h2>Voice cloning</h2>
-                <p>Bring your own voice, or import one designed in Gradium Studio.</p>
-              </div>
-              <span className={classNames('tag', capabilityEnabled(activeModel, 'voiceClone') ? 'tag--ok' : 'tag--muted')}>
-                <Icon name={capabilityEnabled(activeModel, 'voiceClone') ? 'sparkles' : 'x'} size={11} />{' '}
-                {capabilityEnabled(activeModel, 'voiceClone') ? 'Cloud, once' : 'Unavailable'}
-              </span>
-            </header>
-
-            {!capabilityEnabled(activeModel, 'voiceClone') && (
-              <div className="inline-error inline-error--info">
-                <Icon name="alert" size={15} />
-                <span>{capabilityReason(activeModel, 'voiceClone')}</span>
-                <button className="btn btn--subtle btn--sm" onClick={() => setPage('models')}>
-                  Choose a model
-                </button>
-              </div>
-            )}
-
-            <label className={classNames('switch-row', !capabilityEnabled(activeModel, 'voiceClone') && 'is-disabled')}>
-              <span>
-                <strong>Allow cloud voice cloning</strong>
-                <em>
-                  Sends a 10–15 second recording to Gradium once to create a voice. Turn it off to import only — then
-                  nothing is ever uploaded.
-                </em>
-              </span>
-              <span className="switch">
-                <input
-                  type="checkbox"
-                  checked={settings.allowCloudCloning !== false}
-                  disabled={!capabilityEnabled(activeModel, 'voiceClone')}
-                  onChange={(event) => updateSettings({ allowCloudCloning: event.target.checked })}
-                />
-                <span className="switch__track"><span className="switch__thumb" /></span>
-              </span>
-            </label>
-
-            <div className="settings-field">
-              <div className="settings-field__head">
-                <strong>Gradium API key</strong>
-                <span>
-                  {cloneKey?.hasKey
-                    ? cloneKey.encrypted
-                      ? 'Saved and encrypted on this device.'
-                      : 'Saved in the app data folder on this device.'
-                    : 'Only needed to clone a voice from a recording.'}
-                </span>
-              </div>
-              <div className="path-row">
-                <input
-                  className="input input--mono"
-                  type="password"
-                  value={keyDraft}
-                  onChange={(event) => setKeyDraft(event.target.value)}
-                  placeholder={cloneKey?.hasKey ? 'Paste a new key to replace the saved one' : 'Paste your Gradium API key'}
-                  spellCheck={false}
-                  disabled={keyBusy}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') void saveKey();
-                  }}
-                />
-                <button className="btn btn--subtle btn--sm" onClick={() => void saveKey()} disabled={!keyDraft.trim() || keyBusy}>
-                  {keyBusy ? 'Saving…' : 'Save key'}
-                </button>
-                {cloneKey?.hasKey && (
-                  <button className="btn btn--subtle btn--sm" onClick={() => void clearKey()} disabled={keyBusy}>
-                    Remove
-                  </button>
-                )}
-              </div>
-              <p className="field__hint">
-                Create a key in{' '}
-                <button className="link" onClick={() => void window.studio.openExternal('https://studio.gradium.ai/')}>
-                  Gradium Studio <Icon name="external" size={11} />
-                </button>
-                . Cloning runs in Gradium’s cloud once; the resulting 256 KB voice file is downloaded here and every later
-                generation is local. The key never goes into recordings or exports.
-              </p>
-            </div>
-
-            <div className="settings-field">
-              <div className="settings-field__head">
-                <strong>Your voices</strong>
-                <span>
-                  {customVoices.length
-                    ? `${customVoices.length} custom voice${customVoices.length === 1 ? '' : 's'} on this device.`
-                    : 'No custom voices yet — clone one or import a .safetensors file.'}
-                </span>
-              </div>
-              <div className="clone-actions">
-                <button
-                  className="btn btn--primary btn--sm"
-                  onClick={() => openClone('record')}
-                  disabled={settings.allowCloudCloning === false || !capabilityEnabled(activeModel, 'voiceClone')}
-                  title={capabilityReason(activeModel, 'voiceClone') || undefined}
-                >
-                  <Icon name="mic" size={14} /> Record &amp; clone
-                </button>
-                <button
-                  className="btn btn--subtle btn--sm"
-                  onClick={() => openClone('import')}
-                  disabled={!capabilityEnabled(activeModel, 'voiceImport')}
-                  title={capabilityReason(activeModel, 'voiceImport') || undefined}
-                >
-                  <Icon name="upload" size={14} /> Import voice file
-                </button>
-                <button className="btn btn--ghost btn--sm" onClick={() => void window.studio.paths.reveal('voices')}>
-                  <Icon name="folder" size={14} /> Open voice folder
-                </button>
-              </div>
-              <p className="field__hint">
-                Imported and cloned voices appear beside the catalog everywhere — in the studio, the voice picker, batch
-                renders and history. Importing works completely offline; only the initial clone sends a short clip to
-                Gradium.
-              </p>
-            </div>
-          </section>
-
-          <section className="card settings-card">
-            <header className="settings-card__head">
-              <span className="settings-card__icon">
                 <Icon name="downloadCloud" size={17} />
               </span>
               <div>
@@ -1042,7 +896,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
                     ? models.hfToken.encrypted
                       ? 'Saved and encrypted on this device.'
                       : 'Saved in the app data folder on this device.'
-                    : 'Only needed for gated models (Phonon 40M, OpenAudio S1-mini).'}
+                    : 'Only needed for models that are gated on Hugging Face.'}
                 </span>
               </div>
               <div className="path-row">
@@ -1104,7 +958,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
               </span>
               <div>
                 <h2>Pronunciation dictionary</h2>
-                <p>Teach Phonon names, brands and acronyms. Whole words only, case-insensitive.</p>
+                <p>Teach the voice names, brands and acronyms. Whole words only, case-insensitive.</p>
               </div>
               <button className="btn btn--subtle btn--sm" onClick={addPronunciation}>
                 <Icon name="plus" size={14} /> Add rule
@@ -1244,7 +1098,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
               </span>
               <div>
                 <h2>About</h2>
-                <p>Voxarium {info?.version || ''} · local text-to-speech</p>
+                <p>Voxarium {info?.version || ''} · local text-to-speech · AGPL-3.0-or-later</p>
               </div>
             </header>
             <div className="about-grid">
@@ -1276,11 +1130,12 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
               <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal(activeModel.license.url)}>
                 <Icon name="external" size={14} /> License
               </button>
-              {activeModel.runtime === 'phonon' && (
-                <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal('https://github.com/gradium-ai/xn-ptts')}>
-                  <Icon name="external" size={14} /> Runtime source
-                </button>
-              )}
+              <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal('https://github.com/AhmadMansy/voxarium')}>
+                <Icon name="external" size={14} /> Source code (AGPL-3.0)
+              </button>
+              <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal('https://github.com/AhmadMansy/voxarium/blob/main/THIRD_PARTY_NOTICES.md')}>
+                <Icon name="external" size={14} /> Third-party notices
+              </button>
               <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.paths.reveal('data')}>
                 <Icon name="folder" size={14} /> Data folder
               </button>
@@ -1326,7 +1181,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
               </div>
             </dl>
             <button className="btn btn--subtle btn--sm settings-side__cta" onClick={onOpenSetup}>
-              <Icon name="sparkles" size={14} /> Open setup assistant
+              <Icon name="layers" size={14} /> Open setup assistant
             </button>
           </section>
 
@@ -1359,7 +1214,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
 
       <p className="page-footer-note">
         <Icon name="info" size={13} />
-        Phonon 31M is a 31-million-parameter English checkpoint built on Pocket TTS and Mimi, released under Apache-2.0.
+        {activeModel.shortName}: {activeModel.description} License: {activeModel.license.name}.
       </p>
     </div>
   );

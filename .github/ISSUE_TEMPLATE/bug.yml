@@ -1,0 +1,50 @@
+name: Bug report
+description: Something doesn't work
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Voxarium version
+      description: Settings → About
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, Linux, macOS]
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: Which model were you installing or using?
+      placeholder: e.g. Kokoro 82M
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where did it fail?
+      options:
+        - Preflight / hardware check
+        - License or token step
+        - Toolchain (uv / Python)
+        - Environment build
+        - Weights download
+        - Prepare / first start
+        - Test synthesis
+        - Generating speech
+        - Other
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error text
+      description: Remove tokens and personal paths first.
+      render: text

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 const { contextBridge, ipcRenderer } = require('electron');
 
 const invoke = (channel, payload) => ipcRenderer.invoke(channel, payload);
@@ -32,6 +33,7 @@ contextBridge.exposeInMainWorld('studio', {
     download: (options) => invoke('models:download', options),
     cancel: () => invoke('models:cancel'),
     verify: (id) => invoke('models:verify', { id }),
+    verifySynthesis: (id) => invoke('models:verifySynthesis', { id }),
     uninstall: (id) => invoke('models:uninstall', { id }),
     activate: (id) => invoke('models:activate', { id }),
     acknowledge: (id) => invoke('models:acknowledge', { id }),
@@ -100,12 +102,6 @@ contextBridge.exposeInMainWorld('studio', {
     setToken: (token) => invoke('hf:setToken', { token }),
   },
 
-  clone: {
-    keyStatus: () => invoke('clone:keyStatus'),
-    setKey: (key) => invoke('clone:setKey', { key }),
-    create: (payload) => invoke('clone:create', payload),
-  },
-
   history: {
     list: () => invoke('history:list'),
     upsert: (entry) => invoke('history:upsert', entry),
@@ -170,11 +166,6 @@ contextBridge.exposeInMainWorld('studio', {
     return () => ipcRenderer.removeListener('sidecar:status', listener);
   },
 
-  onCloneProgress: (callback) => {
-    const listener = (_event, payload) => callback(payload);
-    ipcRenderer.on('clone:progress', listener);
-    return () => ipcRenderer.removeListener('clone:progress', listener);
-  },
 
   onMenuAction: (callback) => {
     const listener = (_event, payload) => callback(payload);

@@ -89,13 +89,10 @@
 
 @keyframes live-pulse {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
   }
   70% {
-    box-shadow: 0 0 0 7px transparent;
   }
   100% {
-    box-shadow: 0 0 0 0 transparent;
   }
 }
 
@@ -231,7 +228,8 @@
 @media (max-width: 1180px) {
   .page-header {
     flex-direction: column;
-    gap: 10px;
+    align-items: flex-start;
+    gap: 14px;
   }
 
   .page-header__actions {

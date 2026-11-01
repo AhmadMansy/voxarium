@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """VoxCPM2 (OpenBMB), 48 kHz. Voices are voice-design descriptions or reference clips."""
 
 PRESETS = [

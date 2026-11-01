@@ -1,0 +1,115 @@
+name: Release
+
+# Push a tag like v0.1.0 to build installers for every OS and create a DRAFT GitHub Release.
+# Review the draft, smoke-test the installers, then publish it by hand.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: windows, os: windows-latest, script: "pack:win" }
+          - { name: linux, os: ubuntu-latest, script: "pack:linux" }
+          - { name: macos, os: macos-latest, script: "pack:mac" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run icon
+      - run: npm run notices
+      - name: Package
+        shell: bash
+        run: |
+          # Empty secrets arrive as empty variables, which electron-builder reads as a path.
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then unset "$name"; fi
+          done
+          npm run ${{ matrix.script }}
+        env:
+          # Signing is optional. Without these secrets the installers are built unsigned.
+          # macOS: CSC_LINK (base64 .p12), CSC_KEY_PASSWORD, plus APPLE_* for notarization.
+          # Windows: CSC_LINK / CSC_KEY_PASSWORD, or a signing service step added later.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK == '' && 'false' || 'true' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.name }}
+          if-no-files-found: error
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+            release/*.deb
+
+  publish:
+    name: Draft release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # create the release
+      id-token: write       # build provenance
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tag must match package.json
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          base="${GITHUB_REF_NAME%%-*}"
+          if [ "$version" != "$base" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package.json version $version" >&2
+            exit 1
+          fi
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Checksums and SBOM
+        run: |
+          cd assets
+          sha256sum * > SHA256SUMS.txt
+          cd ..
+          npm sbom --package-lock-only --omit dev --sbom-format cyclonedx > assets/sbom.cdx.json
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "assets/*"
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > release-notes.md <<'EOF'
+          ## Install
+
+          - **Windows:** run the `.exe` installer.
+          - **Linux:** make the `.AppImage` executable and run it, or install the `.deb`.
+          - **macOS:** open the `.dmg` and drag Voxarium to Applications.
+
+          Builds may be unsigned. Verify downloads with `SHA256SUMS.txt`.
+          See the README for platform support per model.
+          EOF
+          flags=""
+          case "${GITHUB_REF_NAME}" in *-*) flags="--prerelease" ;; esac
+          gh release create "${GITHUB_REF_NAME}" assets/* $flags\
+            --draft --title "Voxarium ${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md --generate-notes

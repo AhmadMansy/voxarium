@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getVoice, localeFlags, localeLabel } from '../data/catalog';
 import { LivePlayer, computePeaks, encodeMp3, encodeWavBuffer } from '../lib/audio';
@@ -28,6 +29,7 @@ import { usePlayer, usePlaybackTime } from '../player';
 import { useStudio } from '../state';
 import type { HistoryEntry, SpeechStats } from '../types';
 import { Icon } from '../components/Icons';
+import { modKey, shortcut } from '../lib/platform';
 import { ModelRequired, PageHeader } from '../components/PageHeader';
 import { ExpressionPanel } from '../components/ExpressionPanel';
 import { VoiceAvatar } from '../components/VoiceAvatar';
@@ -437,8 +439,6 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
   return (
     <div className="page page--studio">
       <PageHeader
-        icon="studio"
-        eyebrow="Studio"
         title="Create speech"
         description="Write a script, cast a voice, and render natural speech entirely on this device."
         actions={
@@ -456,45 +456,35 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
         }
       />
 
-      <section className="card model-strip">
+      <section className="model-strip" aria-label="Active voice model">
         <button className="model-strip__main" onClick={() => setPage('models')} title="Switch model">
           <span className="model-strip__mark">
             <Icon name="layers" size={16} />
           </span>
           <span className="model-strip__text">
-            <span>Voice model</span>
             <strong>{activeModel.shortName}</strong>
             <em>{activeModel.family} · {activeModel.runtimeLabel}</em>
           </span>
+          <Icon name="chevronRight" size={14} />
         </button>
         <div className="model-strip__badges">
-          <span className="tag tag--accent" title={activeModel.ratingNotes}>
-            ★ {activeModel.rating}/10
-          </span>
           <span className={classNames('tag', `tag--${activeLicense.tone}`)} title={activeLicense.title}>
             {activeLicense.label}
           </span>
           <span className={classNames('tag', `tag--${fitTone(activeFit.level)}`)} title={activeFit.summary}>
-            <Icon name="thermometer" size={11} /> {activeFit.label}
+            {activeFit.label}
           </span>
         </div>
+        {/* Only what this model can do; unsupported features are explained where they would appear. */}
         <div className="model-strip__caps">
-          {capabilityChips.map((capability) => {
-            const enabled = capabilityEnabled(activeModel, capability.key);
-            return (
-              <span
-                key={capability.key}
-                className={classNames('tag', enabled ? 'tag--ok' : 'tag--muted')}
-                title={enabled ? `${capability.label} is supported` : capabilityReason(activeModel, capability.key)}
-              >
-                <Icon name={enabled ? 'check' : 'x'} size={10} /> {capability.label}
+          {capabilityChips
+            .filter((capability) => capabilityEnabled(activeModel, capability.key))
+            .map((capability) => (
+              <span key={capability.key} className="model-strip__cap" title={`${capability.label} is supported`}>
+                {capability.label}
               </span>
-            );
-          })}
+            ))}
         </div>
-        <button className="btn btn--subtle btn--sm" onClick={() => setPage('models')}>
-          Manage <Icon name="chevronRight" size={13} />
-        </button>
       </section>
 
       {showArabic && (
@@ -578,6 +568,21 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
                 <span className="editor__count">{stats.characters.toLocaleString()} / 6,000</span>
               </div>
               <div className="editor__tools">
+                <div className="editor__samples">
+                  <span>Try</span>
+                  {SAMPLES.map((sample) => (
+                    <button
+                      key={sample.label}
+                      className="chip chip--tiny"
+                      onClick={() => {
+                        const next = studioText.trim() ? `${studioText.trimEnd()}\n\n${sample.text}` : sample.text;
+                        setStudioText(next.slice(0, 6000));
+                      }}
+                    >
+                      {sample.label}
+                    </button>
+                  ))}
+                </div>
                 <button className="btn btn--ghost btn--sm" onClick={() => setStudioText('')} disabled={!studioText}>
                   <Icon name="rotateCcw" size={14} /> Clear
                 </button>
@@ -610,49 +615,23 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
                   </button>
                 )}
               </div>
-              <div className="editor__samples">
-                <span>Try:</span>
-                {SAMPLES.map((sample) => (
-                  <button
-                    key={sample.label}
-                    className="chip chip--tiny"
-                    onClick={() => {
-                      const next = studioText.trim() ? `${studioText.trimEnd()}\n\n${sample.text}` : sample.text;
-                      setStudioText(next.slice(0, 6000));
-                    }}
-                  >
-                    {sample.label}
-                  </button>
-                ))}
-              </div>
+              <button
+                className={classNames('btn btn--primary btn--lg generate-btn', generating && 'is-stopping')}
+                onClick={() => void generate()}
+                title={`Generate speech (${shortcut('Enter')})`}
+              >
+                {generating ? (
+                  <>
+                    <Icon name="stop" size={16} /> Stop generating
+                  </>
+                ) : (
+                  <>
+                    Generate speech <kbd>{modKey} ↵</kbd>
+                  </>
+                )}
+              </button>
             </div>
           </section>
-
-          <div className="generate-row">
-            <div className="generate-row__hint">
-              <Icon name="sparkles" size={15} />
-              <span>
-                {stats.words > 0
-                  ? `${formatDuration(stats.seconds)} of speech · ${engineLabel}`
-                  : 'Your model runs locally. Nothing is uploaded.'}
-              </span>
-              <kbd>⌘↵</kbd>
-            </div>
-            <button
-              className={classNames('btn btn--primary btn--lg generate-btn', generating && 'is-stopping')}
-              onClick={() => void generate()}
-            >
-              {generating ? (
-                <>
-                  <Icon name="stop" size={18} /> Stop generating
-                </>
-              ) : (
-                <>
-                  <Icon name="sparkles" size={18} /> Generate speech
-                </>
-              )}
-            </button>
-          </div>
 
           {generating ? (
             <section className="card render render--live">
@@ -796,7 +775,7 @@ export function StudioPage({ onOpenSetup }: StudioPageProps) {
               <div>
                 <strong>Your render will appear here</strong>
                 <p>
-                  Phonon streams audio as it generates, then saves the take to your history. Use the buttons above to export
+                  {activeModel.shortName} streams audio as it generates, then saves the take to your history. Use the buttons above to export
                   WAV or MP3 whenever you like.
                 </p>
               </div>

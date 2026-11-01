@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Loopback TTS server shared by every Voxarium sidecar model.
 
 The Electron supervisor starts this with the model's isolated Python

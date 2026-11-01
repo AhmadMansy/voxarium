@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -109,7 +110,7 @@ try {
   assert.equal(health.activeModel.id, 'phonon-31m-en');
   const models = await (await api('/v1/models')).json();
   assert.equal(models.object, 'list');
-  assert.equal(models.data.length, 15);
+  assert.equal(models.data.length, 17);
   assert.equal(models.data.find((model) => model.id === 'phonon-31m-en').active, true);
   const voices = await (await api('/v1/voices')).json();
   // Phonon 31M accepts the 38 English and character voices of the 103-voice catalog.

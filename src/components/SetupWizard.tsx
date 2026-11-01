@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useEffect, useMemo, useState } from 'react';
 import type { Quality } from '../types';
 import { useStudio } from '../state';
@@ -40,7 +41,8 @@ function runtimeLabel(model: ModelManifest, installed: boolean, ready: boolean):
 function runtimeTone(model: ModelManifest, installed: boolean, ready: boolean): string {
   if (installed) return 'ok';
   if (!runtimeReady(model, ready)) return 'muted';
-  return 'accent';
+  // Ready to install is the normal state of a list, not something to highlight.
+  return 'muted';
 }
 
 export function SetupWizard({ open, onClose }: SetupWizardProps) {

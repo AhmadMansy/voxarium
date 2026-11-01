@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Breeze TTS 2. The inference code is the pinned breeze-tts source tree (added to sys.path)."""
 
 PRESETS = [

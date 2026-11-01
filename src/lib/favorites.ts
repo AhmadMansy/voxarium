@@ -1,13 +1,15 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useCallback, useSyncExternalStore } from 'react';
 
-const STORAGE_KEY = 'phonon.favoriteVoices';
+const STORAGE_KEY = 'voxarium.favoriteVoices';
+const LEGACY_STORAGE_KEY = 'phonon.favoriteVoices';
 
 let cache: string[] | null = null;
 const listeners = new Set<() => void>();
 
 function read(): string[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [];

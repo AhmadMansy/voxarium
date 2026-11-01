@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Quality } from '../types';
 
 export type RuntimeKind = 'phonon' | 'onnx-web' | 'sidecar';
 export type ModelFormat = 'phonon-safetensors' | 'kokoro-voice-pack' | 'reference-audio' | 'unknown';
-export type CloneKind = 'none' | 'local' | 'cloud';
+export type CloneKind = 'none' | 'local';
 export type FitLevel = 'great' | 'runs' | 'cpu' | 'too-heavy';
 
 export interface ModelCapabilities {
@@ -174,6 +175,20 @@ export interface ModelFileState {
 
 export type ModelLifecycle = 'not-installed' | 'downloading' | 'verifying' | 'installed' | 'update' | 'error';
 
+/** Result of the install pipeline's final stage: a real test synthesis. */
+export interface SynthesisCheck {
+  ok: boolean;
+  error: string | null;
+  durationSec: number;
+  peak: number;
+  rms: number;
+  sampleRate: number;
+  elapsedMs: number;
+  at: number;
+  platform: string;
+  arch: string;
+}
+
 export interface ModelInstallState {
   id: string;
   lifecycle: ModelLifecycle;
@@ -184,7 +199,8 @@ export interface ModelInstallState {
   bytes: number;
   installedAt: number | null;
   verifiedAt: number | null;
-  source: 'download' | 'import' | 'legacy' | null;
+  synthesisCheck?: SynthesisCheck | null;
+  source: 'download' | 'import' | null;
   error?: string;
 }
 
@@ -245,6 +261,10 @@ export interface RuntimePackState {
   version: string;
   platform: string;
   arch: string;
+  /** Support tier on this platform: A verified, B builds, C experimental, D unsupported. */
+  tier?: 'A' | 'B' | 'C' | 'D' | null;
+  tierLabel?: string | null;
+  platformLabel?: string;
   description: string;
   homepage?: string;
   license: ModelLicense;

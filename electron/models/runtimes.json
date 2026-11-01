@@ -1,72 +1,185 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-10-30T00:00:00.000Z",
-  "note": "Runtime packs are installed separately from the app and the model weights. Tool and interpreter packs download a pinned archive (size + SHA-256). Sidecar packs are built on the user's machine from a pinned recipe: an isolated virtual environment created by the pinned uv with the managed interpreter, pinned PyPI requirements (CUDA PyTorch on NVIDIA GPUs, CPU PyTorch otherwise), optional pinned source archives, and the bundled Voxarium adapter. No compiler is required for any recipe on Windows x64.",
+  "note": "Runtime packs are installed separately from the app and the model weights. Tool and interpreter packs download a pinned archive (size + SHA-256). Sidecar packs are built on the user's machine from a pinned recipe: an isolated virtual environment created by the pinned uv with the managed interpreter, pinned PyPI requirements (CUDA PyTorch on NVIDIA GPUs, CPU PyTorch otherwise), optional pinned source archives, and the bundled Voxarium adapter. No compiler is required for any recipe on Windows x64. Tool and Python packs carry per-platform `variants`; sidecar packs declare a support tier per platform in `support` (A verified, B builds, C experimental; missing = unsupported).",
   "packs": [
     {
-      "id": "uv-win-x64",
+      "id": "uv",
       "name": "uv package manager",
       "kind": "tool",
       "version": "0.13.6",
-      "platform": "win32",
-      "arch": "x64",
       "description": "Astral's uv builds each model's isolated Python environment. Its hard-linked cache stores PyTorch once even when several models use it.",
       "homepage": "https://github.com/astral-sh/uv",
-      "license": { "id": "MIT", "name": "MIT License", "commercial": true, "restricted": false, "url": "https://github.com/astral-sh/uv/blob/main/LICENSE-MIT" },
+      "license": {
+        "id": "MIT",
+        "name": "MIT License",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://github.com/astral-sh/uv/blob/main/LICENSE-MIT"
+      },
       "available": true,
       "importable": false,
-      "archive": {
-        "name": "uv-x86_64-pc-windows-msvc.zip",
-        "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-pc-windows-msvc.zip",
-        "size": 15239500,
-        "sha256": "a2a8820d5eea32f08ef467ef3b7f66883a9b076d5737a2fc2fbb5f458d1bb50f"
-      },
-      "entry": { "uv": "uv.exe" },
       "requires": [],
       "provides": [],
-      "sizeBytes": 15239500,
-      "installedBytes": 46000000
+      "legacyIds": [
+        "uv-win-x64"
+      ],
+      "variants": {
+        "win32-x64": {
+          "archive": {
+            "name": "uv-x86_64-pc-windows-msvc.zip",
+            "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-pc-windows-msvc.zip",
+            "size": 15239500,
+            "sha256": "a2a8820d5eea32f08ef467ef3b7f66883a9b076d5737a2fc2fbb5f458d1bb50f"
+          },
+          "entry": {
+            "uv": "uv.exe"
+          },
+          "sizeBytes": 15239500,
+          "installedBytes": 46000000
+        },
+        "linux-x64": {
+          "archive": {
+            "name": "uv-x86_64-unknown-linux-gnu.tar.gz",
+            "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-gnu.tar.gz",
+            "size": 16799024,
+            "sha256": "f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645"
+          },
+          "entry": {
+            "uv": "uv-x86_64-unknown-linux-gnu/uv"
+          },
+          "sizeBytes": 16799024,
+          "installedBytes": 38114544
+        },
+        "darwin-arm64": {
+          "archive": {
+            "name": "uv-aarch64-apple-darwin.tar.gz",
+            "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-aarch64-apple-darwin.tar.gz",
+            "size": 14235670,
+            "sha256": "60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472"
+          },
+          "entry": {
+            "uv": "uv-aarch64-apple-darwin/uv"
+          },
+          "sizeBytes": 14235670,
+          "installedBytes": 28002336
+        },
+        "darwin-x64": {
+          "archive": {
+            "name": "uv-x86_64-apple-darwin.tar.gz",
+            "url": "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-apple-darwin.tar.gz",
+            "size": 17004934,
+            "sha256": "63ba17fdda55ad1a230d4b37fc6017ffa10c23688c83818bd3bfdf914c652a02"
+          },
+          "entry": {
+            "uv": "uv-x86_64-apple-darwin/uv"
+          },
+          "sizeBytes": 17004934,
+          "installedBytes": 38474688
+        }
+      }
     },
     {
-      "id": "python-3.12-win-x64",
+      "id": "python-3.12",
       "name": "Python 3.12 runtime",
       "kind": "python",
       "version": "3.12.16",
-      "platform": "win32",
-      "arch": "x64",
       "description": "An isolated CPython 3.12 interpreter from python-build-standalone. Sidecar models use it instead of whatever Python happens to be installed on the machine.",
       "homepage": "https://github.com/astral-sh/python-build-standalone",
-      "license": { "id": "PSF-2.0", "name": "Python Software Foundation License 2.0", "commercial": true, "restricted": false, "url": "https://docs.python.org/3/license.html" },
+      "license": {
+        "id": "PSF-2.0",
+        "name": "Python Software Foundation License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://docs.python.org/3/license.html"
+      },
       "available": true,
       "importable": true,
-      "archive": {
-        "name": "cpython-3.12.16+20261026-x86_64-pc-windows-msvc-install_only.tar.gz",
-        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-pc-windows-msvc-install_only.tar.gz",
-        "size": 47113364,
-        "sha256": "590dfcbe3a34c07301e6332e13e2188b98655cd072b08afa45a7998dc4c22bc5"
-      },
-      "entry": { "python": "python/python.exe" },
       "requires": [],
       "provides": [],
-      "sizeBytes": 47113364,
-      "installedBytes": 152506880
+      "legacyIds": [
+        "python-3.12-win-x64"
+      ],
+      "variants": {
+        "win32-x64": {
+          "archive": {
+            "name": "cpython-3.12.16+20261026-x86_64-pc-windows-msvc-install_only.tar.gz",
+            "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-pc-windows-msvc-install_only.tar.gz",
+            "size": 47113364,
+            "sha256": "590dfcbe3a34c07301e6332e13e2188b98655cd072b08afa45a7998dc4c22bc5"
+          },
+          "entry": {
+            "python": "python/python.exe"
+          },
+          "sizeBytes": 47113364,
+          "installedBytes": 152506880
+        },
+        "linux-x64": {
+          "archive": {
+            "name": "cpython-3.12.16+20261026-x86_64-unknown-linux-gnu-install_only.tar.gz",
+            "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-unknown-linux-gnu-install_only.tar.gz",
+            "size": 67921566,
+            "sha256": "6a79e922e50006b601f29e688407659da1c2b86ebcd4e9c7254cf234be8b89de"
+          },
+          "entry": {
+            "python": "python/bin/python3.12"
+          },
+          "sizeBytes": 67921566,
+          "installedBytes": 222564855
+        },
+        "darwin-arm64": {
+          "archive": {
+            "name": "cpython-3.12.16+20261026-aarch64-apple-darwin-install_only.tar.gz",
+            "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-aarch64-apple-darwin-install_only.tar.gz",
+            "size": 25172086,
+            "sha256": "fbf4afef53c2a6b72bb741bc06d5671a9dfaf87bd84e5aa73ac9b3d0d589f14e"
+          },
+          "entry": {
+            "python": "python/bin/python3.12"
+          },
+          "sizeBytes": 25172086,
+          "installedBytes": 66319689
+        },
+        "darwin-x64": {
+          "archive": {
+            "name": "cpython-3.12.16+20261026-x86_64-apple-darwin-install_only.tar.gz",
+            "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-apple-darwin-install_only.tar.gz",
+            "size": 24873291,
+            "sha256": "a962e47df522889eaa7ff0d6a56203f1079f68aabb65ffdbe8455f362bc769f3"
+          },
+          "entry": {
+            "python": "python/bin/python3.12"
+          },
+          "sizeBytes": 24873291,
+          "installedBytes": 66926871
+        }
+      }
     },
     {
       "id": "kokoro-82m-sidecar",
       "name": "Kokoro runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "The official kokoro package with misaki G2P for English, Chinese and Japanese (through pyopenjtalk-plus, which ships Windows wheels) and eSpeak NG for Spanish, French, Hindi, Italian and Portuguese.",
       "homepage": "https://github.com/hexgrad/kokoro",
-      "license": { "id": "Apache-2.0", "name": "Apache License 2.0", "commercial": true, "restricted": false, "url": "https://www.apache.org/licenses/LICENSE-2.0" },
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "kokoro",
         "python": "3.12",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.8.0" } },
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0"
+          }
+        },
         "requirements": [
           "kokoro==0.9.4",
           "misaki[en,zh]==0.9.4",
@@ -78,102 +191,217 @@
           "soxr"
         ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["kokoro-82m"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "kokoro-82m"
+      ],
       "sizeBytes": 3100000000,
-      "installedBytes": 5200000000
+      "installedBytes": 5200000000,
+      "support": {
+        "win32-x64": "B",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "supertonic-3-sidecar",
       "name": "Supertonic runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "The official supertonic SDK on ONNX Runtime. CPU only, no PyTorch, about 120 MB.",
       "homepage": "https://github.com/supertone-inc/supertonic",
-      "license": { "id": "MIT", "name": "MIT License", "commercial": true, "restricted": false, "url": "https://opensource.org/licenses/MIT" },
+      "license": {
+        "id": "MIT",
+        "name": "MIT License",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://opensource.org/licenses/MIT"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "supertonic",
         "python": "3.12",
         "torch": null,
-        "requirements": ["supertonic==1.3.1", "soundfile", "soxr"]
+        "requirements": [
+          "supertonic==1.3.1",
+          "soundfile",
+          "soxr"
+        ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["supertonic-3"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "supertonic-3"
+      ],
       "sizeBytes": 60000000,
-      "installedBytes": 160000000
+      "installedBytes": 160000000,
+      "support": {
+        "win32-x64": "B",
+        "linux-x64": "C",
+        "darwin-arm64": "C",
+        "darwin-x64": "C"
+      }
     },
     {
       "id": "silma-tts-sidecar",
       "name": "SILMA runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "silma-tts with PyTorch, Vocos and CATT tashkeel. NeMo text normalization is replaced by a pass-through shim because pynini has no Windows build.",
       "homepage": "https://github.com/SILMA-AI/silma-tts",
-      "license": { "id": "Apache-2.0", "name": "Apache License 2.0", "commercial": true, "restricted": false, "url": "https://www.apache.org/licenses/LICENSE-2.0" },
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "silma",
         "python": "3.12",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.8.0", "torchaudio": "2.8.0", "torchvision": "0.23.0" } },
-        "requirements": ["silma-tts==1.0.5", "imageio-ffmpeg", "soxr"],
-        "overrides": ["nemo-text-processing; sys_platform == 'linux'"],
-        "shims": ["nemo_text_processing"]
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0",
+            "torchaudio": "2.8.0",
+            "torchvision": "0.23.0"
+          }
+        },
+        "requirements": [
+          "silma-tts==1.0.5",
+          "imageio-ffmpeg",
+          "soxr"
+        ],
+        "overrides": [
+          "nemo-text-processing; sys_platform == 'linux'"
+        ],
+        "shims": [
+          "nemo_text_processing"
+        ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["silma-tts"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "silma-tts"
+      ],
       "sizeBytes": 3300000000,
-      "installedBytes": 5600000000
+      "installedBytes": 5600000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "chatterbox-sidecar",
       "name": "Chatterbox runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "chatterbox-tts with its pinned PyTorch 2.6 stack and the Perth watermarker.",
       "homepage": "https://github.com/resemble-ai/chatterbox",
-      "license": { "id": "MIT", "name": "MIT License", "commercial": true, "restricted": false, "url": "https://opensource.org/licenses/MIT" },
+      "license": {
+        "id": "MIT",
+        "name": "MIT License",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://opensource.org/licenses/MIT"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "chatterbox",
         "python": "3.12",
-        "torch": { "cuda": "cu126", "packages": { "torch": "2.6.0", "torchaudio": "2.6.0" } },
-        "requirements": ["chatterbox-tts==0.1.7", "soxr"]
+        "torch": {
+          "cuda": "cu126",
+          "packages": {
+            "torch": "2.6.0",
+            "torchaudio": "2.6.0"
+          }
+        },
+        "requirements": [
+          "chatterbox-tts==0.1.7",
+          "soxr"
+        ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["chatterbox"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "chatterbox"
+      ],
       "sizeBytes": 3200000000,
-      "installedBytes": 5400000000
+      "installedBytes": 5400000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "openaudio-s1-mini-sidecar",
       "name": "OpenAudio runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "The pinned fish-speech source tree (it locates its configs through .project-root) plus its inference dependencies.",
       "homepage": "https://github.com/fishaudio/fish-speech",
-      "license": { "id": "Apache-2.0", "name": "Apache License 2.0 (fish-speech code; weights are CC BY-NC-SA)", "commercial": true, "restricted": false, "url": "https://github.com/fishaudio/fish-speech/blob/main/LICENSE" },
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0 (fish-speech code; weights are CC BY-NC-SA)",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://github.com/fishaudio/fish-speech/blob/main/LICENSE"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "openaudio",
         "python": "3.12",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.8.0", "torchaudio": "2.8.0" } },
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0",
+            "torchaudio": "2.8.0"
+          }
+        },
         "requirements": [
           "numpy",
           "transformers<=4.57.3",
@@ -204,7 +432,9 @@
           "soundfile",
           "soxr"
         ],
-        "overrides": ["protobuf>=3.20.0,<6.0.0"],
+        "overrides": [
+          "protobuf>=3.20.0,<6.0.0"
+        ],
         "sources": [
           {
             "name": "fish-speech",
@@ -214,100 +444,214 @@
           }
         ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["openaudio-s1-mini"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "openaudio-s1-mini"
+      ],
       "sizeBytes": 3400000000,
-      "installedBytes": 5800000000
+      "installedBytes": 5800000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "qwen3-tts-sidecar",
       "name": "Qwen3-TTS runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "qwen-tts with its pinned Transformers 4.57.3 stack.",
       "homepage": "https://github.com/QwenLM/Qwen3-TTS",
-      "license": { "id": "Apache-2.0", "name": "Apache License 2.0", "commercial": true, "restricted": false, "url": "https://www.apache.org/licenses/LICENSE-2.0" },
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "qwen3",
         "python": "3.12",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.8.0", "torchaudio": "2.8.0" } },
-        "requirements": ["qwen-tts==0.1.1", "soxr"]
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0",
+            "torchaudio": "2.8.0"
+          }
+        },
+        "requirements": [
+          "qwen-tts==0.1.1",
+          "soxr"
+        ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["qwen3-tts"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "qwen3-tts"
+      ],
       "sizeBytes": 3200000000,
-      "installedBytes": 5400000000
+      "installedBytes": 5400000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "omnivoice-sidecar",
       "name": "OmniVoice runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "The omnivoice package (Apache-2.0 code) with Transformers 5.",
       "homepage": "https://github.com/k2-fsa/OmniVoice",
-      "license": { "id": "Apache-2.0", "name": "Apache License 2.0 (code; weights are CC BY-NC)", "commercial": true, "restricted": false, "url": "https://www.apache.org/licenses/LICENSE-2.0" },
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0 (code; weights are CC BY-NC)",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "omnivoice",
         "python": "3.12",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.8.0", "torchaudio": "2.8.0" } },
-        "requirements": ["omnivoice==0.2.1", "soxr"]
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0",
+            "torchaudio": "2.8.0"
+          }
+        },
+        "requirements": [
+          "omnivoice==0.2.1",
+          "soxr"
+        ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["omnivoice"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "omnivoice"
+      ],
       "sizeBytes": 3200000000,
-      "installedBytes": 5400000000
+      "installedBytes": 5400000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "voxcpm2-sidecar",
       "name": "VoxCPM2 runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "The voxcpm package. torch.compile stays off because Triton is not available on Windows.",
       "homepage": "https://github.com/OpenBMB/VoxCPM",
-      "license": { "id": "Apache-2.0", "name": "Apache License 2.0", "commercial": true, "restricted": false, "url": "https://www.apache.org/licenses/LICENSE-2.0" },
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "voxcpm2",
         "python": "3.12",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.8.0", "torchaudio": "2.8.0" } },
-        "requirements": ["voxcpm==2.0.3", "torchcodec==0.7.0", "soxr"]
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0",
+            "torchaudio": "2.8.0"
+          }
+        },
+        "requirements": [
+          "voxcpm==2.0.3",
+          "torchcodec==0.7.0",
+          "soxr"
+        ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["voxcpm2"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "voxcpm2"
+      ],
       "sizeBytes": 3500000000,
-      "installedBytes": 5900000000
+      "installedBytes": 5900000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "moss-tts-sidecar",
       "name": "MOSS-TTS runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "The MOSS-TTS package at a pinned commit with its Transformers 5.0 / PyTorch 2.9.1 stack.",
       "homepage": "https://github.com/OpenMOSS/MOSS-TTS",
-      "license": { "id": "Apache-2.0", "name": "Apache License 2.0", "commercial": true, "restricted": false, "url": "https://www.apache.org/licenses/LICENSE-2.0" },
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "moss",
         "python": "3.12",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.9.1", "torchaudio": "2.9.1" } },
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.9.1",
+            "torchaudio": "2.9.1"
+          }
+        },
         "requirements": [
           "moss-tts @ https://github.com/OpenMOSS/MOSS-TTS/archive/934d6826b084c46a0d033402174d5f8ac4ed2519.zip",
           "transformers==5.0.0",
@@ -317,29 +661,62 @@
           "soxr"
         ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["moss-tts"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "moss-tts"
+      ],
       "sizeBytes": 3300000000,
-      "installedBytes": 5600000000
+      "installedBytes": 5600000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "breeze-tts2-sidecar",
       "name": "Breeze TTS 2 runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "The pinned breeze-tts inference source (Apache-2.0) with its qwen-tts / PyTorch 2.9.1 requirements.",
       "homepage": "https://github.com/breezeblue-ai/breeze-tts",
-      "license": { "id": "Apache-2.0", "name": "Apache License 2.0 (code; weights are non-commercial)", "commercial": true, "restricted": false, "url": "https://www.apache.org/licenses/LICENSE-2.0" },
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0 (code; weights are non-commercial)",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "breeze",
         "python": "3.12",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.9.1", "torchaudio": "2.9.1" } },
-        "requirements": ["qwen-tts==0.1.1", "transformers==4.57.3", "huggingface-hub>=0.34", "numpy>=2.0", "soundfile>=0.13", "soxr"],
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.9.1",
+            "torchaudio": "2.9.1"
+          }
+        },
+        "requirements": [
+          "qwen-tts==0.1.1",
+          "transformers==4.57.3",
+          "huggingface-hub>=0.34",
+          "numpy>=2.0",
+          "soundfile>=0.13",
+          "soxr"
+        ],
         "sources": [
           {
             "name": "breeze-tts",
@@ -349,83 +726,294 @@
           }
         ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["breeze-tts2"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "breeze-tts2"
+      ],
       "sizeBytes": 3200000000,
-      "installedBytes": 5400000000
+      "installedBytes": 5400000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "audio8-tts-sidecar",
       "name": "Audio8 runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "PyTorch and Transformers 4.x for Audio8's custom model code.",
       "homepage": "https://github.com/Audio8-AI/Audio8_TTS",
-      "license": { "id": "Apache-2.0", "name": "Apache License 2.0", "commercial": true, "restricted": false, "url": "https://www.apache.org/licenses/LICENSE-2.0" },
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "audio8",
         "python": "3.12",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.8.0", "torchaudio": "2.8.0" } },
-        "requirements": ["transformers>=4.57.0,<5", "numpy>=1.26", "soundfile>=0.12", "safetensors>=0.4", "tqdm>=4.66", "accelerate", "soxr"]
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0",
+            "torchaudio": "2.8.0"
+          }
+        },
+        "requirements": [
+          "transformers>=4.57.0,<5",
+          "numpy>=1.26",
+          "soundfile>=0.12",
+          "safetensors>=0.4",
+          "tqdm>=4.66",
+          "accelerate",
+          "soxr"
+        ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["audio8-tts"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "audio8-tts"
+      ],
       "sizeBytes": 2900000000,
-      "installedBytes": 4900000000
+      "installedBytes": 4900000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "indextts2-sidecar",
       "name": "IndexTTS2 runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "The index-tts package at a pinned commit. IndexTTS2 requires Python 3.11, which uv provisions from python-build-standalone.",
       "homepage": "https://github.com/index-tts/index-tts",
-      "license": { "id": "Bilibili-IndexTTS", "name": "Bilibili IndexTTS License", "commercial": null, "restricted": true, "review": true, "url": "https://github.com/index-tts/index-tts/blob/main/LICENSE" },
+      "license": {
+        "id": "Bilibili-IndexTTS",
+        "name": "Bilibili IndexTTS License",
+        "commercial": null,
+        "restricted": true,
+        "review": true,
+        "url": "https://github.com/index-tts/index-tts/blob/main/LICENSE"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "indextts2",
         "python": "3.11",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.8.0", "torchaudio": "2.8.0" } },
-        "requirements": ["indextts @ https://github.com/index-tts/index-tts/archive/d9e41aac89fd00b3d71497fddb287b7f24613712.zip", "soxr"]
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0",
+            "torchaudio": "2.8.0"
+          }
+        },
+        "requirements": [
+          "indextts @ https://github.com/index-tts/index-tts/archive/d9e41aac89fd00b3d71497fddb287b7f24613712.zip",
+          "soxr"
+        ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64"],
-      "provides": ["indextts2"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv"
+      ],
+      "provides": [
+        "indextts2"
+      ],
       "sizeBytes": 3600000000,
-      "installedBytes": 6100000000
+      "installedBytes": 6100000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     },
     {
       "id": "xtts-v2-sidecar",
       "name": "XTTS-v2 runtime",
       "kind": "sidecar",
       "version": "2",
-      "platform": "win32",
-      "arch": "x64",
       "description": "coqui-tts, the maintained Idiap fork of Coqui TTS (MPL-2.0 code).",
       "homepage": "https://github.com/idiap/coqui-ai-TTS",
-      "license": { "id": "MPL-2.0", "name": "Mozilla Public License 2.0 (code; weights are CPML)", "commercial": true, "restricted": false, "url": "https://www.mozilla.org/MPL/2.0/" },
+      "license": {
+        "id": "MPL-2.0",
+        "name": "Mozilla Public License 2.0 (code; weights are CPML)",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.mozilla.org/MPL/2.0/"
+      },
       "available": true,
       "importable": true,
       "build": {
         "adapter": "xtts",
         "python": "3.12",
-        "torch": { "cuda": "cu128", "packages": { "torch": "2.8.0", "torchaudio": "2.8.0" } },
-        "requirements": ["coqui-tts==0.28.0", "soxr"]
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0",
+            "torchaudio": "2.8.0"
+          }
+        },
+        "requirements": [
+          "coqui-tts==0.28.0",
+          "soxr"
+        ]
       },
-      "entry": { "server": "start.py", "python": "venv/Scripts/python.exe" },
-      "requires": ["uv-win-x64", "python-3.12-win-x64"],
-      "provides": ["xtts-v2"],
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "xtts-v2"
+      ],
       "sizeBytes": 3100000000,
-      "installedBytes": 5300000000
+      "installedBytes": 5300000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
+    },
+    {
+      "id": "piper-sidecar",
+      "name": "Piper runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "description": "The official piper-tts package on ONNX Runtime, with its bundled eSpeak NG data. CPU only, no PyTorch.",
+      "homepage": "https://github.com/OHF-Voice/piper1-gpl",
+      "license": {
+        "id": "GPL-3.0-or-later",
+        "name": "GNU General Public License v3.0 or later",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://github.com/OHF-Voice/piper1-gpl/blob/main/COPYING"
+      },
+      "available": true,
+      "importable": true,
+      "build": {
+        "adapter": "piper",
+        "python": "3.12",
+        "torch": null,
+        "requirements": [
+          "piper-tts==1.8.0",
+          "soundfile",
+          "soxr"
+        ]
+      },
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "piper"
+      ],
+      "sizeBytes": 45000000,
+      "installedBytes": 130000000,
+      "support": {
+        "win32-x64": "B",
+        "linux-x64": "C",
+        "darwin-arm64": "C",
+        "darwin-x64": "C"
+      }
+    },
+    {
+      "id": "sopro-v2-turbo-sidecar",
+      "name": "Sopro runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "description": "The official sopro package with PyTorch (CPU or CUDA) and SentencePiece.",
+      "homepage": "https://github.com/samuel-vitorino/sopro",
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
+      "available": true,
+      "importable": true,
+      "build": {
+        "adapter": "sopro",
+        "python": "3.12",
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0",
+            "torchaudio": "2.8.0"
+          }
+        },
+        "requirements": [
+          "sopro==2.2.0",
+          "soundfile",
+          "soxr"
+        ]
+      },
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "sopro-v2-turbo"
+      ],
+      "sizeBytes": 3200000000,
+      "installedBytes": 5400000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     }
   ]
 }

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 class Normalizer:
     """Accepts NeMo's constructor arguments and leaves text untouched."""
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Local HTTP API. Other apps, scripts and agent tools send text here and get audio
 // back from the same engine the Studio uses (see bridge.cjs). It listens on the
 // loopback interface only, requires a bearer token, and refuses browser requests

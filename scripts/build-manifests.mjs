@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Builds electron/models/manifests.json.
 //
 // The Phonon family is pinned to exact Hugging Face revisions and every file is
@@ -84,7 +85,7 @@ const phonon = {
     shortName: 'Phonon 31M',
     family: 'Phonon',
     description:
-      'The original Voxarium checkpoint: 31M parameters, English narration, streaming 24 kHz audio and the full Gradium voice catalog.',
+      'A 31M-parameter English model with streaming 24 kHz audio and a 102-voice catalog. Small enough to run on any computer.',
     runtime: 'phonon',
     runtimeLabel: 'phonon-tts · WASM / WebGPU',
     repo: 'gradium/phonon-31m-en',
@@ -95,8 +96,8 @@ const phonon = {
     languages: langs(['en', 'English', { locale: 'en-US' }]),
     capabilities: caps({
       voiceImport: true,
-      voiceClone: true,
-      cloneKind: 'cloud',
+      voiceClone: false,
+      cloneKind: 'none',
       streaming: true,
       phonemes: true,
       normalization: true,
@@ -109,7 +110,7 @@ const phonon = {
       catalog: 'gradium/phonon-voices',
       catalogRevision: '0ee17205f254b5abc43b266c8a0f215565c352f7',
       compatibleLocales: ['en-us', 'en-gb', 'characters'],
-      note: '102 catalog voices plus local imports and Gradium cloud clones.',
+      note: '102 catalog voices plus imported voice files.',
     },
     hardware: { backend: 'wasm-webgpu', minRamGb: 4, recRamGb: 8, minVramGb: 0, recVramGb: 0, diskGb: 0.18 },
     defaults: { quality: 'q8', device: 'auto', temperature: 0.3, seed: '4242424242424242', language: 'en', rewrites: 'default', threads: 'auto' },
@@ -138,8 +139,8 @@ const phonon = {
     ),
     capabilities: caps({
       voiceImport: true,
-      voiceClone: true,
-      cloneKind: 'cloud',
+      voiceClone: false,
+      cloneKind: 'none',
       streaming: true,
       phonemes: true,
       normalization: true,
@@ -535,12 +536,82 @@ const models = [
     runtimePack: unavailable('The XTTS-v2 sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.'),
     estimatedBytes: 2000000000,
   },
+  {
+    id: 'piper',
+    name: 'Piper',
+    shortName: 'Piper',
+    family: 'Piper',
+    description:
+      'Tiny ONNX voices that run in real time on any CPU: no GPU and no PyTorch. Six voices in five languages, each with a permissive dataset license.',
+    runtime: 'sidecar',
+    runtimeLabel: 'Local sidecar · ONNX Runtime (CPU)',
+    repo: 'rhasspy/piper-voices',
+    revision: 'b4e358ffcb232591bf73a540e70f7de528e4174a',
+    rating: 6,
+    ratingNotes: 'Fast and light, with a more synthetic delivery than the larger models. Each voice keeps the license of its dataset.',
+    license: {
+      id: 'Per-voice',
+      name: 'Per-voice dataset licenses (public domain, CC0, CC BY 4.0)',
+      commercial: true,
+      restricted: false,
+      url: 'https://huggingface.co/rhasspy/piper-voices',
+    },
+    languages: langs(
+      ['en', 'English', { locale: 'en-US' }], ['de', 'German', { locale: 'de-DE' }], ['es', 'Spanish', { locale: 'es-ES' }],
+      ['fr', 'French', { locale: 'fr-FR' }], ['pt', 'Portuguese', { locale: 'pt-BR' }],
+    ),
+    capabilities: caps({ speed: true }),
+    voices: {
+      format: 'piper-voice',
+      note: 'Six voices. Two need a credit: Alba and Siwis (CC BY 4.0).',
+      compatibleLocales: ['en-us', 'en-gb', 'de-de', 'es-es', 'fr-fr', 'pt-br'],
+    },
+    hardware: { backend: 'sidecar', minRamGb: 2, recRamGb: 4, minVramGb: 0, recVramGb: 0, diskGb: 0.4 },
+    defaults: { quality: 'f32', device: 'cpu', temperature: 0.3, seed: '4242424242424242', language: 'en', rewrites: 'default', threads: 'auto' },
+    tags: ['cpu-friendly', 'multilingual', 'fast', 'commercial'],
+    runtimePack: unavailable('The Piper sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.'),
+    estimatedBytes: 400000000,
+  },
+  {
+    id: 'sopro-v2-turbo',
+    name: 'Sopro V2 Turbo',
+    shortName: 'Sopro',
+    family: 'Sopro',
+    description:
+      'A small multilingual model (English, Portuguese, French, German) that clones a voice from a short clip and runs on the CPU.',
+    runtime: 'sidecar',
+    runtimeLabel: 'Local sidecar · Python',
+    repo: 'samuel-vitorino/sopro-v2-turbo',
+    revision: 'c12d0dc7c4a33b3cb6ea3d11ceb70bc60c7c6312',
+    rating: 7,
+    ratingNotes: 'Good cloning for its size and light enough for a CPU; four languages and no style controls.',
+    license: { id: 'Apache-2.0', name: 'Apache License 2.0', commercial: true, restricted: false, url: 'https://www.apache.org/licenses/LICENSE-2.0' },
+    languages: langs(
+      ['en', 'English', { locale: 'en-US' }], ['pt', 'Portuguese', { locale: 'pt-BR' }],
+      ['fr', 'French', { locale: 'fr-FR' }], ['de', 'German', { locale: 'de-DE' }],
+    ),
+    capabilities: caps({ voiceClone: true, cloneKind: 'local', seed: true }),
+    voices: { format: 'reference-audio', note: 'Local reference-audio clones; nothing leaves the machine.' },
+    hardware: { backend: 'sidecar', minRamGb: 8, recRamGb: 16, minVramGb: 0, recVramGb: 2, diskGb: 1 },
+    defaults: { quality: 'f32', device: 'auto', temperature: 0.8, seed: '4242424242424242', language: 'en', rewrites: 'default', threads: 'auto' },
+    tags: ['local-runtime', 'clone', 'multilingual', 'cpu-friendly', 'commercial'],
+    runtimePack: unavailable('The Sopro sidecar pack is not installed. Sidecar models are opt-in downloads; this build ships the supervisor only.'),
+    estimatedBytes: 960000000,
+  },
 ];
 
+// Large repositories answer in pages; follow the `Link: <...>; rel="next"` header until it ends.
 async function fetchTree(repo, revision) {
-  const response = await fetch(`${HF}/api/models/${repo}/tree/${revision}?recursive=true`, { headers: UA });
-  if (!response.ok) throw new Error(`Tree request failed for ${repo}: ${response.status}`);
-  return response.json();
+  let url = `${HF}/api/models/${repo}/tree/${revision}?recursive=true`;
+  const entries = [];
+  while (url) {
+    const response = await fetch(url, { headers: UA });
+    if (!response.ok) throw new Error(`Tree request failed for ${repo}: ${response.status}`);
+    entries.push(...(await response.json()));
+    const next = (response.headers.get('link') || '').match(/<([^>]+)>;\s*rel="next"/);
+    url = next ? next[1] : null;
+  }
+  return entries;
 }
 
 async function sha256OfRemote(repo, revision, name) {
@@ -574,6 +645,23 @@ const pins = {
   'audio8-tts': { revision: '20e519d6e2c485ea1544f95f1fcaa6de6712bfc2', include: [ALL], exclude: [/\.jpe?g$/], weight: 'model.safetensors' },
   // The Qwen emotion-text model is optional and disabled in the adapter.
   indextts2: { revision: '740dcaff396282ffb241903d150ac011cd4b1ede', include: [ALL], exclude: [/^qwen0\.6bemo4-merge\//, /^LICENSE/], weight: 'gpt.pth' },
+  piper: {
+    revision: 'b4e358ffcb232591bf73a540e70f7de528e4174a',
+    files: [
+      'en/en_US/kristin/medium/en_US-kristin-medium.onnx', 'en/en_US/kristin/medium/en_US-kristin-medium.onnx.json',
+      'en/en_GB/alba/medium/en_GB-alba-medium.onnx', 'en/en_GB/alba/medium/en_GB-alba-medium.onnx.json',
+      'de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx', 'de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx.json',
+      'es/es_ES/davefx/medium/es_ES-davefx-medium.onnx', 'es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json',
+      'fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx', 'fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx.json',
+      'pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx', 'pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json',
+    ],
+    weight: 'en/en_US/kristin/medium/en_US-kristin-medium.onnx',
+  },
+  'sopro-v2-turbo': {
+    revision: 'c12d0dc7c4a33b3cb6ea3d11ceb70bc60c7c6312',
+    files: ['config.json', 'model.safetensors', 'semantic_encoder.safetensors', 'speaker_encoder.safetensors', 'vocoder.safetensors', 'tokenizer.model'],
+    weight: 'model.safetensors',
+  },
   'xtts-v2': {
     revision: '6c2b0d75eae4b7047358e3b6bd9325f857d43f77',
     files: ['config.json', 'dvae.pth', 'mel_stats.pth', 'model.pth', 'speakers_xtts.pth', 'vocab.json'],

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -32,10 +33,6 @@ function stagingDir(dirs, id) {
   return path.join(dirs.models, '.staging', id);
 }
 
-function legacyDir(dirs) {
-  return dirs.models;
-}
-
 /** Files needed to run a model at a chosen precision. */
 function filesFor(id, quality) {
   const model = getModel(id);
@@ -52,7 +49,6 @@ module.exports = {
   getModel,
   modelDir,
   stagingDir,
-  legacyDir,
   filesFor,
   hasPinnedFiles,
 };

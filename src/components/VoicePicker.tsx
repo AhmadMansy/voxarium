@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { VOICES, englishLocales, getVoice, localeLabel, localeFlags } from '../data/catalog';
 import { voiceCompatibilityNote, voiceCompatibleWithModel, voicesForModel } from '../models/compat';
@@ -15,7 +16,7 @@ interface VoicePickerProps {
 }
 
 export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
-  const { settings, model, models, updateSettings, engine, customVoices, openClone } = useStudio();
+  const { settings, model, models, updateSettings, engine, customVoices, openAddVoice } = useStudio();
   const { favorites, isFavorite, toggle } = useFavoriteVoices();
   const [query, setQuery] = useState('');
   const [locale, setLocale] = useState('all');
@@ -103,7 +104,7 @@ export function VoicePicker({ open, onClose, onBrowse }: VoicePickerProps) {
               className="btn btn--subtle"
               onClick={() => {
                 onClose();
-                openClone('record');
+                openAddVoice();
               }}
             >
               <Icon name="mic" size={15} /> Add a voice

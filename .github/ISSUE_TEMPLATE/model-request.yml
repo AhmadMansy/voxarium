@@ -1,0 +1,53 @@
+name: Model request
+description: Propose a text-to-speech model for the registry
+labels: [model-request]
+body:
+  - type: input
+    id: link
+    attributes:
+      label: Model page
+      placeholder: https://huggingface.co/...
+    validations:
+      required: true
+  - type: input
+    id: license
+    attributes:
+      label: License (exact name, from the license file, not only the model card)
+      placeholder: e.g. Apache-2.0, MIT, CC-BY-NC-4.0, custom
+    validations:
+      required: true
+  - type: dropdown
+    id: commercial
+    attributes:
+      label: Does the license allow commercial use?
+      options: [Yes, No, Conditions apply, Not sure]
+    validations:
+      required: true
+  - type: input
+    id: size
+    attributes:
+      label: Download size and hardware needs
+      placeholder: e.g. 2 GB weights, 8 GB VRAM recommended
+  - type: textarea
+    id: languages
+    attributes:
+      label: Languages and features
+      description: Languages, voice cloning, emotion/tags, streaming, multi-speaker
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: Runs on Windows?
+      description: Does the model card or repo show it works on Windows (and Linux/macOS)?
+      options: [Windows and others, Linux only, Not sure]
+  - type: checkboxes
+    id: formats
+    attributes:
+      label: Available formats
+      options:
+        - label: ONNX export
+        - label: GGUF / quantized
+        - label: Python package (pip)
+  - type: textarea
+    id: why
+    attributes:
+      label: Why add it?

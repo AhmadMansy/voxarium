@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Quality } from '../types';
 import type { ModelCapabilities, ModelLanguage, ModelManifest } from './types';
 import { getModel, qualitiesFor } from './registry';
@@ -110,7 +111,7 @@ export function capabilityReason(model: ModelManifest, capability: keyof ModelCa
   if (capabilityEnabled(model, capability)) return '';
   if (capability === 'arabic') return `${model.shortName} does not declare Arabic support.`;
   if (capability === 'voiceClone') return `${model.shortName} does not support voice cloning.`;
-  if (capability === 'voiceImport') return `${model.shortName} uses its own voice format; imported Phonon tensors are not compatible.`;
+  if (capability === 'voiceImport') return `${model.shortName} uses its own voice format; imported voice files are not compatible.`;
   if (capability === 'streaming') return `${model.shortName} renders in one pass.`;
   if (capability === 'emotion') return `${model.shortName} has no emotion or style controls.`;
   if (capability === 'multiSpeaker') return `${model.shortName} does not support multi-speaker dialogue.`;
@@ -154,7 +155,7 @@ export function voiceCompatibilityNote(model: ModelManifest, voice: VoiceInfo): 
   if (voiceCompatibleWithModel(model, voice)) return null;
   if (voice.source === 'model') return `${voice.name} is a ${getModel(voice.modelId || '').shortName} voice.`;
   if (model.voices.format !== 'phonon-safetensors') {
-    return `${voice.name} is a Phonon voice and cannot be used with ${model.shortName}.`;
+    return `${voice.name} belongs to a different voice catalog and cannot be used with ${model.shortName}.`;
   }
   return `${voice.name} speaks ${voice.locale.toUpperCase()}, which ${model.shortName} does not support.`;
 }

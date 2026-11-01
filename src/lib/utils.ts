@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Pronunciation } from '../types';
 
 export function classNames(...values: Array<string | false | null | undefined>): string {
@@ -78,12 +79,8 @@ export function countSentences(text: string): number {
 export function estimateDuration(text: string): number {
   const words = countWords(text);
   if (!words) return 0;
-  // Phonon speaks at a natural, fairly brisk pace; ~2.7 words per second.
+  // Speech runs at a natural, fairly brisk pace; ~2.7 words per second.
   return Math.max(0.6, words / 2.7);
-}
-
-export function readingSeconds(text: string): number {
-  return Math.max(0, Math.round((countWords(text) / 2.7) * 10) / 10);
 }
 
 export function applyPronunciations(text: string, rules: Pronunciation[]): { text: string; applied: number } {
@@ -130,7 +127,7 @@ export function buildBaseName(
     .replaceAll('{voice}', slugify(values.voice, 28) || 'voice')
     .replaceAll('{slug}', slugify(values.text, 36) || 'speech')
     .replaceAll('{index}', String(values.index ?? 1).padStart(2, '0'));
-  return base.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').trim() || `phonon-${time}`;
+  return base.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').trim() || `voxarium-${time}`;
 }
 
 export function truncate(text: string, maxLength: number): string {
@@ -143,15 +140,7 @@ export function titleFromText(text: string): string {
   return truncate(firstLine, 78);
 }
 
-export function textSizeLabel(bytes: number): string {
-  return formatBytes(bytes);
-}
-
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-export function downloadPercent(loaded: number, total: number): number {
-  if (!total) return 0;
-  return Math.max(0, Math.min(100, (loaded / total) * 100));
-}

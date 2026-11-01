@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Voxarium MCP server (stdio). Lets agent tools such as Claude Code, Claude
 // Desktop or Cursor speak text aloud or produce audio files with the user's local
 // Voxarium models. It talks to the running app's local API and starts the app

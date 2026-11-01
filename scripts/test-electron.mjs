@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -15,6 +16,7 @@ import { _electron as electron } from 'playwright-core';
  */
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'electron/models/manifests.json'), 'utf8'));
+const runtimeCatalog = JSON.parse(fs.readFileSync(path.join(root, 'electron/models/runtimes.json'), 'utf8'));
 const phonon = manifest.models.find((model) => model.id === 'phonon-31m-en');
 const gated = manifest.models.find((model) => model.id === 'phonon-40m-multilingual');
 
@@ -153,7 +155,7 @@ try {
   );
   const install = snapshot.models.find((model) => model.id === phonon.id);
   assert.equal(install.lifecycle, 'installed');
-  assert.equal(snapshot.runtimes.length, 15, 'the runtime catalog ships with 15 packs');
+  assert.equal(snapshot.runtimes.length, runtimeCatalog.packs.length, 'every runtime pack in the catalog is reported');
   await page.waitForSelector('.setup-done', { timeout: 180000 });
   await page.getByRole('button', { name: /Start creating/ }).click();
   await page.waitForSelector('.wizard', { state: 'detached' });
@@ -175,7 +177,9 @@ try {
   step('browsing the runtime pack catalog');
   const runtimePanel = page.locator('.runtimes-panel');
   await runtimePanel.waitFor();
-  assert.equal(await runtimePanel.locator('.runtime-card').count(), 15, 'every runtime pack stays visible');
+  // The engine catalog is an advanced disclosure below the models; open it.
+  await runtimePanel.locator('summary').click();
+  assert.equal(await runtimePanel.locator('.runtime-card').count(), runtimeCatalog.packs.length, 'every runtime pack stays visible');
   const pythonRuntime = runtimePanel.locator('.runtime-card', { hasText: 'Python 3.12 runtime' }).first();
   await pythonRuntime.waitFor();
   assert.match(await pythonRuntime.innerText(), /PSF-2\.0/);

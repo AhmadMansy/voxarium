@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useEffect, useRef, useState } from 'react';
 import { SetupWizard } from './components/SetupWizard';
-import { CloneVoiceModal } from './components/CloneVoiceModal';
+import { AddVoiceModal } from './components/AddVoiceModal';
 import { Toasts } from './components/Toasts';
 import { Icon, type IconName } from './components/Icons';
 import { PlayerBar } from './components/PlayerBar';
@@ -15,6 +16,7 @@ import { StudioPage } from './pages/StudioPage';
 import { VoicesPage } from './pages/VoicesPage';
 import type { Page } from './types';
 import { classNames } from './lib/utils';
+import { shortcut } from './lib/platform';
 
 const NAV: { id: Page; label: string; icon: IconName; hint: string }[] = [
   { id: 'studio', label: 'Studio', icon: 'studio', hint: 'Write and render speech' },
@@ -192,7 +194,7 @@ export function App() {
                 {item.id === 'integrations' && settings.apiEnabled && (
                   <span className="nav-item__dot" title="The local API is on" aria-label="API on" />
                 )}
-                {item.id === 'studio' && !badge && <span className="nav-item__key">⌘1</span>}
+                {item.id === 'studio' && !badge && <span className="nav-item__key">{shortcut('1')}</span>}
               </button>
             );
           })}
@@ -248,11 +250,7 @@ export function App() {
 
       <div className={classNames('workspace', player.meta && 'has-player')}>
         <header className="titlebar">
-          <div className="titlebar__drag">
-            <span className="titlebar__page">{PAGE_LABEL[page]}</span>
-            <span className="titlebar__divider" />
-            <span className="titlebar__hint">{active.hint}</span>
-          </div>
+          <div className="titlebar__drag" />
           <div className="titlebar__status">
             <span className="titlebar__local">
               <Icon name="shield" size={12} /> On-device
@@ -281,7 +279,7 @@ export function App() {
       </div>
 
       <Toasts />
-      <CloneVoiceModal />
+      <AddVoiceModal />
       <SetupWizard
         open={setupOpen}
         onClose={() => {

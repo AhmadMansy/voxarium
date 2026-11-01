@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_VOICE_ID, VOICES, allVoices, getVoice, localeFlags, localeLabel } from '../data/catalog';
 import { voiceCompatibilityNote, voiceCompatibleWithModel } from '../models/compat';
@@ -243,7 +244,7 @@ export function BatchPage() {
       .sort((a, b) => a.createdAt - b.createdAt)
       .map((entry) => ({
         path: entry.filePath,
-        name: slugify(entry.title, 70) || `phonon-${entry.id.slice(0, 6)}`,
+        name: slugify(entry.title, 70) || `voxarium-${entry.id.slice(0, 6)}`,
       }));
     if (!files.length) return;
     const response = await window.studio.audio.exportMany(files);
@@ -275,14 +276,12 @@ export function BatchPage() {
   return (
     <div className="page page--batch">
       <PageHeader
-        icon="batch"
-        eyebrow="Batch"
         title="Render a whole script"
         description={`Put a voice in square brackets at the start of each line and ${models.activeModel.shortName} will cast every line automatically.`}
         actions={
           <>
             <button className="btn btn--subtle" onClick={() => setScript(example)} disabled={running}>
-              <Icon name="sparkles" size={15} /> Load example
+              <Icon name="fileText" size={15} /> Load example
             </button>
             <button className="btn btn--subtle" onClick={() => void window.studio.paths.reveal('audio')}>
               <Icon name="folder" size={15} /> Audio folder
@@ -314,7 +313,7 @@ export function BatchPage() {
             spellCheck
             disabled={running}
             onChange={(event) => setScript(event.target.value)}
-            placeholder={`[Zoey] Welcome back to the show — today we're talking about sound.\n[Phonon Default] Every line gets its own voice.\n\nOr write without brackets to use the voice from the studio.`}
+            placeholder={`[${getVoice(fallbackVoiceId).name}] Welcome back to the show — today we're talking about sound.\nPut a voice name in square brackets to give a line its own voice.\n\nOr write without brackets to use the voice from the studio.`}
           />
           <div className="editor__foot batch-editor__foot">
             <div className="editor__stats">
@@ -473,7 +472,7 @@ export function BatchPage() {
                 </>
               ) : (
                 <>
-                  <Icon name="sparkles" size={17} /> Generate {items.length || ''} line{items.length === 1 ? '' : 's'}
+                  Generate {items.length || ''} line{items.length === 1 ? '' : 's'}
                 </>
               )}
             </button>

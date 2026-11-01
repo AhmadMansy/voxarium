@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import catalogData from './voices.json';
 import type { Catalog, CustomVoiceRecord, VoiceInfo } from '../types';
 
@@ -14,10 +15,6 @@ let customVoices: VoiceInfo[] = [];
 
 export function setCustomVoices(list: VoiceInfo[]) {
   customVoices = list;
-}
-
-export function getCustomVoices(): VoiceInfo[] {
-  return customVoices;
 }
 
 export function allVoices(): VoiceInfo[] {
@@ -80,8 +77,8 @@ export function customVoiceToInfo(record: CustomVoiceRecord): VoiceInfo {
     gender: null,
     age: null,
     description: copied
-      ? 'Cloned from your recording with Gradium, then stored on this device.'
-      : 'Imported Phonon voice file. Works with every Phonon checkpoint.',
+      ? 'Cloned by an earlier version of Voxarium and stored on this device.'
+      : 'Imported voice file, stored on this device.',
     file: record.fileName || `${record.id}.safetensors`,
     isDefault: false,
     source: 'custom',
@@ -119,16 +116,6 @@ export const englishLocales = ['en-us', 'en-gb', 'characters'];
 
 export function localeLabel(locale: string): string {
   return localeLabels[locale] || locale;
-}
-
-export function voiceInitials(name: string): string {
-  return name
-    .replace(/^(Captain|Sir|The|Old|Master|Fairy)\s+/i, '')
-    .split(/[\s-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
 }
 
 const HUES = [258, 190, 320, 28, 152, 220, 282, 348, 46, 168];

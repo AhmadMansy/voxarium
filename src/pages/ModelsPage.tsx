@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useMemo, useState } from 'react';
 import { formatBytes, formatDate } from '../lib/utils';
 import { MODELS, defaultQualityFor } from '../models/registry';
@@ -16,6 +17,7 @@ import {
   modelHasArabic,
   voicesForModel,
 } from '../models/compat';
+import { planInstall } from '../models/pipeline';
 import type { ModelManifest, RuntimePackState } from '../models/types';
 import { useStudio } from '../state';
 import { Icon } from '../components/Icons';
@@ -62,7 +64,7 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
   const percent = progress?.percent ?? (progress && progress.total ? (progress.loaded / progress.total) * 100 : null);
   const badge = licenseBadge(pack.license);
   const status = pack.installed ? 'Installed' : pack.available ? 'Not installed' : 'Not published';
-  const statusTone = pack.installed ? 'ok' : pack.available ? 'accent' : 'muted';
+  const statusTone = pack.installed ? 'ok' : 'muted';
   const canDownload = pack.available && Boolean(pack.archive || pack.buildable);
   const size = pack.installed ? pack.bytes || pack.installedBytes : pack.sizeBytes;
   const kindLabel = pack.kind === 'python' ? 'Base interpreter' : pack.kind === 'tool' ? 'Installer tool' : 'Model runtime';
@@ -75,7 +77,7 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
         <div>
           <h3>{pack.name}</h3>
           <span className="runtime-card__meta">
-            {kindLabel} · v{pack.version} · {pack.platform}/{pack.arch}
+            {kindLabel} · v{pack.version} · {pack.platformLabel || `${pack.platform}/${pack.arch}`}
           </span>
         </div>
         <span className={classNames('tag', `tag--${statusTone}`)}>{status}</span>
@@ -145,7 +147,7 @@ function RuntimePackCard({ pack }: { pack: RuntimePackState }) {
         ) : (
           <>
             <button
-              className="btn btn--primary btn--sm"
+              className="btn btn--subtle btn--sm"
               onClick={() => void models.downloadRuntime(pack.id)}
               disabled={busy || !canDownload}
               title={canDownload ? undefined : pack.reason || 'This pack has no published archive yet.'}
@@ -215,6 +217,26 @@ function ModelCard({ model }: { model: ModelManifest }) {
   const runtimeBusy = Boolean(models.runtimeBusyId && runtimePacks.includes(models.runtimeBusyId)) || (busy && Boolean(runtimeEvent));
   const runtimeBytes = runtime.ready || !runtime.pack ? 0 : runtime.pack.sizeBytes;
   const needsToken = Boolean(model.gated && !status.installed && !models.hfToken?.hasToken);
+  const toolchainReady = Boolean(runtime.pack && runtime.pack.requires.every((id) => models.runtimes[id]?.installed));
+  const plan = planInstall({
+    model,
+    weightsInstalled: status.installed,
+    environmentReady: model.runtime === 'sidecar' ? runtime.ready : true,
+    toolchainReady,
+    runtimeAvailable: runtime.available,
+    runtimeReason: runtime.reason,
+    prepared: Boolean(sidecar?.prepared),
+    synthesisOk: status.synthesisCheck ? status.synthesisCheck.ok : null,
+    licenseAcknowledged: ack,
+    requiresLicenseAck: requiresLicenseAck(model),
+    hasHfToken: Boolean(models.hfToken?.hasToken),
+    fit,
+    tier: runtime.pack?.tier ?? null,
+    freeDiskGb: models.hardware.freeDiskGb,
+    runtimeBytes,
+    weightsBytes: status.installed ? 0 : downloadBytes,
+  });
+  const check = status.synthesisCheck;
 
   const accept = async () => {
     const confirmed = await window.studio.ui.confirm({
@@ -250,6 +272,10 @@ function ModelCard({ model }: { model: ModelManifest }) {
 
   const verify = async () => {
     await models.verify(model.id);
+  };
+
+  const testSynthesis = async () => {
+    await models.testSynthesis(model.id);
   };
 
   const toggleLogs = async () => {
@@ -306,6 +332,28 @@ function ModelCard({ model }: { model: ModelManifest }) {
         <span className={classNames('tag', `tag--${fitTone(fit.level)}`)} title={fit.summary}>
           <Icon name="thermometer" size={11} /> {fit.label}
         </span>
+        {runtime.pack?.tier && (
+          <span
+            className={classNames('tag', runtime.pack.tier === 'A' || runtime.pack.tier === 'B' ? 'tag--ok' : runtime.pack.tier === 'C' ? 'tag--warn' : 'tag--muted')}
+            title={
+              runtime.pack.tier === 'D'
+                ? runtime.pack.reason || 'Not supported on this system yet.'
+                : `${runtime.pack.tierLabel} on ${runtime.pack.platformLabel || 'this system'}. ${
+                    runtime.pack.tier === 'C' ? 'The recipe exists but has not been run end to end here.' : 'Built and run on this system.'
+                  }`
+            }
+          >
+            {runtime.pack.tierLabel}
+          </span>
+        )}
+        {check && (
+          <span
+            className={classNames('tag', check.ok ? 'tag--ok' : 'tag--danger')}
+            title={check.ok ? `Spoke a test sentence on ${check.platform} (${check.durationSec.toFixed(1)} s of audio) on ${formatDate(check.at)}.` : check.error || 'The test synthesis failed.'}
+          >
+            {check.ok ? 'Test passed' : 'Test failed'}
+          </span>
+        )}
         <span className={classNames('tag', status.installed ? 'tag--ok' : 'tag--muted')}>
           <Icon name={status.installed ? 'checkCircle' : 'downloadCloud'} size={11} /> {lifecycle}
         </span>
@@ -415,7 +463,7 @@ function ModelCard({ model }: { model: ModelManifest }) {
           </button>
         ) : (
           <button
-            className="btn btn--primary btn--sm"
+            className="btn btn--subtle btn--sm"
             onClick={() => void download()}
             disabled={busy || !installable.ok}
             title={installable.ok ? undefined : installable.reason}
@@ -432,6 +480,17 @@ function ModelCard({ model }: { model: ModelManifest }) {
         {status.installed && (
           <button className="btn btn--subtle btn--sm" onClick={() => void verify()} disabled={busy}>
             <Icon name="checkCircle" size={14} /> Verify
+          </button>
+        )}
+
+        {status.installed && model.runtime === 'sidecar' && runtime.ready && (
+          <button
+            className="btn btn--subtle btn--sm"
+            onClick={() => void testSynthesis()}
+            disabled={busy}
+            title="Speak a short test sentence with this model and check that the audio is plausible."
+          >
+            <Icon name="play" size={14} /> Test synthesis
           </button>
         )}
 
@@ -494,6 +553,29 @@ function ModelCard({ model }: { model: ModelManifest }) {
 
       {showDetails && (
         <div className="model-card__details">
+          <div>
+            <strong>Install steps</strong>
+            <ol className="model-card__steps">
+              {plan.stages.map((stage) => (
+                <li key={stage.id} className={`is-${stage.state}`} title={stage.summary}>
+                  <span className="model-card__step-mark" aria-hidden="true">
+                    {stage.state === 'done' ? '✓' : stage.state === 'blocked' ? '!' : stage.state === 'skipped' ? '–' : '•'}
+                  </span>
+                  <span>
+                    {stage.label}
+                    {stage.state === 'skipped' ? ' (not needed)' : ''}
+                    {stage.detail ? <em> · {stage.detail}</em> : null}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            {plan.blockers.map((blocker) => (
+              <p key={blocker} className="is-danger">{blocker}</p>
+            ))}
+            {plan.warnings.map((warning) => (
+              <p key={warning} className="is-warn">{warning}</p>
+            ))}
+          </div>
           <div>
             <strong>Rating rubric</strong>
             <p>{rating.rubric}</p>
@@ -571,8 +653,6 @@ export function ModelsPage() {
   return (
     <div className="page page--models">
       <PageHeader
-        icon="layers"
-        eyebrow="Models"
         title="Choose your voice engine"
         description="Every model stays visible with its license, capabilities and hardware fit. Download only what you want to run."
         actions={
@@ -618,37 +698,6 @@ export function ModelsPage() {
         </div>
       </section>
 
-      <section className="card runtimes-panel">
-        <header className="runtimes-panel__head">
-          <div className="models-overview__main">
-            <span className="models-overview__mark">
-              <Icon name="layers" size={20} />
-            </span>
-            <div>
-              <span className="models-overview__eyebrow">Runtime packs</span>
-              <h2>Separate downloads, verified before use</h2>
-              <p>
-                The installer stays small. Python and model runtimes download individually, are checked against a
-                pinned SHA-256, and install into your own data folder. {installedRuntimeCount} of {runtimePacks.length}{' '}
-                installed.
-              </p>
-            </div>
-          </div>
-        </header>
-        <div className="runtimes-grid">
-          {runtimePacks.map((pack) => (
-            <RuntimePackCard key={pack.id} pack={pack} />
-          ))}
-        </div>
-        {!runtimePacks.length && (
-          <div className="empty empty--compact models-empty">
-            <Icon name="layers" size={24} />
-            <strong>The runtime catalog is unavailable</strong>
-            <span>Restart Voxarium or reinstall it to restore the runtime catalog.</span>
-          </div>
-        )}
-      </section>
-
       <div className="models-toolbar" role="group" aria-label="Filter models">
         {[
           { id: 'all', label: `All ${MODELS.length}` },
@@ -682,6 +731,31 @@ export function ModelsPage() {
           <span>Show all models to see what is available.</span>
         </div>
       )}
+
+      <details className="card runtimes-panel">
+        <summary className="runtimes-panel__head">
+          <span className="runtimes-panel__title">
+            <strong>Engines and runtimes</strong>
+            <span>
+              Advanced · {installedRuntimeCount} of {runtimePacks.length} installed. Each is a separate download, checked
+              against a pinned SHA-256, kept in your own data folder.
+            </span>
+          </span>
+          <Icon name="chevronRight" size={16} className="runtimes-panel__chevron" />
+        </summary>
+        <div className="runtimes-grid">
+          {runtimePacks.map((pack) => (
+            <RuntimePackCard key={pack.id} pack={pack} />
+          ))}
+        </div>
+        {!runtimePacks.length && (
+          <div className="empty empty--compact models-empty">
+            <Icon name="layers" size={24} />
+            <strong>The runtime catalog is unavailable</strong>
+            <span>Restart Voxarium or reinstall it to restore the runtime catalog.</span>
+          </div>
+        )}
+      </details>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // GPU preference shim for the phonon-tts worker.
 //
 // `phonon-tts` asks for a WebGPU adapter with no options, so on a multi-GPU machine the

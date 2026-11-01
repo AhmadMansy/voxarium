@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-30T22:48:31.270Z",
+  "generatedAt": "2026-11-01T05:09:08.207Z",
   "defaultModelId": "phonon-31m-en",
   "voiceCatalog": {
     "repo": "gradium/phonon-voices",
@@ -14,7 +14,7 @@
       "name": "Phonon 31M English",
       "shortName": "Phonon 31M",
       "family": "Phonon",
-      "description": "The original Voxarium checkpoint: 31M parameters, English narration, streaming 24 kHz audio and the full Gradium voice catalog.",
+      "description": "A 31M-parameter English model with streaming 24 kHz audio and a 102-voice catalog. Small enough to run on any computer.",
       "runtime": "phonon",
       "runtimeLabel": "phonon-tts · WASM / WebGPU",
       "repo": "gradium/phonon-31m-en",
@@ -39,8 +39,8 @@
       ],
       "capabilities": {
         "voiceImport": true,
-        "voiceClone": true,
-        "cloneKind": "cloud",
+        "voiceClone": false,
+        "cloneKind": "none",
         "multiSpeaker": false,
         "emotion": false,
         "nonVerbal": false,
@@ -66,7 +66,7 @@
           "en-gb",
           "characters"
         ],
-        "note": "102 catalog voices plus local imports and Gradium cloud clones."
+        "note": "102 catalog voices plus imported voice files."
       },
       "hardware": {
         "backend": "wasm-webgpu",
@@ -193,8 +193,8 @@
       ],
       "capabilities": {
         "voiceImport": true,
-        "voiceClone": true,
-        "cloneKind": "cloud",
+        "voiceClone": false,
+        "cloneKind": "none",
         "multiSpeaker": false,
         "emotion": false,
         "nonVerbal": false,
@@ -4008,6 +4008,349 @@
       "filesVerified": true,
       "order": 14,
       "downloadBytes": 2086564978
+    },
+    {
+      "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
+      "ratingRubric": "Editorial 1–10 score: 40% naturalness and prosody, 25% cloning and expression, 20% language coverage, 15% efficiency. The score is a planning aid, not a benchmark.",
+      "id": "piper",
+      "name": "Piper",
+      "shortName": "Piper",
+      "family": "Piper",
+      "description": "Tiny ONNX voices that run in real time on any CPU: no GPU and no PyTorch. Six voices in five languages, each with a permissive dataset license.",
+      "runtime": "sidecar",
+      "runtimeLabel": "Local sidecar · ONNX Runtime (CPU)",
+      "repo": "rhasspy/piper-voices",
+      "revision": "b4e358ffcb232591bf73a540e70f7de528e4174a",
+      "rating": 6,
+      "ratingNotes": "Fast and light, with a more synthetic delivery than the larger models. Each voice keeps the license of its dataset.",
+      "license": {
+        "id": "Per-voice",
+        "name": "Per-voice dataset licenses (public domain, CC0, CC BY 4.0)",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://huggingface.co/rhasspy/piper-voices"
+      },
+      "languages": [
+        {
+          "code": "en",
+          "name": "English",
+          "locale": "en-US",
+          "quality": "high",
+          "arabic": false
+        },
+        {
+          "code": "de",
+          "name": "German",
+          "locale": "de-DE",
+          "quality": "high",
+          "arabic": false
+        },
+        {
+          "code": "es",
+          "name": "Spanish",
+          "locale": "es-ES",
+          "quality": "high",
+          "arabic": false
+        },
+        {
+          "code": "fr",
+          "name": "French",
+          "locale": "fr-FR",
+          "quality": "high",
+          "arabic": false
+        },
+        {
+          "code": "pt",
+          "name": "Portuguese",
+          "locale": "pt-BR",
+          "quality": "high",
+          "arabic": false
+        }
+      ],
+      "capabilities": {
+        "voiceImport": false,
+        "voiceClone": false,
+        "cloneKind": "none",
+        "multiSpeaker": false,
+        "emotion": false,
+        "nonVerbal": false,
+        "streaming": false,
+        "phonemes": false,
+        "normalization": false,
+        "speed": true,
+        "seed": false,
+        "watermark": false,
+        "arabic": false
+      },
+      "voices": {
+        "format": "piper-voice",
+        "note": "Six voices. Two need a credit: Alba and Siwis (CC BY 4.0).",
+        "compatibleLocales": [
+          "en-us",
+          "en-gb",
+          "de-de",
+          "es-es",
+          "fr-fr",
+          "pt-br"
+        ]
+      },
+      "hardware": {
+        "backend": "sidecar",
+        "minRamGb": 2,
+        "recRamGb": 4,
+        "minVramGb": 0,
+        "recVramGb": 0,
+        "diskGb": 0.4
+      },
+      "defaults": {
+        "quality": "f32",
+        "device": "cpu",
+        "temperature": 0.3,
+        "seed": "4242424242424242",
+        "language": "en",
+        "rewrites": "default",
+        "threads": "auto"
+      },
+      "tags": [
+        "cpu-friendly",
+        "multilingual",
+        "fast",
+        "commercial"
+      ],
+      "runtimePack": {
+        "available": false,
+        "packId": "piper-sidecar",
+        "reason": "Piper runs in its own Python environment, which is built on this computer when you install the model."
+      },
+      "estimatedBytes": 379567071,
+      "files": [
+        {
+          "name": "en/en_US/kristin/medium/en_US-kristin-medium.onnx",
+          "size": 63531379,
+          "sha256": "5849957f929cbf720c258f8458692d6103fff2f0e3d3b19c8259474bb06a18d4",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "en/en_US/kristin/medium/en_US-kristin-medium.onnx.json",
+          "size": 4968,
+          "sha256": "",
+          "gitSha1": "e94be84ab0dc3532b4b2b48cbb1f5d4a8746bedd",
+          "required": true
+        },
+        {
+          "name": "en/en_GB/alba/medium/en_GB-alba-medium.onnx",
+          "size": 63201294,
+          "sha256": "401369c4a81d09fdd86c32c5c864440811dbdcc66466cde2d64f7133a66ad03b",
+          "required": true
+        },
+        {
+          "name": "en/en_GB/alba/medium/en_GB-alba-medium.onnx.json",
+          "size": 4888,
+          "sha256": "",
+          "gitSha1": "c0969252c640fd7c2765baa62936a1106ca856d7",
+          "required": true
+        },
+        {
+          "name": "de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx",
+          "size": 63201294,
+          "sha256": "7e64762d8e5118bb578f2eea6207e1a35a8e0c30595010b666f983fc87bb7819",
+          "required": true
+        },
+        {
+          "name": "de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx.json",
+          "size": 4819,
+          "sha256": "",
+          "gitSha1": "71e11587184e86ebf875c9e449cee0f8df691496",
+          "required": true
+        },
+        {
+          "name": "es/es_ES/davefx/medium/es_ES-davefx-medium.onnx",
+          "size": 63201294,
+          "sha256": "6658b03b1a6c316ee4c265a9896abc1393353c2d9e1bca7d66c2c442e222a917",
+          "required": true
+        },
+        {
+          "name": "es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json",
+          "size": 4817,
+          "sha256": "",
+          "gitSha1": "4d3bb330a75d71c056891102c1d957c3e5cec98d",
+          "required": true
+        },
+        {
+          "name": "fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx",
+          "size": 63201294,
+          "sha256": "641d1ab097da2b81128c076810edb052b385decc8be3381814802a64a73baf99",
+          "required": true
+        },
+        {
+          "name": "fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx.json",
+          "size": 4875,
+          "sha256": "",
+          "gitSha1": "ecb3b00cc2fc9e72ba9c5dcc5edeb717a05fa9aa",
+          "required": true
+        },
+        {
+          "name": "pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx",
+          "size": 63201294,
+          "sha256": "858555e3a064209c57088fe6bd70c4c3dc54d03eaa00c45d5ecaf43a33f95aa7",
+          "required": true
+        },
+        {
+          "name": "pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json",
+          "size": 4855,
+          "sha256": "",
+          "gitSha1": "b0206c81d70e6e4468b94d36491b4c17fac531b7",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
+      "order": 15,
+      "downloadBytes": 379567071
+    },
+    {
+      "ratingEvidence": "https://artificialanalysis.ai/text-to-speech",
+      "ratingRubric": "Editorial 1–10 score: 40% naturalness and prosody, 25% cloning and expression, 20% language coverage, 15% efficiency. The score is a planning aid, not a benchmark.",
+      "id": "sopro-v2-turbo",
+      "name": "Sopro V2 Turbo",
+      "shortName": "Sopro",
+      "family": "Sopro",
+      "description": "A small multilingual model (English, Portuguese, French, German) that clones a voice from a short clip and runs on the CPU.",
+      "runtime": "sidecar",
+      "runtimeLabel": "Local sidecar · Python",
+      "repo": "samuel-vitorino/sopro-v2-turbo",
+      "revision": "c12d0dc7c4a33b3cb6ea3d11ceb70bc60c7c6312",
+      "rating": 7,
+      "ratingNotes": "Good cloning for its size and light enough for a CPU; four languages and no style controls.",
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
+      "languages": [
+        {
+          "code": "en",
+          "name": "English",
+          "locale": "en-US",
+          "quality": "high",
+          "arabic": false
+        },
+        {
+          "code": "pt",
+          "name": "Portuguese",
+          "locale": "pt-BR",
+          "quality": "high",
+          "arabic": false
+        },
+        {
+          "code": "fr",
+          "name": "French",
+          "locale": "fr-FR",
+          "quality": "high",
+          "arabic": false
+        },
+        {
+          "code": "de",
+          "name": "German",
+          "locale": "de-DE",
+          "quality": "high",
+          "arabic": false
+        }
+      ],
+      "capabilities": {
+        "voiceImport": false,
+        "voiceClone": true,
+        "cloneKind": "local",
+        "multiSpeaker": false,
+        "emotion": false,
+        "nonVerbal": false,
+        "streaming": false,
+        "phonemes": false,
+        "normalization": false,
+        "speed": false,
+        "seed": true,
+        "watermark": false,
+        "arabic": false
+      },
+      "voices": {
+        "format": "reference-audio",
+        "note": "Local reference-audio clones; nothing leaves the machine."
+      },
+      "hardware": {
+        "backend": "sidecar",
+        "minRamGb": 8,
+        "recRamGb": 16,
+        "minVramGb": 0,
+        "recVramGb": 2,
+        "diskGb": 0.7
+      },
+      "defaults": {
+        "quality": "f32",
+        "device": "auto",
+        "temperature": 0.8,
+        "seed": "4242424242424242",
+        "language": "en",
+        "rewrites": "default",
+        "threads": "auto"
+      },
+      "tags": [
+        "local-runtime",
+        "clone",
+        "multilingual",
+        "cpu-friendly",
+        "commercial"
+      ],
+      "runtimePack": {
+        "available": false,
+        "packId": "sopro-v2-turbo-sidecar",
+        "reason": "Sopro runs in its own Python environment, which is built on this computer when you install the model."
+      },
+      "estimatedBytes": 634337562,
+      "files": [
+        {
+          "name": "config.json",
+          "size": 4481,
+          "sha256": "",
+          "gitSha1": "d44893234067ae535e67006fb2b02b514a0c13c7",
+          "required": true
+        },
+        {
+          "name": "model.safetensors",
+          "size": 486332212,
+          "sha256": "4a68c1b636b1201cb5f808475a8c05d9711dae041f2933084c9cf4f6f12677e3",
+          "required": true,
+          "quality": "f32"
+        },
+        {
+          "name": "semantic_encoder.safetensors",
+          "size": 82497708,
+          "sha256": "d1d1bccdfffdcd6d01d802a3e5dbefa0674c660f5022d87ec14e3271596c5c5f",
+          "required": true
+        },
+        {
+          "name": "speaker_encoder.safetensors",
+          "size": 10784100,
+          "sha256": "67422a45d801542ee0aa55ce824f570ceb1c6b2283b4e74978c1b4673b49acd7",
+          "required": true
+        },
+        {
+          "name": "vocoder.safetensors",
+          "size": 54348240,
+          "sha256": "07e5561491cce41f7f90cfdb94b2ff263ff5742c3d89339db99b17ad82cc3f44",
+          "required": true
+        },
+        {
+          "name": "tokenizer.model",
+          "size": 370821,
+          "sha256": "2d76e7a4e8dbd0a4d2137c13200ac9710ad3fd93fad20a61f71102ab7bae754d",
+          "required": true
+        }
+      ],
+      "filesVerified": true,
+      "order": 16,
+      "downloadBytes": 634337562
     }
   ]
 }
