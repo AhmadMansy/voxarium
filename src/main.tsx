@@ -4,6 +4,11 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { PlayerProvider } from './player';
 import { StudioProvider } from './state';
+// Typefaces ship with the app so it looks identical on Windows, Linux and macOS.
+import '@fontsource-variable/geist';
+import '@fontsource-variable/geist-mono';
+import '@fontsource-variable/bricolage-grotesque/opsz.css';
+import '@fontsource-variable/noto-sans-arabic';
 import './styles.css';
 
 // Lets the stylesheet adapt the title bar to each system's window controls.

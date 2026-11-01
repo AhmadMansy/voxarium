@@ -19,7 +19,7 @@ import type {
 export type Page = 'studio' | 'models' | 'voices' | 'history' | 'batch' | 'integrations' | 'settings';
 
 export type Theme = 'dark' | 'light';
-export type Accent = 'violet' | 'cyan' | 'amber' | 'rose';
+export type Accent = 'signal' | 'violet' | 'cyan' | 'amber' | 'rose';
 export type Quality = 'q8' | 'f32';
 export type Device = 'auto' | 'cpu' | 'webgpu';
 /** Which GPU the browser process and WebGPU should prefer on multi-GPU machines. */

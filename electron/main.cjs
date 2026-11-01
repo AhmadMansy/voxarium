@@ -255,7 +255,7 @@ function notifyModels() {
 
 const defaultSettings = () => ({
   theme: 'dark',
-  accent: 'violet',
+  accent: 'signal',
   outputDir: app.getPath('downloads'),
   autoSave: true,
   autoPlay: true,

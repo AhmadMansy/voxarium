@@ -16,7 +16,14 @@
   "bugs": {
     "url": "https://github.com/AhmadMansy/voxarium/issues"
   },
-  "keywords": ["tts", "text-to-speech", "local-first", "offline", "electron", "voice"],
+  "keywords": [
+    "tts",
+    "text-to-speech",
+    "local-first",
+    "offline",
+    "electron",
+    "voice"
+  ],
   "scripts": {
     "sync:phonon": "node scripts/sync-phonon.mjs",
     "sync:ort": "node scripts/sync-ort.mjs",
@@ -33,6 +40,8 @@
     "test:integrations": "node scripts/test-integrations.mjs",
     "voxarium": "node electron/cli/voxarium.cjs",
     "notices": "node scripts/gen-notices.mjs",
+    "shots": "node scripts/shots.mjs",
+    "check:contrast": "node scripts/check-contrast.mjs",
     "pack": "npm run build && electron-builder --publish never",
     "pack:win": "npm run build && electron-builder --win --x64 --publish never",
     "pack:linux": "npm run build && electron-builder --linux --x64 --publish never",
@@ -40,6 +49,10 @@
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/noto-sans-arabic": "^5.3.0",
     "onnxruntime-web": "^1.31.1",
     "phonon-tts": "^0.5.0",
     "react": "^19.3.1",
@@ -102,11 +115,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.png",
@@ -117,7 +136,10 @@
     },
     "linux": {
       "category": "AudioVideo",
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "build/icon.png",
       "maintainer": "Voxarium contributors <AhmadMansy@users.noreply.github.com>",
       "synopsis": "Private, on-device text-to-speech studio"
