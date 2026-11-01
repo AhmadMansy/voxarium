@@ -724,3 +724,14 @@
   margin-top: 6px;
 }
 
+
+/* macOS: traffic lights sit at the top-left of the sidebar, and there are no caption
+   buttons on the right, so the right-hand spacer is not needed. */
+html[data-platform='darwin'] .sidebar__brand {
+  height: 84px;
+  padding-top: 28px;
+}
+
+html[data-platform='darwin'] .titlebar__control-space {
+  display: none;
+}

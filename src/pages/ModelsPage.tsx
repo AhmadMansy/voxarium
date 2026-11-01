@@ -307,6 +307,20 @@ function ModelCard({ model }: { model: ModelManifest }) {
         <span className={classNames('tag', `tag--${fitTone(fit.level)}`)} title={fit.summary}>
           <Icon name="thermometer" size={11} /> {fit.label}
         </span>
+        {runtime.pack?.tier && (
+          <span
+            className={classNames('tag', runtime.pack.tier === 'A' || runtime.pack.tier === 'B' ? 'tag--ok' : runtime.pack.tier === 'C' ? 'tag--warn' : 'tag--muted')}
+            title={
+              runtime.pack.tier === 'D'
+                ? runtime.pack.reason || 'Not supported on this system yet.'
+                : `${runtime.pack.tierLabel} on ${runtime.pack.platformLabel || 'this system'}. ${
+                    runtime.pack.tier === 'C' ? 'The recipe exists but has not been run end to end here.' : 'Built and run on this system.'
+                  }`
+            }
+          >
+            {runtime.pack.tierLabel}
+          </span>
+        )}
         <span className={classNames('tag', status.installed ? 'tag--ok' : 'tag--muted')}>
           <Icon name={status.installed ? 'checkCircle' : 'downloadCloud'} size={11} /> {lifecycle}
         </span>

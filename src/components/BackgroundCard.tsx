@@ -7,6 +7,8 @@ import { Icon } from './Icons';
 export function BackgroundCard() {
   const { settings, updateSettings, setPage } = useStudio();
   if (!settings) return null;
+  // Set once at startup from the user agent (see main.tsx).
+  const platform = document.documentElement.dataset.platform;
 
   return (
     <section className="card settings-card">
@@ -34,11 +36,22 @@ export function BackgroundCard() {
 
       <label className="switch-row">
         <span>
-          <strong>Start with Windows</strong>
-          <em>Starts hidden in the tray when you sign in.</em>
+          <strong>{platform === 'win32' ? 'Start with Windows' : 'Start at login'}</strong>
+          <em>
+            {platform === 'linux'
+              ? 'Not supported on Linux yet. Add Voxarium to your desktop session startup instead.'
+              : platform === 'darwin'
+                ? 'Opens hidden in the menu bar when you log in.'
+                : 'Starts hidden in the tray when you sign in.'}
+          </em>
         </span>
         <span className="switch">
-          <input type="checkbox" checked={settings.launchAtLogin} onChange={(event) => updateSettings({ launchAtLogin: event.target.checked })} />
+          <input
+            type="checkbox"
+            checked={settings.launchAtLogin}
+            disabled={platform === 'linux'}
+            onChange={(event) => updateSettings({ launchAtLogin: event.target.checked })}
+          />
           <span className="switch__track"><span className="switch__thumb" /></span>
         </span>
       </label>

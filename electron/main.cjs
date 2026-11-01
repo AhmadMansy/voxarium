@@ -930,12 +930,18 @@ function createWindow() {
     show: false,
     backgroundColor: dark ? '#080a0f' : '#f2f3f7',
     title: 'Voxarium',
-    titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: dark ? '#0b0d12' : '#f2f3f7',
-      symbolColor: dark ? '#cfd6e6' : '#3b4152',
-      height: 44,
-    },
+    // Windows and Linux draw their caption buttons as an overlay on our own title bar;
+    // macOS keeps its traffic lights on the left (the stylesheet leaves room for them).
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 14 } }
+      : {
+          titleBarStyle: 'hidden',
+          titleBarOverlay: {
+            color: dark ? '#0b0d12' : '#f2f3f7',
+            symbolColor: dark ? '#cfd6e6' : '#3b4152',
+            height: 44,
+          },
+        }),
     icon: appIconPath(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -1016,6 +1022,8 @@ function debounce(fn, delay) {
 
 function buildMenu() {
   const template = [
+    // macOS expects an application menu first (About, Hide, Quit with Cmd+Q).
+    ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
     {
       label: 'File',
       submenu: [
