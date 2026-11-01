@@ -31,6 +31,7 @@ jobs:
       - run: npm run icon
       - run: npm run notices
       - name: Package
+        shell: bash
         run: |
           # Empty secrets arrive as empty variables, which electron-builder reads as a path.
           for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
