@@ -216,3 +216,12 @@ Keep each post under 280 characters unless the account has longer posts. Pin pos
 - [x] UI: tier badge on model cards; macOS traffic-light layout, app menu; Linux login-item switch disabled; platform-aware wording.
 - [x] Verified on Windows: 33/33 model tests, typecheck, build, and a real download + install + run of `uv` 0.13.6 and Python 3.12.16 through the manager.
 - Not done: macOS MPS; Linux arm64; CI smoke tests per OS (workstream C7); anything on a real Linux or macOS machine.
+
+**2026-11-01 (end of day) — workstream D implemented; first real end-to-end proof:**
+
+- [x] `src/models/pipeline.ts`: the seven stages for every model; `planInstall` returns stages, blockers and warnings. Shown on the model card under Details → Install steps.
+- [x] `electron/models/verify.cjs` + `models:verifySynthesis`: test synthesis (duration, level, clipping, invalid samples); result stored on the install record and shown as *Test passed* / *Test failed*. Does not block activation yet.
+- [x] `scripts/smoke-sidecar.mjs` + `.github/workflows/smoke.yml`: headless install of a sidecar model through the real managers, weekly on Windows, Linux and macOS.
+- [x] **Verified on Windows:** `node scripts/smoke-sidecar.mjs supertonic-3` built the toolchain, environment and weights from scratch and spoke the test sentence (2.44 s of audio, generated in 0.8 s). 37/37 unit tests and the Electron end-to-end test pass.
+- The smoke test caught a bug in my SPDX headers (a stray byte-order mark in `adapters/__init__.py` broke the Python environment check). Fixed, and `add-spdx.mjs` now keeps a BOM first.
+- Still open: Kokoro has not been re-run through the new code; Linux and macOS have not run anything yet (the smoke workflow will); aux-asset pinning (D5), guided gated-model flow (D8) and a repair-by-stage action are not done; test synthesis does not yet gate activation.

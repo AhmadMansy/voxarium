@@ -44,12 +44,15 @@ for (const target of TARGETS) {
     }
     const eol = text.includes('\r\n') ? '\r\n' : '\n';
     const line = target.comment(SPDX) + eol;
+    // A byte-order mark must stay the very first character, so the header goes after it.
+    const bom = text.startsWith('﻿') ? '﻿' : '';
+    const body = bom ? text.slice(1) : text;
     let next;
-    if (text.startsWith('#!')) {
-      const idx = text.indexOf('\n') + 1;
-      next = text.slice(0, idx) + line + text.slice(idx);
+    if (body.startsWith('#!')) {
+      const idx = body.indexOf('\n') + 1;
+      next = bom + body.slice(0, idx) + line + body.slice(idx);
     } else {
-      next = line + text;
+      next = bom + line + body;
     }
     fs.writeFileSync(file, next);
     changed += 1;
