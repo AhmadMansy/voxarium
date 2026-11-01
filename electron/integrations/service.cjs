@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Integrations: the local API server, the discovery file other tools read, the
 // tray icon and start-with-Windows. Settings drive everything through apply().
 const fs = require('node:fs');

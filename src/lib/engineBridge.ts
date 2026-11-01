@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { VoiceInfo } from '../types';
 import type { LicenseAck, ModelInstallState, ModelManifest } from '../models/types';
 import { requiresLicenseAck, licenseAcknowledged } from '../models/license';

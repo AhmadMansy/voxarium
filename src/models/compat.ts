@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Quality } from '../types';
 import type { ModelCapabilities, ModelLanguage, ModelManifest } from './types';
 import { getModel, qualitiesFor } from './registry';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Generic loopback-only sidecar supervisor. Each sidecar model runs from its
 // runtime pack (a venv built from a pinned recipe) with the bundled adapter.
 // The supervisor owns the per-session token, health/readiness polling, the log

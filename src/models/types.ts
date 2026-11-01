@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Quality } from '../types';
 
 export type RuntimeKind = 'phonon' | 'onnx-web' | 'sidecar';

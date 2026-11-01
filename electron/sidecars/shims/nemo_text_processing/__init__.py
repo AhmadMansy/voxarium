@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Pass-through stand-in for NVIDIA NeMo text processing.
 
 The real package depends on ``pynini``, which is not published for Windows.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Builds electron/models/manifests.json.
 //
 // The Phonon family is pinned to exact Hugging Face revisions and every file is

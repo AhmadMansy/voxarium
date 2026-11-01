@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { Fragment, useMemo, useState } from 'react';
 import { VOICES, localeFlags, localeLabel } from '../data/catalog';
 import { computePeaks } from '../lib/audio';

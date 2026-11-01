@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 export type FitLevel = 'great' | 'runs' | 'cpu' | 'too-heavy';
 
 export interface HardwareGpu {

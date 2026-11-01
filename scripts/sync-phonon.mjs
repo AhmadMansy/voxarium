@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copies the plain-ESM phonon-tts browser runtime into public/phonon so it can be
 // loaded verbatim (including its worker and both wasm builds) by Electron and Vite.
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';

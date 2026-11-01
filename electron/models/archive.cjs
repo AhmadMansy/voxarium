@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Safe archive extraction for runtime packs.
 //
 // Runtime packs are plain .zip or .tar.gz downloads. They are installed into a

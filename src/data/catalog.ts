@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import catalogData from './voices.json';
 import type { Catalog, CustomVoiceRecord, VoiceInfo } from '../types';
 

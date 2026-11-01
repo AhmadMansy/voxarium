@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { VOICES, englishLocales, getVoice, localeLabel, localeFlags } from '../data/catalog';
 import { voiceCompatibilityNote, voiceCompatibleWithModel, voicesForModel } from '../models/compat';

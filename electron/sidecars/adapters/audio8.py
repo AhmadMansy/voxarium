@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Audio8 TTS Preview 0.6B (custom Transformers code from the verified checkpoint)."""
 
 

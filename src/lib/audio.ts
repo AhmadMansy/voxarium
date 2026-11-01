@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { Mp3Encoder } from '@breezystack/lamejs';
 
 let sharedContext: AudioContext | null = null;

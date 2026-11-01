@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Builds the bundled voice catalog from the public Phonon voices metadata.
 // Run with: npm run catalog
 import { mkdirSync, writeFileSync } from 'node:fs';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // One engine for everything. The Studio window owns the engine (Phonon runs in its
 // WebAssembly/WebGPU worker; sidecar models are driven from it too), so API, CLI
 // and MCP requests are queued here and executed by the renderer through the same

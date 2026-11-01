@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useMemo, useState } from 'react';
 import { formatBytes, formatDate } from '../lib/utils';
 import { MODELS, defaultQualityFor } from '../models/registry';

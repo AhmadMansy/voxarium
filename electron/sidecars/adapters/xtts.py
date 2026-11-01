@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """XTTS-v2 through the maintained ``coqui-tts`` fork. Built-in studio speakers plus local clones."""
 import os
 

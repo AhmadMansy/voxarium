@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """MOSS-TTS v1.5 (8.5B). Custom Transformers code shipped with the verified checkpoint."""
 
 LANGUAGES = {

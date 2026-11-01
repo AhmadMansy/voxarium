@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getVoice, localeFlags, localeLabel } from '../data/catalog';
 import { LivePlayer, computePeaks, encodeMp3, encodeWavBuffer } from '../lib/audio';

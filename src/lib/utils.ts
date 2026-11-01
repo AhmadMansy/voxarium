@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Pronunciation } from '../types';
 
 export function classNames(...values: Array<string | false | null | undefined>): string {

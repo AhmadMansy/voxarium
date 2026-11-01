@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """IndexTTS2 (Bilibili). Zero-shot cloning only, so a reference clip is always used.
 
 The first load downloads its auxiliary models (w2v-BERT, MaskGCT codec,

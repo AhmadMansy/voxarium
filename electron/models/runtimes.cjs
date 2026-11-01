@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Runtime packs: separately installed runtimes that sidecar models need. A pack
 // is installed under userData/runtimes/<id>/ and never shares a folder with
 // model weights. Tool and interpreter packs are pinned archives; sidecar packs

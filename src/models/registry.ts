@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import manifestData from '../../electron/models/manifests.json';
 import type { ManifestDocument, ModelInstallState, ModelManifest } from './types';
 import type { ModelFileState } from './types';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 const os = require('node:os');
 const fs = require('node:fs');
 const fsp = fs.promises;

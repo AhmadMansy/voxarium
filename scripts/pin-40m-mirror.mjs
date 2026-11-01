@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Verifies the community mirror of Phonon 40M against the official (gated)
 // Gradium tree before pinning hashes. Writes electron/models/phonon-40m-pin.json.
 import fs from 'node:fs';

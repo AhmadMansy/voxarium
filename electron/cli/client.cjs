@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Shared client for the Voxarium CLI and MCP server. Finds the running app through
 // the discovery file it writes (api.json in the user data folder), starts it in
 // the background when needed, and calls the local API. No dependencies.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Generates the Voxarium app icon as a PNG using only Node built-ins.
 // Run with: npm run icon
 import { deflateSync } from 'node:zlib';

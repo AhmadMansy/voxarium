@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { HardwareProfile } from './models/fit';
 import type {
   LicenseAck,

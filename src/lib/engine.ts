@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Lang, PhononTTS, SpeechStats } from 'phonon-tts';
 import type { EngineInfo, Settings, VoiceInfo } from '../types';
 import type { ModelManifest, SidecarStatus, SidecarVoice } from '../models/types';
