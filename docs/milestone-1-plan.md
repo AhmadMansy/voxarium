@@ -147,19 +147,9 @@ Rule: if a stream slips, cut scope by **platform tier**, not by quality. Windows
 
 ---
 
-## 6. Draft x.com thread (edit to match launch-day reality)
+## 6. Launch post
 
-> **1/** Voxarium is out: an open-source text-to-speech studio that runs 100% on your own machine. No account, no cloud, no upload. AGPL-3.0. Windows, Linux, macOS. <repo link>
->
-> **2/** One app, many engines. Pick a model, see its license and how well it fits your hardware, and Voxarium downloads, verifies and runs it. No Python setup, no terminal. [demo video]
->
-> **3/** What works today: <honest table: models × OS>. The rest are in the registry and labelled experimental. I'd rather tell you than overclaim.
->
-> **4/** Built for real work: batch scripts with per-line voices, WAV/MP3 export, an OpenAI-compatible local API, an MCP server for agents, and a CLI.
->
-> **5/** The app is open source forever (AGPL-3.0, with a CLA so I can fund it later without closing it). Model requests, ports to your OS, and bug reports are the most useful help: <issues link>
-
-Keep each post under 280 characters unless the account has longer posts. Pin post 1; reply to early comments quickly.
+The announcement thread is drafted outside the repository. Post only what the support matrix in `docs/model-support.md` shows as verified.
 
 ---
 
