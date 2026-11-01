@@ -31,7 +31,12 @@ jobs:
       - run: npm run icon
       - run: npm run notices
       - name: Package
-        run: npm run ${{ matrix.script }}
+        run: |
+          # Empty secrets arrive as empty variables, which electron-builder reads as a path.
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then unset "$name"; fi
+          done
+          npm run ${{ matrix.script }}
         env:
           # Signing is optional. Without these secrets the installers are built unsigned.
           # macOS: CSC_LINK (base64 .p12), CSC_KEY_PASSWORD, plus APPLE_* for notarization.
