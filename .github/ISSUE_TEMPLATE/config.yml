@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/AhmadMansy/voxarium/security/advisories/new
+    about: Report security issues privately, not in a public issue.
+  - name: Questions and ideas
+    url: https://github.com/AhmadMansy/voxarium/discussions
+    about: Ask questions or share ideas in Discussions.

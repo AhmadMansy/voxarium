@@ -9,7 +9,8 @@
 Write a script, cast a voice and render natural speech, all on your own machine.
 No cloud service, no account and no upload.
 
-![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows&logoColor=white)
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
+![Platform](https://img.shields.io/badge/platform-Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-555)
 ![Electron](https://img.shields.io/badge/Electron-40-47848F?logo=electron&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
 ![Models](https://img.shields.io/badge/TTS%20models-15-8B5CF6)
@@ -71,22 +72,44 @@ No cloud service, no account and no upload.
 
 ## Install
 
-**Requirements:** Windows 10 or 11 (x64). A GPU is optional. Phonon 31M runs on the
-CPU or through WebGPU, and the sidecar models use CUDA when it's available.
+**Requirements:** Windows 10/11 (x64), Linux (x64) or macOS. A GPU is optional. Phonon 31M
+runs on the CPU or through WebGPU, and the sidecar models use CUDA when it's available.
 
-If an installer is attached to a [GitHub release](https://github.com/AhmadMansy/voxarium/releases),
-download and run it. Otherwise, build one from source:
+### Platform support
 
-```powershell
+Installers for all three systems are built by GitHub Actions on every release. How much works on
+each system today:
+
+| | Windows | Linux | macOS |
+| --- | --- | --- | --- |
+| App, Studio, History, Batch, API, CLI | ✅ | 🧪 builds, not yet tested by CI | 🧪 builds, not yet tested by CI |
+| Phonon models (in-app, no Python) | ✅ | 🧪 | 🧪 |
+| Python models (Kokoro, Supertonic, …) | ✅ Kokoro and Supertonic proven end to end; others resolve-checked | ⏳ runtime packs are Windows-only today | ⏳ runtime packs are Windows-only today |
+
+✅ verified · 🧪 expected to work, being verified · ⏳ in progress. Progress is tracked in
+[`docs/milestone-1-plan.md`](docs/milestone-1-plan.md).
+
+### Download
+
+Get the latest installer from [GitHub Releases](https://github.com/AhmadMansy/voxarium/releases)
+(Windows `.exe`, Linux `.AppImage` / `.deb`, macOS `.dmg`) and verify it against `SHA256SUMS.txt`.
+Builds may be unsigned: Windows SmartScreen or macOS Gatekeeper can ask you to confirm before the
+first launch.
+
+### Build from source
+
+You need Node.js 22 or newer.
+
+```bash
 git clone https://github.com/AhmadMansy/voxarium.git
 cd voxarium
-npm.cmd install
-npm.cmd run pack     # writes release\Voxarium Setup 1.0.0.exe
+npm install
+npm run icon
+npm run pack         # installer for your current OS, written to release/
 ```
 
-Run `release\Voxarium Setup 1.0.0.exe`, or launch the portable build at
-`release\win-unpacked\Voxarium.exe`. The build is unsigned, so Windows SmartScreen may ask
-you to confirm before it runs.
+Use `pack:win`, `pack:linux` or `pack:mac` to target a system explicitly (each must run on that
+system). On Windows PowerShell use `npm.cmd` if script execution is restricted.
 
 **First launch.** The model chooser opens. Installing Phonon 31M downloads its verified
 Q8 weights and default voice into `%APPDATA%\Voxarium`. After that, generating speech
@@ -138,13 +161,13 @@ You can clear model and voice downloads from Settings without touching your reco
 ## Development
 
 ```powershell
-npm.cmd install
-npm.cmd run dev        # Vite renderer + Electron
-npm.cmd run typecheck  # TypeScript only
-npm.cmd run build      # typecheck + production bundle
-npm.cmd test           # model registry/fit/license/preference checks
-npm.cmd run test:e2e   # Electron model lifecycle (requires a built app)
-npm.cmd run pack       # build + NSIS installer
+npm install
+npm run dev        # Vite renderer + Electron
+npm run typecheck  # TypeScript only
+npm run build      # typecheck + production bundle
+npm test           # model registry/fit/license/preference checks
+npm run test:e2e   # Electron model lifecycle (requires a built app)
+npm run pack       # build + installer for the current OS
 ```
 
 The renderer is React 19 + Vite. The Electron main process serves the model and voice
@@ -172,3 +195,19 @@ docs/            Integration guide, model support matrix, screenshots
 Phonon 31M by [Gradium](https://gradium.ai/phonon), Apache-2.0. Voice embeddings from
 [gradium/phonon-voices](https://huggingface.co/gradium/phonon-voices). Each additional
 model keeps its own license, which Voxarium shows before install.
+
+## License and contributing
+
+Voxarium is free software under the **GNU Affero General Public License v3.0 or later**
+(see [`LICENSE`](LICENSE)). The app stays open source. Third-party components are listed in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
+The AGPL applies to Voxarium's own code. **Each model keeps its own license**, shown in the app
+before you install it: some are permissive, some are non-commercial, and you accept each one
+yourself. Voxarium never redistributes model weights; they are downloaded from their original
+hosts.
+
+Contributions are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: you will be asked to
+sign a [CLA](CLA.md) once, which keeps the project open source and lets the maintainer license it
+in additional ways later. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report
+security problems privately (see [`SECURITY.md`](SECURITY.md)).

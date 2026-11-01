@@ -1,13 +1,22 @@
 {
   "name": "voxarium",
   "productName": "Voxarium",
-  "version": "1.0.0",
-  "description": "A private, on-device text-to-speech studio powered by Phonon 31M.",
+  "version": "0.1.0",
+  "description": "A private, on-device text-to-speech studio with many local voice models.",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
-  "author": "Voxarium",
-  "license": "MIT",
+  "author": "Voxarium contributors",
+  "license": "AGPL-3.0-or-later",
+  "homepage": "https://github.com/AhmadMansy/voxarium",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AhmadMansy/voxarium.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AhmadMansy/voxarium/issues"
+  },
+  "keywords": ["tts", "text-to-speech", "local-first", "offline", "electron", "voice"],
   "scripts": {
     "sync:phonon": "node scripts/sync-phonon.mjs",
     "sync:ort": "node scripts/sync-ort.mjs",
@@ -23,7 +32,11 @@
     "test:e2e": "node scripts/test-electron.mjs",
     "test:integrations": "node scripts/test-integrations.mjs",
     "voxarium": "node electron/cli/voxarium.cjs",
-    "pack": "npm run build && electron-builder --win --x64"
+    "notices": "node scripts/gen-notices.mjs",
+    "pack": "npm run build && electron-builder --publish never",
+    "pack:win": "npm run build && electron-builder --win --x64 --publish never",
+    "pack:linux": "npm run build && electron-builder --linux --x64 --publish never",
+    "pack:mac": "npm run build && electron-builder --mac --publish never"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
@@ -52,10 +65,21 @@
       "output": "release",
       "buildResources": "build"
     },
+    "copyright": "Copyright © Voxarium contributors. Licensed under AGPL-3.0-or-later.",
     "files": [
       "dist/**/*",
       "electron/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "LICENSE",
+        "to": "LICENSE.txt"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.md",
+        "to": "THIRD_PARTY_NOTICES.md"
+      }
     ],
     "asar": true,
     "asarUnpack": [
@@ -72,6 +96,31 @@
         }
       ],
       "icon": "build/icon.png"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "icon": "build/icon.png",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "linux": {
+      "category": "AudioVideo",
+      "target": ["AppImage", "deb"],
+      "icon": "build/icon.png",
+      "maintainer": "Voxarium contributors <AhmadMansy@users.noreply.github.com>",
+      "synopsis": "Private, on-device text-to-speech studio"
     },
     "nsis": {
       "oneClick": false,

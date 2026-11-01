@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useEffect, useMemo, useState } from 'react';
 import { VOICES, getVoice, localeFlags, localeLabel } from '../data/catalog';
 import {
@@ -1244,7 +1245,7 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
               </span>
               <div>
                 <h2>About</h2>
-                <p>Voxarium {info?.version || ''} · local text-to-speech</p>
+                <p>Voxarium {info?.version || ''} · local text-to-speech · AGPL-3.0-or-later</p>
               </div>
             </header>
             <div className="about-grid">
@@ -1281,6 +1282,12 @@ export function SettingsPage({ onOpenSetup }: SettingsPageProps) {
                   <Icon name="external" size={14} /> Runtime source
                 </button>
               )}
+              <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal('https://github.com/AhmadMansy/voxarium')}>
+                <Icon name="external" size={14} /> Source code (AGPL-3.0)
+              </button>
+              <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.openExternal('https://github.com/AhmadMansy/voxarium/blob/main/THIRD_PARTY_NOTICES.md')}>
+                <Icon name="external" size={14} /> Third-party notices
+              </button>
               <button className="btn btn--subtle btn--sm" onClick={() => void window.studio.paths.reveal('data')}>
                 <Icon name="folder" size={14} /> Data folder
               </button>
