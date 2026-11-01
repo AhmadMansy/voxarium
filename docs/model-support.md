@@ -28,7 +28,7 @@ plans in this folder.
 
 The first-run assistant (`src/components/SetupWizard.tsx`) is a two-step model chooser:
 
-1. **Choose a model.** All 15 registry entries are listed with their score, hardware
+1. **Choose a model.** All 17 registry entries are listed with their score, hardware
    fit, license badge and truthful runtime status. Search matches names, families,
    languages and tags. Installed and active models stay visible, and selecting a
    gated model is allowed so its status can be reviewed.
@@ -56,6 +56,8 @@ environment is built on the user's machine when the model is installed.
 | Phonon 40M Multilingual | Phonon WASM/WebGPU | bundled `phonon-tts` | — | — | CC-BY-NC-4.0 | HF-gated: needs an access token |
 | Kokoro 82M | Sidecar | `kokoro` 0.9.4 + misaki | 3.12 | 2.8.0 | Apache-2.0 | Japanese via `pyopenjtalk-plus` |
 | Supertonic 3 | Sidecar | `supertonic` 1.3.1 (ONNX Runtime) | 3.12 | none | OpenRAIL-M | CPU only, ~120 MB runtime |
+| Piper | Sidecar | `piper-tts` 1.8.0 (ONNX Runtime, GPL-3.0 package in its own process) | 3.12 | none | Per-voice dataset licenses | CPU only; six permissive voices; verified on Windows |
+| Sopro V2 Turbo | Sidecar | `sopro` 2.2.0 | 3.12 | 2.8.0 (cu128 / CPU) | Apache-2.0 | Experimental: not yet built or run end to end |
 | SILMA TTS | Sidecar | `silma-tts` 1.0.5 | 3.12 | 2.8.0 | Apache-2.0 | NeMo normalizer shimmed (see below) |
 | Chatterbox | Sidecar | `chatterbox-tts` 0.1.7 | 3.12 | 2.6.0 | MIT | Perth watermark |
 | OpenAudio S1-mini | Sidecar | fish-speech source @ `3578e4e` | 3.12 | 2.8.0 | CC-BY-NC-SA-4.0 | HF-gated: needs an access token |
@@ -321,8 +323,8 @@ network access. The flow is:
 first-run chooser -> inspect gated model -> setup install -> verify -> activate -> synthesize -> visit every page -> switch refusal -> uninstall
 ```
 
-It also asserts that the chooser lists all 15 models, that a gated model exposes its
-license and the Hugging Face gate, that the **Runtime packs** panel lists all 15 packs
+It also asserts that the chooser lists all 17 models, that a gated model exposes its
+license and the Hugging Face gate, that the **Runtime packs** panel lists all 17 packs
 (uv, Python and 13 buildable sidecars), that a fresh profile can install and activate Phonon 31M
 from setup, that a refused switch leaves the previous model active, that Settings
 reports the active model and runtime, and that the renderer reports no console or
@@ -370,7 +372,7 @@ and an offline restart.
 - **Linux/macOS.** `uv` and CPython are pinned per platform (`win32-x64`, `linux-x64`,
   `darwin-arm64`, `darwin-x64`) and every sidecar declares a support tier per platform in
   `runtimes.json` (`A` verified, `B` builds, `C` experimental; missing means unsupported).
-  Only Kokoro and Supertonic are `B` on Windows; everything on Linux and macOS is `C` until a
+  Only Kokoro, Supertonic and Piper are `B` on Windows; everything on Linux and macOS is `C` until a
   smoke test runs there. macOS runs sidecars on the CPU (no MPS yet), and Intel Macs get only
   recipes without PyTorch because PyTorch publishes no recent macOS Intel wheels.
 - **Verification depth.** Every recipe is checked to resolve on Windows x64 with

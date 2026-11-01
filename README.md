@@ -28,7 +28,7 @@ No cloud service, no account and no upload.
 
 - **Local by default.** Speech generation, voice files, history and exports never leave
   your computer. After the one-time model download, Voxarium works fully offline.
-- **Many engines, one app.** Choose from 15 curated TTS models. Each one shows its
+- **Many engines, one app.** Choose from 17 curated TTS models. Each one shows its
   license, capabilities and how well it fits your hardware before you download anything.
 - **Built for real work.** Use batch scripts with per-line voices, reproducible seeds,
   pronunciation rules, WAV/MP3 export, and an OpenAI-compatible API for your other tools.
@@ -38,7 +38,7 @@ No cloud service, no account and no upload.
 | | |
 | --- | --- |
 | 🎙️ **Studio** | Write a script, pick a voice, tune temperature and seed, and hear the speech as it streams in. |
-| 🧩 **Model registry** | 15 curated TTS models with license, capability, hardware-fit and quality scores. Small models run inside the app (WebAssembly or WebGPU); the others run in a local Python sidecar whose environment (uv, CPython, CUDA or CPU PyTorch) is built on your computer from a pinned recipe. |
+| 🧩 **Model registry** | 17 curated TTS models with license, capability, hardware-fit and quality scores. Small models run inside the app (WebAssembly or WebGPU); the others run in a local Python sidecar whose environment (uv, CPython, CUDA or CPU PyTorch) is built on your computer from a pinned recipe. |
 | 🧭 **First-run chooser** | The setup assistant lists every model with its fit, license and runtime status, then installs the one you pick with verified downloads. Gated models need a Hugging Face token in Settings. |
 | 🗣️ **Voice library** | Search, filter by accent and gender, star favorites, preview and cast with one click. The library shows the voices the active model supports, and you can add your own. |
 | 📚 **History** | Every take is saved with its model, license and generation stats. You can replay, rename, favorite, reuse, export or reveal any take in its folder. |
@@ -83,7 +83,7 @@ each system today:
 | --- | --- | --- | --- |
 | App, Studio, History, Batch, API, CLI | ✅ | 🧪 builds, not yet tested by CI | 🧪 builds, not yet tested by CI |
 | Models that run inside the app (no Python) | ✅ | 🧪 | 🧪 |
-| Python models (Kokoro, Supertonic, …) | ✅ Kokoro and Supertonic proven end to end; the other 11 have recipes but are not run end to end (shown as *Experimental*) | 🧪 *Experimental*: the runtime packs exist but have not been run yet | 🧪 *Experimental* on Apple Silicon (CPU); Intel Macs only get models that don't need PyTorch |
+| Python models (Kokoro, Supertonic, …) | ✅ Kokoro, Supertonic and Piper proven end to end; the other 12 have recipes but are not run end to end (shown as *Experimental*) | 🧪 *Experimental*: the runtime packs exist but have not been run yet | 🧪 *Experimental* on Apple Silicon (CPU); Intel Macs only get models that don't need PyTorch |
 
 ✅ verified · 🧪 expected to work, being verified. Each model card shows its tier for your system (*Builds*, *Experimental* or *Unsupported*). Progress is tracked in
 [`docs/milestone-1-plan.md`](docs/milestone-1-plan.md).

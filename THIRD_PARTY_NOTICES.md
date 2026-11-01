@@ -731,6 +731,8 @@ after the user accepts each license in the app. Voxarium does not redistribute t
 | Audio8 TTS | Apache-2.0 | https://huggingface.co/Edge0/Audio8-TTS-Preview-0.6b |
 | IndexTTS2 | Bilibili-Model-License | https://huggingface.co/IndexTeam/IndexTTS-2 |
 | XTTS-v2 | Coqui-CPML | https://huggingface.co/coqui/XTTS-v2 |
+| Piper | Per-voice | https://huggingface.co/rhasspy/piper-voices |
+| Sopro V2 Turbo | Apache-2.0 | https://huggingface.co/samuel-vitorino/sopro-v2-turbo |
 
 ### Runtime packs
 
@@ -751,6 +753,8 @@ after the user accepts each license in the app. Voxarium does not redistribute t
 | Audio8 runtime 2 | Apache-2.0 | https://github.com/Audio8-AI/Audio8_TTS |
 | IndexTTS2 runtime 2 | Bilibili-IndexTTS | https://github.com/index-tts/index-tts |
 | XTTS-v2 runtime 2 | MPL-2.0 | https://github.com/idiap/coqui-ai-TTS |
+| Piper runtime 1 | GPL-3.0-or-later | https://github.com/OHF-Voice/piper1-gpl |
+| Sopro runtime 1 | Apache-2.0 | https://github.com/samuel-vitorino/sopro |
 
 Python packages installed into per-model environments (PyTorch, transformers, eSpeak NG and others)
 keep their own licenses, which are installed alongside them in the environment.

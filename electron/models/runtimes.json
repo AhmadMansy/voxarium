@@ -911,6 +911,109 @@
         "linux-x64": "C",
         "darwin-arm64": "C"
       }
+    },
+    {
+      "id": "piper-sidecar",
+      "name": "Piper runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "description": "The official piper-tts package on ONNX Runtime, with its bundled eSpeak NG data. CPU only, no PyTorch.",
+      "homepage": "https://github.com/OHF-Voice/piper1-gpl",
+      "license": {
+        "id": "GPL-3.0-or-later",
+        "name": "GNU General Public License v3.0 or later",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://github.com/OHF-Voice/piper1-gpl/blob/main/COPYING"
+      },
+      "available": true,
+      "importable": true,
+      "build": {
+        "adapter": "piper",
+        "python": "3.12",
+        "torch": null,
+        "requirements": [
+          "piper-tts==1.8.0",
+          "soundfile",
+          "soxr"
+        ]
+      },
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "piper"
+      ],
+      "sizeBytes": 45000000,
+      "installedBytes": 130000000,
+      "support": {
+        "win32-x64": "B",
+        "linux-x64": "C",
+        "darwin-arm64": "C",
+        "darwin-x64": "C"
+      }
+    },
+    {
+      "id": "sopro-v2-turbo-sidecar",
+      "name": "Sopro runtime",
+      "kind": "sidecar",
+      "version": "1",
+      "description": "The official sopro package with PyTorch (CPU or CUDA) and SentencePiece.",
+      "homepage": "https://github.com/samuel-vitorino/sopro",
+      "license": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial": true,
+        "restricted": false,
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
+      "available": true,
+      "importable": true,
+      "build": {
+        "adapter": "sopro",
+        "python": "3.12",
+        "torch": {
+          "cuda": "cu128",
+          "packages": {
+            "torch": "2.8.0",
+            "torchaudio": "2.8.0"
+          }
+        },
+        "requirements": [
+          "sopro==2.2.0",
+          "soundfile",
+          "soxr"
+        ]
+      },
+      "entry": {
+        "server": "start.py",
+        "python": {
+          "win32": "venv/Scripts/python.exe",
+          "default": "venv/bin/python"
+        }
+      },
+      "requires": [
+        "uv",
+        "python-3.12"
+      ],
+      "provides": [
+        "sopro-v2-turbo"
+      ],
+      "sizeBytes": 3200000000,
+      "installedBytes": 5400000000,
+      "support": {
+        "win32-x64": "C",
+        "linux-x64": "C",
+        "darwin-arm64": "C"
+      }
     }
   ]
 }

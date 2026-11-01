@@ -138,8 +138,8 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
     ...overrides,
   });
 
-  await test('manifest registry has the selected 15 models and a valid default', () => {
-    assert.equal(MODELS.length, 15);
+  await test('manifest registry lists every model once and has a valid default', () => {
+    assert.equal(MODELS.length, 17);
     assert.equal(new Set(MODELS.map((model) => model.id)).size, MODELS.length);
     assert.equal(getModel(DEFAULT_MODEL_ID).id, 'phonon-31m-en');
     assert.equal(getModel('does-not-exist').id, 'phonon-31m-en');
@@ -241,7 +241,7 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
 
   await test('runtime catalog pins uv and Python, and every sidecar pack is a pinned recipe', () => {
     const packs = runtimeCatalog.packs;
-    assert.equal(packs.length, 15);
+    assert.equal(packs.length, 17);
     assert.equal(new Set(packs.map((pack) => pack.id)).size, packs.length);
 
     const uv = packs.find((pack) => pack.kind === 'tool');
@@ -267,7 +267,7 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
     }
 
     const sidecars = packs.filter((pack) => pack.kind === 'sidecar');
-    assert.equal(sidecars.length, 13);
+    assert.equal(sidecars.length, 15);
     for (const pack of sidecars) {
       assert.equal(pack.available, true, pack.id);
       assert.equal(pack.importable, true, pack.id);
@@ -295,7 +295,7 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
   await test('every sidecar model points at a catalog pack whose adapter ships with the app', () => {
     const packs = runtimeCatalog.packs;
     const sidecars = MODELS.filter((model) => model.runtime === 'sidecar');
-    assert.equal(sidecars.length, 13);
+    assert.equal(sidecars.length, 15);
     for (const model of sidecars) {
       assert.match(model.runtimePack.packId || '', /-sidecar$/, model.id);
       const pack = packs.find((entry) => entry.id === model.runtimePack.packId);
