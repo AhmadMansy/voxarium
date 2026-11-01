@@ -11,6 +11,7 @@ import { createServer } from 'vite';
 const require = createRequire(import.meta.url);
 const { extractArchive, safePath } = require('../electron/models/archive.cjs');
 const platformLib = require('../electron/models/platform.cjs');
+const verifyLib = require('../electron/models/verify.cjs');
 const runtimesLib = require('../electron/models/runtimes.cjs');
 const runtimeCatalog = require('../electron/models/runtimes.json');
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -74,6 +75,7 @@ try {
   const preferences = await server.ssrLoadModule('/src/models/preferences.ts');
   const catalog = await server.ssrLoadModule('/src/data/catalog.ts');
   const runtime = await server.ssrLoadModule('/src/models/runtime.ts');
+  const pipeline = await server.ssrLoadModule('/src/models/pipeline.ts');
 const bridge = await server.ssrLoadModule('/src/lib/engineBridge.ts');
 const expression = await server.ssrLoadModule('/src/models/expression.ts');
 
@@ -557,6 +559,163 @@ const expression = await server.ssrLoadModule('/src/models/expression.ts');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  await test('analyzePcm accepts speech-like audio and rejects silence, noise and truncation', () => {
+    const rate = 24000;
+    const tone = (seconds, amplitude = 0.3) => Float32Array.from({ length: Math.round(seconds * rate) }, (_, i) => amplitude * Math.sin((2 * Math.PI * 220 * i) / rate));
+    assert.equal(verifyLib.analyzePcm(tone(2), rate).ok, true);
+    assert.equal(verifyLib.analyzePcm(new Float32Array(0), rate).ok, false);
+    assert.match(verifyLib.analyzePcm(new Float32Array(rate * 2), rate).reasons.join(' '), /silent/);
+    assert.match(verifyLib.analyzePcm(tone(0.1), rate).reasons.join(' '), /too short/);
+    const withNaN = tone(2);
+    withNaN[10] = Number.NaN;
+    assert.match(verifyLib.analyzePcm(withNaN, rate).reasons.join(' '), /invalid samples/);
+    const clipped = Float32Array.from({ length: rate * 2 }, (_, i) => (i % 2 ? 1 : -1));
+    assert.match(verifyLib.analyzePcm(clipped, rate).reasons.join(' '), /clipped/);
+    assert.match(verifyLib.analyzePcm(tone(2, 8), rate).reasons.join(' '), /too loud/);
+  });
+
+  await test('goldenSynthesis talks to a loopback sidecar and reports success, bad audio and errors', async () => {
+    const http = await import('node:http');
+    const rate = 24000;
+    const sine = Float32Array.from({ length: rate * 2 }, (_, i) => 0.3 * Math.sin((2 * Math.PI * 220 * i) / rate));
+    let mode = 'good';
+    const server = http.createServer((request, response) => {
+      if (request.headers.authorization !== 'Bearer secret') {
+        response.writeHead(401, { 'content-type': 'application/json' });
+        return response.end(JSON.stringify({ error: 'Missing or invalid session token.' }));
+      }
+      let body = '';
+      request.on('data', (chunk) => (body += chunk));
+      request.on('end', () => {
+        const payload = JSON.parse(body || '{}');
+        assert.equal(payload.text, verifyLib.TEST_SENTENCE);
+        if (mode === 'error') {
+          response.writeHead(500, { 'content-type': 'application/json' });
+          return response.end(JSON.stringify({ error: 'RuntimeError: out of memory' }));
+        }
+        const samples = mode === 'silent' ? new Float32Array(rate * 2) : sine;
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ pcm: Buffer.from(samples.buffer).toString('base64'), sampleRate: rate }));
+      });
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const url = `http://127.0.0.1:${server.address().port}`;
+    try {
+      const good = await verifyLib.goldenSynthesis({ url, token: 'secret' });
+      assert.equal(good.ok, true);
+      assert.equal(good.error, null);
+      assert.ok(Math.abs(good.durationSec - 2) < 0.01 && good.rms > 0.1);
+
+      mode = 'silent';
+      const silent = await verifyLib.goldenSynthesis({ url, token: 'secret' });
+      assert.equal(silent.ok, false);
+      assert.match(silent.error, /silent/);
+
+      mode = 'error';
+      const failed = await verifyLib.goldenSynthesis({ url, token: 'secret' });
+      assert.equal(failed.ok, false);
+      assert.match(failed.error, /out of memory/);
+
+      const unauthorized = await verifyLib.goldenSynthesis({ url, token: 'wrong' });
+      assert.equal(unauthorized.ok, false);
+      assert.match(unauthorized.error, /token/i);
+
+      const remote = await verifyLib.goldenSynthesis({ url: 'http://example.com', token: 'secret' });
+      assert.equal(remote.ok, false);
+      assert.match(remote.error, /not on this machine/);
+      assert.equal((await verifyLib.goldenSynthesis({})).ok, false);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
+  await test('planInstall walks the same seven stages for every model and blocks before downloading', () => {
+    const base = {
+      weightsInstalled: false,
+      environmentReady: false,
+      toolchainReady: false,
+      runtimeAvailable: true,
+      runtimeReason: null,
+      prepared: false,
+      synthesisOk: null,
+      licenseAcknowledged: false,
+      requiresLicenseAck: false,
+      hasHfToken: false,
+      fit: { level: 'great' },
+      tier: null,
+      freeDiskGb: 200,
+      runtimeBytes: 0,
+      weightsBytes: 0,
+    };
+    const ids = pipeline.STAGES.map((stage) => stage.id);
+    assert.deepEqual(ids, ['preflight', 'consent', 'toolchain', 'environment', 'weights', 'prepare', 'verify']);
+
+    // In-app model: toolchain, environment and first start do not apply.
+    const phonon = getModel('phonon-31m-en');
+    const fresh = pipeline.planInstall({ ...base, model: phonon, weightsBytes: phonon.downloadBytes });
+    assert.deepEqual(fresh.stages.map((stage) => stage.id), ids);
+    assert.deepEqual(fresh.stages.map((stage) => stage.state), ['done', 'skipped', 'skipped', 'skipped', 'pending', 'skipped', 'pending']);
+    assert.equal(fresh.next, 'weights');
+    assert.equal(fresh.ready, false);
+    const done = pipeline.planInstall({ ...base, model: phonon, weightsInstalled: true, synthesisOk: true });
+    assert.equal(done.ready, true);
+    assert.equal(done.next, null);
+
+    // Sidecar model: all seven stages apply, license first.
+    const kokoro = getModel('kokoro-82m');
+    const sidecar = pipeline.planInstall({ ...base, model: kokoro, tier: 'B', runtimeBytes: 3.1e9, weightsBytes: kokoro.downloadBytes });
+    assert.deepEqual(sidecar.stages.map((stage) => stage.state), ['done', 'skipped', 'pending', 'pending', 'pending', 'pending', 'pending']);
+    assert.equal(sidecar.next, 'toolchain');
+
+    // Restricted license: consent is pending until accepted.
+    const omni = getModel('omnivoice');
+    const restricted = pipeline.planInstall({ ...base, model: omni, requiresLicenseAck: true, tier: 'C' });
+    assert.equal(restricted.stages[1].state, 'pending');
+    assert.equal(restricted.next, 'consent');
+    assert.ok(restricted.warnings.some((warning) => /Experimental/.test(warning)));
+    assert.equal(pipeline.planInstall({ ...base, model: omni, requiresLicenseAck: true, licenseAcknowledged: true }).stages[1].state, 'done');
+  });
+
+  await test('planInstall blocks unsupported platforms, low disk, heavy models and missing tokens', () => {
+    const base = {
+      weightsInstalled: false,
+      environmentReady: false,
+      toolchainReady: false,
+      runtimeAvailable: true,
+      prepared: false,
+      synthesisOk: null,
+      licenseAcknowledged: true,
+      requiresLicenseAck: false,
+      hasHfToken: false,
+      fit: { level: 'great' },
+      tier: 'C',
+      freeDiskGb: 200,
+      runtimeBytes: 3e9,
+      weightsBytes: 1e9,
+    };
+    const kokoro = getModel('kokoro-82m');
+    const unsupported = pipeline.planInstall({ ...base, model: kokoro, tier: 'D', runtimeAvailable: false, runtimeReason: 'Kokoro does not support macOS (Intel) yet.' });
+    assert.ok(unsupported.blockers.includes('Kokoro does not support macOS (Intel) yet.'));
+    assert.equal(unsupported.stages[0].state, 'blocked');
+    assert.equal(unsupported.next, 'preflight');
+
+    const lowDisk = pipeline.planInstall({ ...base, model: kokoro, freeDiskGb: 2 });
+    assert.ok(lowDisk.blockers.some((blocker) => /Not enough free disk space/.test(blocker)));
+
+    assert.ok(pipeline.planInstall({ ...base, model: kokoro, fit: { level: 'too-heavy' } }).blockers.some((blocker) => /minimum memory or disk/.test(blocker)));
+
+    const gated = getModel('phonon-40m-multilingual');
+    assert.ok(pipeline.planInstall({ ...base, model: gated }).blockers.some((blocker) => /gated on Hugging Face/.test(blocker)));
+    assert.equal(pipeline.planInstall({ ...base, model: gated, hasHfToken: true }).blockers.some((blocker) => /gated/.test(blocker)), false);
+
+    // An installed model is never blocked by disk or platform checks.
+    const installed = pipeline.planInstall({ ...base, model: kokoro, weightsInstalled: true, environmentReady: true, tier: 'D', freeDiskGb: 0.1 });
+    assert.deepEqual(installed.blockers, []);
+
+    // The watermark warning follows the manifest.
+    assert.ok(pipeline.planInstall({ ...base, model: getModel('chatterbox') }).warnings.some((warning) => /watermark/.test(warning)));
   });
 
   await test('Arabic is inferred only from declared language codes', () => {

@@ -92,6 +92,37 @@ source packages, so no compiler is needed.
 - **Process lifetime.** Servers watch `VOXARIUM_PARENT_PID` and exit with the app.
   (A blocking read on a stdin pipe deadlocks DLL loading on Windows.)
 
+## The install contract
+
+Every model, whatever its runtime or the operating system, follows the same seven stages
+(`src/models/pipeline.ts`). Stages that do not apply are skipped, never reordered, and the
+Models page shows them under **Details → Install steps**.
+
+| # | Stage | What happens | Phonon (in-app) |
+| --- | --- | --- | --- |
+| 1 | Check this computer | Disk space, memory, GPU fit, platform support tier, Hugging Face access | yes |
+| 2 | License | Review and accept restricted licenses | when restricted |
+| 3 | Toolchain | Pinned uv and Python | skipped |
+| 4 | Environment | The model's isolated venv from a pinned recipe | skipped |
+| 5 | Model files | Pinned weights, size + SHA-256 verified | yes |
+| 6 | First start | Load once; helper files may be fetched | skipped |
+| 7 | Test synthesis | Speak a fixed sentence and check the audio | engine check |
+
+`planInstall` turns what the app already knows into the stage list, a list of **blockers**
+(unsupported platform, not enough disk, model too heavy, missing Hugging Face token) and
+**warnings** (experimental tier, CPU fallback, watermark, first start downloads).
+
+The test synthesis (`electron/models/verify.cjs`) starts the sidecar, asks it to say
+"Voxarium is ready to speak." and checks the audio for plausible duration, level, clipping
+and invalid samples. The result is stored with the install record and shown on the model
+card as *Test passed* or *Test failed*. It is a smoke test, not a quality judgement, and it
+does not block activation yet.
+
+`node scripts/smoke-sidecar.mjs <modelId>` runs stages 3 to 7 headlessly through the same
+managers the app uses. The **Sidecar smoke test** workflow runs it weekly for Supertonic 3
+and Kokoro on Windows, Linux and macOS; a green run is the evidence for that model's
+support tier on that system.
+
 ## Download and install lifecycle
 
 `electron/models/downloads.cjs` owns a per-model state machine:

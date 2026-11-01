@@ -130,6 +130,7 @@ function createModelManager({ dirs, appVersion, state, broadcast, getToken = () 
       bytes,
       installedAt: install?.installedAt || null,
       verifiedAt: install?.verifiedAt || null,
+      synthesisCheck: install?.synthesisCheck || null,
       source: install?.source || null,
       error: activeDownload?.modelId === model.id ? undefined : install?.error,
     };

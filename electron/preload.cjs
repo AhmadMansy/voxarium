@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('studio', {
     download: (options) => invoke('models:download', options),
     cancel: () => invoke('models:cancel'),
     verify: (id) => invoke('models:verify', { id }),
+    verifySynthesis: (id) => invoke('models:verifySynthesis', { id }),
     uninstall: (id) => invoke('models:uninstall', { id }),
     activate: (id) => invoke('models:activate', { id }),
     acknowledge: (id) => invoke('models:acknowledge', { id }),

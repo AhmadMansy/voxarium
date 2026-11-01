@@ -5,6 +5,7 @@ import type {
   ModelCapabilities,
   ModelDownloadEvent,
   ModelInstallState,
+  SynthesisCheck,
   ModelLicense,
   ModelsProgressEvent,
   ModelsSnapshot,
@@ -378,6 +379,7 @@ export interface StudioApi {
     download: (options: { id: string; quality: Quality }) => Promise<{ ok: boolean; status?: ModelInstallState; error?: string; code?: string }>;
     cancel: () => Promise<boolean>;
     verify: (id: string) => Promise<{ status: ModelInstallState; mismatched: string[] }>;
+    verifySynthesis: (id: string) => Promise<SynthesisCheck & { modelId?: string; unsupported?: boolean }>;
     uninstall: (id: string) => Promise<{ ok: boolean; status: ModelInstallState }>;
     activate: (id: string) => Promise<{ ok: boolean; error?: string; snapshot?: ModelsSnapshot }>;
     acknowledge: (id: string) => Promise<{ ok: boolean; license: ModelLicense; acknowledgedAt: number }>;

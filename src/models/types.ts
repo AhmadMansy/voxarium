@@ -175,6 +175,20 @@ export interface ModelFileState {
 
 export type ModelLifecycle = 'not-installed' | 'downloading' | 'verifying' | 'installed' | 'update' | 'error';
 
+/** Result of the install pipeline's final stage: a real test synthesis. */
+export interface SynthesisCheck {
+  ok: boolean;
+  error: string | null;
+  durationSec: number;
+  peak: number;
+  rms: number;
+  sampleRate: number;
+  elapsedMs: number;
+  at: number;
+  platform: string;
+  arch: string;
+}
+
 export interface ModelInstallState {
   id: string;
   lifecycle: ModelLifecycle;
@@ -185,6 +199,7 @@ export interface ModelInstallState {
   bytes: number;
   installedAt: number | null;
   verifiedAt: number | null;
+  synthesisCheck?: SynthesisCheck | null;
   source: 'download' | 'import' | 'legacy' | null;
   error?: string;
 }

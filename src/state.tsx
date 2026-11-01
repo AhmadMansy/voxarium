@@ -85,6 +85,8 @@ interface ModelManager {
   download: (id: string, quality?: Quality) => Promise<boolean>;
   cancel: () => Promise<void>;
   verify: (id: string) => Promise<{ mismatched: string[] } | null>;
+  /** Speaks a test sentence with an installed sidecar model and records whether the audio is plausible. */
+  testSynthesis: (id: string) => Promise<boolean>;
   uninstall: (id: string) => Promise<boolean>;
   activate: (id: string) => Promise<boolean>;
   acknowledge: (id: string) => Promise<boolean>;
@@ -1019,6 +1021,29 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [refreshModels, toast],
   );
 
+  const testSynthesis = useCallback(
+    async (id: string) => {
+      try {
+        const result = await window.studio.models.verifySynthesis(id);
+        await refreshModels();
+        if (result.unsupported) {
+          toast('This model is tested by the app engine.', 'info');
+          return true;
+        }
+        if (result.ok) {
+          toast('Test synthesis passed.', 'success', `${result.durationSec.toFixed(1)} s of audio in ${(result.elapsedMs / 1000).toFixed(1)} s`);
+        } else {
+          toast('Test synthesis failed.', 'error', result.error || undefined);
+        }
+        return result.ok;
+      } catch (error) {
+        toast('Test synthesis failed.', 'error', errorMessage(error));
+        return false;
+      }
+    },
+    [refreshModels, toast],
+  );
+
   const uninstallModel = useCallback(
     async (id: string) => {
       const manifest = getModel(id);
@@ -1771,6 +1796,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       download: downloadModelById,
       cancel: cancelModelDownload,
       verify: verifyModel,
+      testSynthesis,
       uninstall: uninstallModel,
       activate: activateModel,
       acknowledge: acknowledgeModel,
@@ -1820,6 +1846,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       uninstallModel,
       uninstallRuntime,
       verifyModel,
+      testSynthesis,
       verifyRuntime,
     ],
   );

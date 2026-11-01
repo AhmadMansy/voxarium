@@ -25,6 +25,7 @@ const { createModelState, adoptLegacyFiles } = require('./models/state.cjs');
 const { createModelManager } = require('./models/downloads.cjs');
 const { probeHardware } = require('./models/hardware.cjs');
 const { createSidecarSupervisor } = require('./models/sidecar.cjs');
+const { goldenSynthesis } = require('./models/verify.cjs');
 const { createRuntimeManager, runtimeDir } = require('./models/runtimes.cjs');
 const { loadManifests, getModel } = require('./models/registry.cjs');
 const { createEngineBridge } = require('./integrations/bridge.cjs');
@@ -1341,6 +1342,29 @@ function registerIpc() {
     const result = await modelManager.verify(id || activeModelId());
     notifyModels();
     return result;
+  });
+
+  // Stage 7 of the install pipeline: speak a fixed sentence and check the audio.
+  ipcMain.handle('models:verifySynthesis', async (event, { id } = {}) => {
+    initModelServices();
+    const model = getModel(id || activeModelId());
+    if (model.runtime !== 'sidecar') {
+      return { ok: false, unsupported: true, error: 'In-app models are tested by the app engine.' };
+    }
+    const wasRunning = sidecars.status(model.id).state === 'ready';
+    const started = await sidecars.start(model.id);
+    let result;
+    if (!started.ok) {
+      result = { ok: false, error: started.error || 'The model could not start.', durationSec: 0, peak: 0, rms: 0, sampleRate: 0, elapsedMs: 0 };
+    } else {
+      const current = sidecars.status(model.id);
+      result = await goldenSynthesis({ url: current.url, token: current.token });
+    }
+    const check = { ...result, at: Date.now(), platform: process.platform, arch: process.arch };
+    await modelState.recordInstall(model.id, { synthesisCheck: check });
+    if (!wasRunning && model.id !== activeModelId()) await sidecars.stop(model.id).catch(() => {});
+    notifyModels();
+    return { ...check, modelId: model.id };
   });
 
   ipcMain.handle('models:uninstall', async (event, { id } = {}) => {

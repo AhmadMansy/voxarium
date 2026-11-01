@@ -17,6 +17,7 @@ import {
   modelHasArabic,
   voicesForModel,
 } from '../models/compat';
+import { planInstall } from '../models/pipeline';
 import type { ModelManifest, RuntimePackState } from '../models/types';
 import { useStudio } from '../state';
 import { Icon } from '../components/Icons';
@@ -216,6 +217,26 @@ function ModelCard({ model }: { model: ModelManifest }) {
   const runtimeBusy = Boolean(models.runtimeBusyId && runtimePacks.includes(models.runtimeBusyId)) || (busy && Boolean(runtimeEvent));
   const runtimeBytes = runtime.ready || !runtime.pack ? 0 : runtime.pack.sizeBytes;
   const needsToken = Boolean(model.gated && !status.installed && !models.hfToken?.hasToken);
+  const toolchainReady = Boolean(runtime.pack && runtime.pack.requires.every((id) => models.runtimes[id]?.installed));
+  const plan = planInstall({
+    model,
+    weightsInstalled: status.installed,
+    environmentReady: model.runtime === 'sidecar' ? runtime.ready : true,
+    toolchainReady,
+    runtimeAvailable: runtime.available,
+    runtimeReason: runtime.reason,
+    prepared: Boolean(sidecar?.prepared),
+    synthesisOk: status.synthesisCheck ? status.synthesisCheck.ok : null,
+    licenseAcknowledged: ack,
+    requiresLicenseAck: requiresLicenseAck(model),
+    hasHfToken: Boolean(models.hfToken?.hasToken),
+    fit,
+    tier: runtime.pack?.tier ?? null,
+    freeDiskGb: models.hardware.freeDiskGb,
+    runtimeBytes,
+    weightsBytes: status.installed ? 0 : downloadBytes,
+  });
+  const check = status.synthesisCheck;
 
   const accept = async () => {
     const confirmed = await window.studio.ui.confirm({
@@ -251,6 +272,10 @@ function ModelCard({ model }: { model: ModelManifest }) {
 
   const verify = async () => {
     await models.verify(model.id);
+  };
+
+  const testSynthesis = async () => {
+    await models.testSynthesis(model.id);
   };
 
   const toggleLogs = async () => {
@@ -319,6 +344,14 @@ function ModelCard({ model }: { model: ModelManifest }) {
             }
           >
             {runtime.pack.tierLabel}
+          </span>
+        )}
+        {check && (
+          <span
+            className={classNames('tag', check.ok ? 'tag--ok' : 'tag--danger')}
+            title={check.ok ? `Spoke a test sentence on ${check.platform} (${check.durationSec.toFixed(1)} s of audio) on ${formatDate(check.at)}.` : check.error || 'The test synthesis failed.'}
+          >
+            {check.ok ? 'Test passed' : 'Test failed'}
           </span>
         )}
         <span className={classNames('tag', status.installed ? 'tag--ok' : 'tag--muted')}>
@@ -450,6 +483,17 @@ function ModelCard({ model }: { model: ModelManifest }) {
           </button>
         )}
 
+        {status.installed && model.runtime === 'sidecar' && runtime.ready && (
+          <button
+            className="btn btn--subtle btn--sm"
+            onClick={() => void testSynthesis()}
+            disabled={busy}
+            title="Speak a short test sentence with this model and check that the audio is plausible."
+          >
+            <Icon name="play" size={14} /> Test synthesis
+          </button>
+        )}
+
         <button className="btn btn--ghost btn--sm" onClick={() => void models.importFolder(model.id)} disabled={busy}>
           <Icon name="folderOpen" size={14} /> Import
         </button>
@@ -509,6 +553,29 @@ function ModelCard({ model }: { model: ModelManifest }) {
 
       {showDetails && (
         <div className="model-card__details">
+          <div>
+            <strong>Install steps</strong>
+            <ol className="model-card__steps">
+              {plan.stages.map((stage) => (
+                <li key={stage.id} className={`is-${stage.state}`} title={stage.summary}>
+                  <span className="model-card__step-mark" aria-hidden="true">
+                    {stage.state === 'done' ? '✓' : stage.state === 'blocked' ? '!' : stage.state === 'skipped' ? '–' : '•'}
+                  </span>
+                  <span>
+                    {stage.label}
+                    {stage.state === 'skipped' ? ' (not needed)' : ''}
+                    {stage.detail ? <em> · {stage.detail}</em> : null}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            {plan.blockers.map((blocker) => (
+              <p key={blocker} className="is-danger">{blocker}</p>
+            ))}
+            {plan.warnings.map((warning) => (
+              <p key={warning} className="is-warn">{warning}</p>
+            ))}
+          </div>
           <div>
             <strong>Rating rubric</strong>
             <p>{rating.rubric}</p>
